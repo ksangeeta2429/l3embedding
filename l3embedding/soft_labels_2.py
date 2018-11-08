@@ -89,7 +89,7 @@ def get_labels(train_data_dir, validation_data_dir, validation_epoch_size=1024,t
                model_type='cnn_L3_melspec1', random_state=20180123, gpus=1):
 
     #weight_path_melspec2 = '/scratch/jtc440/sonyc-usc/embedding/music/cnn_L3_melspec2/20180223113902/model_best_valid_accuracy_1gpu.h5' 
-    weight_path = '/home/sk7898/l3embedding/models/cnn_L3_melspec1_best_valid_accuracy_1gpu.h5'
+    weight_path = '/home/sk7898/l3embedding/models/cnn_l3_melspec1/model_best_valid_accuracy_1gpu.h5'
     # '/scratch/jtc440/sonyc-usc/embedding/music/cnn_L3_melspec1/20180221105528/model_best_valid_accuracy_1gpu.h5'
     m, inputs, outputs  = load_model(weight_path, model_type, return_io=True, src_num_gpus=1)
 
