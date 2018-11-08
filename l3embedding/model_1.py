@@ -1,7 +1,7 @@
 from keras.layers import concatenate, Dense
-from vision_model import *
-from audio_model import *
-from training_utils import multi_gpu_model
+from .vision_model import *
+from .audio_model import *
+from .training_utils import multi_gpu_model
 
 
 def L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, model_name, layer_size=128):
@@ -166,7 +166,7 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
     x_i, x_a = inputs
     if embedding_type == 'vision':
         m_embed_model = m.get_layer('vision_model')
-        m_embed, x_embed, y_embed = VISION_EMBEDDING_MODELS[model_type](m_embed_model, x_i)
+        m_embed, x_embed, y_embed = construct_cnn_l3_orig_vision_embedding_model(m_embed_model, x_i)
 
     elif embedding_type == 'audio':
         m_embed_model = m.get_layer('audio_model')
@@ -255,10 +255,10 @@ def construct_cnn_L3_melspec1():
     outputs: Model outputs
             (Type: keras.layers.Layer)
     """
-    vision_model, x_i, y_i = construct_cnn_L3_orig_vision_model() #construct_cnn_L3_orig_inputbn_vision_model()
+    vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
     audio_model, x_a, y_a = construct_cnn_L3_melspec1_audio_model()
 
-    m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_kapredbinputbn')
+    m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_melspec1')
     return m
 
 @gpu_wrapper
@@ -280,7 +280,7 @@ def construct_cnn_L3_melspec2():
     vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
     audio_model, x_a, y_a = construct_cnn_L3_melspec2_audio_model()
 
-    m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_kapredbinputbn')
+    m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_melspec2')
     return m
 
 @gpu_wrapper
