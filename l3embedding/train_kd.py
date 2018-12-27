@@ -302,13 +302,12 @@ def data_generator(data_dir, batch_size=512, random_state=20180216, start_batch_
                     # Get the embedding layer output from the audio_model and flatten it to be treated as labels for the student audio model
                     with graph.as_default():
                         batch['label'] = audio_model.predict(batch['audio'])
-                        print (batch['label'].shape)
-                    
+                                            
                     yield batch
 
-    batch_idx += 1
-    curr_batch_size = 0
-    batch = None
+                batch_idx += 1
+                curr_batch_size = 0
+                batch = None
 
 
 def train(train_data_dir, validation_data_dir, weight_path, model_type = 'cnn_L3_melspec2', num_epochs=300, validation_epoch_size=1024,
