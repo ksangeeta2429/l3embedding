@@ -247,9 +247,9 @@ def test(model, validation_data_dir, learning_rate=1e-4, validation_epoch_size=1
 
 
 def pruning(weight_path, validation_dir):
-    conv_blocks = 1
+    conv_blocks = 4
     
-    sparsity_values = [20.]
+    sparsity_values = [20., 30., 40., 50., 60.]
     sparsity_blks = [0, 0, 0, 0]
     sparsity_layers = [0, 0, 0, 0, 0, 0, 0, 0]
 

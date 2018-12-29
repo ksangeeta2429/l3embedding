@@ -1,6 +1,9 @@
 import os
 import random
 import csv
+import datetime
+import json
+import pickle
 import numpy as np
 from keras.regularizers import l2
 import tensorflow as tf
@@ -234,7 +237,7 @@ def load_student_audio_model():
 
 def single_epoch_data_generator(data_dir, epoch_size, **kwargs):
     while True:
-        data_gen = data_generator(data_dir, soft_labels_dir, **kwargs)
+        data_gen = data_generator(data_dir, **kwargs)
         for idx, item in enumerate(data_gen):
             yield item
             # Once we generate all batches for an epoch, restart the generator
@@ -310,18 +313,119 @@ def data_generator(data_dir, batch_size=512, random_state=20180216, start_batch_
                 batch = None
 
 
-def train(train_data_dir, validation_data_dir, weight_path, model_type = 'cnn_L3_melspec2', num_epochs=300, validation_epoch_size=1024,
-          train_epoch_size=4096, train_batch_size=64, learning_rate=1e-4, validation_batch_size=64,
-          random_state=20180216, gpus=1):
+def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scratch/sk7898/kd_output', num_epochs=300, train_epoch_size=4096, 
+          validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64, model_type = 'cnn_L3_melspec2', random_state=20180216, 
+          learning_rate=0.00001, verbose=True, checkpoint_interval=10, gpus=1):
 
     #m, inputs, outputs = load_model(weight_path, model_type, return_io=True, src_num_gpus=1)
     #audio_model = m.get_layer('audio_model')
     
+    # Form model ID
+    data_subset_name = os.path.basename(train_data_dir)
+    data_subset_name = data_subset_name[:data_subset_name.rindex('_')]
+    model_id = os.path.join(data_subset_name, model_type)
+    model_dir = os.path.join(output_dir, 'embedding', model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+    if not os.path.isdir(model_dir):
+        os.makedirs(model_dir)
+
+    param_dict = {
+          'train_data_dir': train_data_dir,
+          'validation_data_dir': validation_data_dir,
+          'model_id': model_id,
+          'output_dir': output_dir,
+          'num_epochs': num_epochs,
+          'train_epoch_size': train_epoch_size,
+          'validation_epoch_size': validation_epoch_size,
+          'train_batch_size': train_batch_size,
+          'validation_batch_size': validation_batch_size,
+          'model_type': model_type,
+          'random_state': random_state,
+          'learning_rate': learning_rate,
+          'verbose': verbose
+    }
+    
+    param_dict['model_dir'] = model_dir
+    train_config_path = os.path.join(model_dir, 'config.json')
+    with open(train_config_path, 'w') as fd:
+        json.dump(param_dict, fd, indent=2)
+
+    param_dict.update({
+          'latest_epoch': '-',
+          'latest_train_loss': '-',
+          'latest_validation_loss': '-',
+          'latest_train_acc': '-',
+          'latest_validation_acc': '-',
+          'best_train_loss': '-',
+          'best_validation_loss': '-',
+          'best_train_acc': '-',
+          'best_validation_acc': '-',
+    })
+
+    student, x_a, y_a = load_student_audio_model()
+
+    optimizer = keras.optimizers.SGD(lr=learning_rate, momentum=0.9, nesterov=True)
+
+    student.compile(optimizer=optimizer,
+                    loss='mean_squared_error',
+                    metrics=['mae', 'acc'])
+
+    # Save the model
+    model_spec_path = os.path.join(model_dir, 'model_spec.pkl')
+    model_spec = keras.utils.serialize_keras_object(student)
+    with open(model_spec_path, 'wb') as fd:
+        pickle.dump(model_spec, fd)
+    model_json_path = os.path.join(model_dir, 'model.json')
+    model_json = student.to_json()
+    with open(model_json_path, 'w') as fd:
+        json.dump(model_json, fd, indent=2)
+
+    latest_weight_path = os.path.join(model_dir, 'model_latest.h5')
+    best_valid_acc_weight_path = os.path.join(model_dir, 'model_best_valid_accuracy.h5')
+    best_valid_loss_weight_path = os.path.join(model_dir, 'model_best_valid_loss.h5')
+    checkpoint_weight_path = os.path.join(model_dir, 'model_checkpoint.{epoch:02d}.h5')
+
+    # Set up callbacks
+    cb = []
+    cb.append(keras.callbacks.ModelCheckpoint(latest_weight_path,
+                                              save_weights_only=True,
+                                              verbose=1))
+
+    best_val_acc_cb = keras.callbacks.ModelCheckpoint(best_valid_acc_weight_path,
+                                              save_weights_only=True,
+                                              save_best_only=True,
+                                              verbose=1,
+                                              monitor='val_acc')
+    #if continue_model_dir is not None:
+    #    best_val_acc_cb.best = last_val_acc
+    cb.append(best_val_acc_cb)
+
+    best_val_loss_cb = keras.callbacks.ModelCheckpoint(best_valid_loss_weight_path,
+                                              save_weights_only=True,
+                                              save_best_only=True,
+                                              verbose=1,
+                                              monitor='val_loss')
+    #if continue_model_dir is not None:
+    #    best_val_loss_cb.best = last_val_loss
+    cb.append(best_val_loss_cb)
+
+    checkpoint_cb = keras.callbacks.ModelCheckpoint(checkpoint_weight_path,
+                                              save_weights_only=True,
+                                              period=checkpoint_interval)
+    #if continue_model_dir is not None:
+    #    checkpoint_cb.epochs_since_last_save = (last_epoch_idx + 1) % checkpoint_interval
+    cb.append(checkpoint_cb)
+
+    #LOGGER.info('Setting up train data generator...')
+    #if continue_model_dir is not None:
+    #    train_start_batch_idx = train_epoch_size * (last_epoch_idx + 1)
+    #else:
+    train_start_batch_idx = None
+
     train_gen = data_generator(
         train_data_dir,
         batch_size=train_batch_size,
         random_state=random_state,
-        start_batch_idx=None)
+        start_batch_idx=train_start_batch_idx)
 
     train_gen = pescador.maps.keras_tuples(train_gen,
                                            'audio',
@@ -337,18 +441,15 @@ def train(train_data_dir, validation_data_dir, weight_path, model_type = 'cnn_L3
                                          'audio',
                                          'label')
 
-    student, x_a, y_a = load_student_audio_model()
-
-    optimizer = keras.optimizers.SGD(lr=learning_rate, momentum=0.9, nesterov=True)
-
-    student.compile(optimizer=optimizer,
-                    loss='mean_squared_error',
-                    metrics=['mae', 'acc'])
-
     history = student.fit_generator(train_gen, train_epoch_size, num_epochs,
                                     validation_data=val_gen,
                                     validation_steps=validation_epoch_size,
+                                    callbacks=cb,
                                     verbose=1)
+
+    # Save history
+    with open(os.path.join(model_dir, 'history.pkl'), 'wb') as fd:
+        pickle.dump(history.history, fd)
 
     return history
 
