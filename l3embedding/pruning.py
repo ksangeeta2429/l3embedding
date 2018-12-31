@@ -184,7 +184,7 @@ def sparsify_block(model, sparsity_dict):
             
             threshold = calculate_threshold(weights, sparsity_dict[layer_1])
 
-            print(K.eval(threshold))
+            #print(K.eval(threshold))
             target_weights_1 = np.empty_like(model.get_layer(layer_1).get_weights())
             target_weights_2 = np.empty_like(model.get_layer(layer_2).get_weights())
 
