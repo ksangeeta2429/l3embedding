@@ -141,7 +141,7 @@ def get_sparsity_layers(layer, sparsity_layer, sparsity_value_layers):
     sparsity = {}
     for idx in range(len(sparsity_value_layers)):
         layer_name = 'conv_'+str(idx+1)
-        if(idx == layer):
+        if(layer and sparsity_layer and idx == layer):
             sparsity[layer_name] = sparsity_layer
         else:
             sparsity[layer_name] = sparsity_value_layers[idx]
@@ -245,48 +245,76 @@ def test(model, validation_data_dir, learning_rate=1e-4, validation_epoch_size=1
     
     return score
 
+def zero_check(sparsity_list):
+    for val in sparsity_list:
+        if(val):
+            return False
+    return True
 
-def pruning(weight_path, validation_dir):
+def printList(sparsity_list):
+    printStr = "Sparsity Values: "
+    for val in sparsity_list:
+        printStr += str(val) + ", "
+    print(printStr)
+
+def pruning(weight_path, validation_dir, blockwise=False, layerwise=False):
     conv_blocks = 4
     
-    sparsity_values = [20., 30., 40., 50., 60.]
+    sparsity_values = [70., 80., 90.]
     sparsity_blks = [0, 0, 0, 0]
-    sparsity_layers = [0, 0, 0, 0, 0, 0, 0, 0]
+    #sparsity_layers = [0, 0, 0, 0, 0, 0, 0, 0]
+    sparsity_layers = [[0, 40., 40., 50., 30., 50., 50., 60.],\
+                       [0, 40., 50., 50., 30., 60., 60., 60.],\
+                       [0, 40., 50., 60., 30., 60., 60., 60.]]
 
+    if(blockwise and zero_check(sparsity_blks)):
+        print("Block-wise Pruning")
+        print("*********************************************************************")
+    
+        for sparsity in sparsity_values:
+            for blockid in range(conv_blocks):
+                model, audio_model = load_audio_model_for_pruning(weight_path)
+                sparsity_vals = get_sparsity_blocks(blockid, sparsity, sparsity_blks) 
+                sparsified_model = sparsify_block(audio_model, sparsity_vals)
+            
+                model.get_layer('audio_model').set_weights(sparsified_model.get_weights()) 
+            
+                score = test(model, validation_dir)
+                print('Conv Block Pruned: {0} Sparsity Value: {1}'.format(blockid+1, sparsity))
+                print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))     
+                print('---------------------------------------------------------------')
+    
+    if(layerwise and zero_check(sparsity_layers[0])):
+        print("Layer-wise Pruning")
+        print("**********************************************************************")
+        for sparsity in sparsity_values:
+            for layerid in range(conv_blocks*2):
+                model, audio_model = load_audio_model_for_pruning(weight_path)
+                sparsity_vals = get_sparsity_layers(layerid, sparsity, sparsity_layers)
+                sparsified_model = sparsify_layer(audio_model, sparsity_vals)
 
-    print("Block-wise Pruning")
-    print("*********************************************************************")
+                model.get_layer('audio_model').set_weights(sparsified_model.get_weights())
+
+                score = test(model, validation_dir)
+                print('Conv Layer Pruned: {0} Sparsity Value: {1}'.format(layerid+1, sparsity))
+                print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
+                print('----------------------------------------------------------------')
     
-    for sparsity in sparsity_values:
-        for blockid in range(conv_blocks):
+    if(layerwise and not zero_check(sparsity_layers[0])):
+        print("Specific Pruning Values")
+        print("**********************************************************************")
+        for sparsity in sparsity_layers: 
             model, audio_model = load_audio_model_for_pruning(weight_path)
-            sparsity_vals = get_sparsity_blocks(blockid, sparsity, sparsity_blks) 
-            sparsified_model = sparsify_block(audio_model, sparsity_vals)
-            
-            model.get_layer('audio_model').set_weights(sparsified_model.get_weights()) 
-            
-            score = test(model, validation_dir)
-            print('Conv Block Pruned: {0} Sparsity Value: {1}'.format(blockid+1, sparsity))
-            print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))     
-            print('---------------------------------------------------------------')
-    
-    
-    print("Layer-wise Pruning")
-    print("**********************************************************************")
-    for sparsity in sparsity_values:
-        for layerid in range(conv_blocks*2):
-            model, audio_model = load_audio_model_for_pruning(weight_path)
-            sparsity_vals = get_sparsity_layers(layerid, sparsity, sparsity_layers)
+            sparsity_vals = get_sparsity_layers(None, None, sparsity)
             sparsified_model = sparsify_layer(audio_model, sparsity_vals)
 
             model.get_layer('audio_model').set_weights(sparsified_model.get_weights())
-
             score = test(model, validation_dir)
-            print('Conv Layer Pruned: {0} Sparsity Value: {1}'.format(layerid+1, sparsity))
+            printList(sparsity)
             print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
             print('----------------------------------------------------------------')
-    
+
 weight_path = '/home/sk7898/l3embedding/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
 validation_dir = '/beegfs/work/AudioSetSamples/music_valid'
 #validation_dir = '/beegfs/work/AudioSetSamples_environmental/environmental_valid'
-pruning(weight_path, validation_dir)
+pruning(weight_path, validation_dir, blockwise=False, layerwise=True)

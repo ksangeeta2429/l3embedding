@@ -40,7 +40,7 @@ def cycle_shuffle(iterable, shuffle=True):
             random.shuffle(lst)
 
 
-def load_student_audio_model_preFFT():
+def load_student_audio_model():
     weight_decay = 1e-5
     ####
     # Audio subnetwork
@@ -67,11 +67,11 @@ def load_student_audio_model_preFFT():
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
-    y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
-                 kernel_initializer='he_normal',
-                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-    y_a = BatchNormalization()(y_a)
-    y_a = Activation('relu')(y_a)
+    #y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
+    #             kernel_initializer='he_normal',
+    #             kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    #y_a = BatchNormalization()(y_a)
+    #y_a = Activation('relu')(y_a)
     y_a = MaxPooling2D(pool_size=pool_size_a_1, strides=2)(y_a)
 
     # CONV BLOCK 2
@@ -114,11 +114,11 @@ def load_student_audio_model_preFFT():
     n_filter_a_4 = 512
     filt_size_a_4 = (3, 3)
     pool_size_a_4 = (32, 24)
-    y_a = Conv2D(n_filter_a_4, filt_size_a_4, padding='same',
-                 kernel_initializer='he_normal',
-                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-    y_a = BatchNormalization()(y_a)
-    y_a = Activation('relu')(y_a)
+    #y_a = Conv2D(n_filter_a_4, filt_size_a_4, padding='same',
+    #             kernel_initializer='he_normal',
+    #             kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    #y_a = BatchNormalization()(y_a)
+    #y_a = Activation('relu')(y_a)
     y_a = Conv2D(n_filter_a_4, filt_size_a_4,
                  kernel_initializer='he_normal',
                  name='student_embedding_layer', padding='same',
@@ -135,7 +135,7 @@ def load_student_audio_model_preFFT():
     return m, x_a, y_a
 
 
-def load_student_audio_model():
+def load_student_audio_model_withFFT():
     weight_decay = 1e-5
     ####
     # Audio subnetwork
@@ -300,7 +300,45 @@ def data_generator(data_dir, batch_size=512, random_state=20180216, start_batch_
                     #batch['video'] = 2 * img_as_float(batch['video']).astype('float32') - 1
 
                     # Convert audio to float
-                    batch['audio'] = pcm2float(batch['audio'], dtype='float32')
+                    audio_data_batch = batch['audio']
+                    batch['audio'] = []
+
+                    for audio_data in audio_data_batch:
+                        audio_data = pcm2float(audio_data.flatten(), dtype='float32')
+                        # Compute spectrogram
+                        if model_type == 'cnn_L3_melspec2':
+                            S = np.abs(minispec.core.stft(audio_data, n_fft=2048, hop_length=242,
+                                                          window='hann', center=True,
+                                                          pad_mode='constant'))
+                            audio_data = minispec.feature.melspectrogram(sr=48000, S=S,
+                                                                         n_mels=256, power=1.0,
+                                                                         htk=True)
+                            del S
+                        elif model_type == 'cnn_L3_melspec1':
+                            S = np.abs(minispec.core.stft(audio_data, n_fft=2048, hop_length=242,
+                                                          window='hann', center=True,
+                                                          pad_mode='constant'))
+                            audio_data = minispec.feature.melspectrogram(sr=48000, S=S,
+                                                                         n_mels=128, power=1.0,
+                                                                         htk=True)
+                            del S
+                        else:
+
+                            audio_data = np.abs(minispec.core.stft(audio_data, n_fft=512, hop_length=242,
+                                                                   window='hann', center=True,
+                                                                   pad_mode='constant'))
+
+                        # Convert amplitude to dB
+                        audio_data = minispec.core.amplitude_to_db(audio_data)
+
+                        # Add additional batch and channel dimensions
+                        batch['audio'].append(audio_data[np.newaxis,:,:,np.newaxis])
+
+                        del audio_data
+
+                    del audio_data_batch
+
+                    #batch['audio'] = pcm2float(batch['audio'], dtype='float32')
                         
                     # Get the embedding layer output from the audio_model and flatten it to be treated as labels for the student audio model
                     with graph.as_default():
@@ -325,6 +363,7 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
     data_subset_name = data_subset_name[:data_subset_name.rindex('_')]
     model_id = os.path.join(data_subset_name, model_type)
     model_dir = os.path.join(output_dir, 'embedding', model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+    
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir)
 
@@ -365,9 +404,9 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
 
     optimizer = keras.optimizers.SGD(lr=learning_rate, momentum=0.9, nesterov=True)
 
-    student.compile(optimizer=optimizer,
+    student.compile(Adam(lr=learning_rate),
                     loss='mean_squared_error',
-                    metrics=['mae', 'acc'])
+                    metrics=['mae'])
 
     # Save the model
     model_spec_path = os.path.join(model_dir, 'model_spec.pkl')
@@ -380,24 +419,11 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
         json.dump(model_json, fd, indent=2)
 
     latest_weight_path = os.path.join(model_dir, 'model_latest.h5')
-    best_valid_acc_weight_path = os.path.join(model_dir, 'model_best_valid_accuracy.h5')
     best_valid_loss_weight_path = os.path.join(model_dir, 'model_best_valid_loss.h5')
     checkpoint_weight_path = os.path.join(model_dir, 'model_checkpoint.{epoch:02d}.h5')
 
     # Set up callbacks
     cb = []
-    cb.append(keras.callbacks.ModelCheckpoint(latest_weight_path,
-                                              save_weights_only=True,
-                                              verbose=1))
-
-    best_val_acc_cb = keras.callbacks.ModelCheckpoint(best_valid_acc_weight_path,
-                                              save_weights_only=True,
-                                              save_best_only=True,
-                                              verbose=1,
-                                              monitor='val_acc')
-    #if continue_model_dir is not None:
-    #    best_val_acc_cb.best = last_val_acc
-    cb.append(best_val_acc_cb)
 
     best_val_loss_cb = keras.callbacks.ModelCheckpoint(best_valid_loss_weight_path,
                                               save_weights_only=True,
