@@ -575,13 +575,13 @@ def pruning(weight_path, validation_dir, output_dir = '/scratch/sk7898/pruned_mo
             model, audio_model = load_audio_model_for_pruning(weight_path)
             sparsity_vals = get_sparsity_layers(None, None, sparsity)
             sparsified_model, masks = sparsify_layer(audio_model, sparsity_vals)
-
+            '''
             model.get_layer('audio_model').set_weights(sparsified_model.get_weights())
             score = test(model, validation_dir)
             printList(sparsity)
             print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
             print('----------------------------------------------------------------')
-            
+            '''
             pruned_model_name = 'pruned_audio_'+val_acc[c]+'.h5'
             c = c+1
             pruned_model_path = os.path.join(output_dir, pruned_model_name)
