@@ -24,13 +24,43 @@ graph = tf.get_default_graph()
 weight_path = '/home/sk7898/l3embedding/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
 audio_model = load_embedding(weight_path, model_type = 'cnn_L3_melspec2', embedding_type = 'audio', pooling_type = 'short', tgt_num_gpus = 1)
 
-
 ##########
 # 1. Added student model : load_student_audio_model
 # 2. data_generator has audio_model passed for generating the embedding output which acts as label for student model
 # 3. The student is compiled with MSE loss with metric as mae 
 #    (MSE is chosen for loss because of many nan issues that I have seen during training but RMSE can also be tried)
 ##########
+
+class LossHistory(keras.callbacks.Callback):
+    """
+    Keras callback to record loss history
+    """
+
+    def __init__(self, outfile):
+        super().__init__()
+        self.outfile = outfile
+
+    def on_train_begin(self, logs=None):
+        if logs is None:
+            logs = {}
+
+        self.loss = []
+        self.val_loss = []
+
+    # def on_batch_end(self, batch, logs={}):
+
+    def on_epoch_end(self, epoch, logs=None):
+        if logs is None:
+            logs = {}
+
+        self.loss.append(logs.get('loss'))
+        self.val_loss.append(logs.get('val_loss'))
+
+        loss_dict = {'loss': self.loss, 'val_loss': self.val_loss}
+
+        with open(self.outfile, 'wb') as fp:
+            pickle.dump(loss_dict, fp)
+
 
 def cycle_shuffle(iterable, shuffle=True):
     lst = list(iterable)
@@ -182,17 +212,15 @@ def load_student_audio_model_withFFT():
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
-    ###
-    #y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
-    #             kernel_initializer='he_normal',
-    #             kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-    #y_a = BatchNormalization()(y_a)
-    #y_a = Activation('relu')(y_a)
-    ###
+    y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
+                 kernel_initializer='he_normal',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
     y_a = MaxPooling2D(pool_size=pool_size_a_2, strides=2)(y_a)
 
     # CONV BLOCK 3
-    n_filter_a_3 = 256
+    n_filter_a_3 = 128 #256
     filt_size_a_3 = (3, 3)
     pool_size_a_3 = (2, 2)
     y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
@@ -200,17 +228,15 @@ def load_student_audio_model_withFFT():
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
-    ###
-    #y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
-    #             kernel_initializer='he_normal',
-    #             kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-    #y_a = BatchNormalization()(y_a)
-    #y_a = Activation('relu')(y_a)
-    ###
+    y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
+                 kernel_initializer='he_normal',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
     y_a = MaxPooling2D(pool_size=pool_size_a_3, strides=2)(y_a)
 
     # CONV BLOCK 4
-    n_filter_a_4 = 512
+    n_filter_a_4 = 128 #512
     filt_size_a_4 = (3, 3)
     pool_size_a_4 = (32, 24)
     y_a = Conv2D(n_filter_a_4, filt_size_a_4, padding='same',
@@ -245,7 +271,7 @@ def single_epoch_data_generator(data_dir, epoch_size, **kwargs):
                 break
 
 
-def data_generator(data_dir, batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
+def data_generator_new(data_dir, batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
     random.seed(random_state)
 
     batch = None
@@ -351,9 +377,84 @@ def data_generator(data_dir, batch_size=512, random_state=20180216, start_batch_
                 batch = None
 
 
+def data_generator(data_dir, batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
+    random.seed(random_state)
+
+    batch = None
+    curr_batch_size = 0
+    batch_idx = 0
+    file_idx = 0
+    start_label_idx = 0
+    global graph
+    global audio_model
+
+    # Limit keys to avoid producing batches with all of the metadata fields
+    if not keys:
+        keys = ['audio']
+
+    for fname in cycle_shuffle(os.listdir(data_dir)):
+        batch_path = os.path.join(data_dir, fname)
+
+        blob_start_idx = 0
+
+        blob = h5py.File(batch_path, 'r')
+        blob_size = len(blob['label'])
+
+        while blob_start_idx < blob_size:
+            #embedding_output = None
+            blob_end_idx = min(blob_start_idx + batch_size - curr_batch_size, blob_size)
+
+            # If we are starting from a particular batch, skip computing all of
+            # the prior batches
+            if start_batch_idx is None or batch_idx >= start_batch_idx:
+                if batch is None:
+                    batch = {k:blob[k][blob_start_idx:blob_end_idx]
+                             for k in keys}
+                else:
+                    for k in keys:
+                        batch[k] = np.concatenate([batch[k],
+                                                   blob[k][blob_start_idx:blob_end_idx]])
+
+            curr_batch_size += blob_end_idx - blob_start_idx
+            blob_start_idx = blob_end_idx
+
+            if blob_end_idx == blob_size:
+                blob.close()
+
+            if curr_batch_size == batch_size:
+                # If we are starting from a particular batch, skip yielding all
+                # of the prior batches
+                if start_batch_idx is None or batch_idx >= start_batch_idx:
+                    # Preprocess video so samples are in [-1,1]
+                    #batch['video'] = 2 * img_as_float(batch['video']).astype('float32') - 1
+
+                    # Convert audio to float
+                    batch['audio'] = pcm2float(batch['audio'], dtype='float32')
+                        
+                    # Get the embedding layer output from the audio_model and flatten it to be treated as labels for the student audio model
+                    with graph.as_default():
+                        batch['label'] = audio_model.predict(batch['audio'])
+                                            
+                    yield batch
+
+                batch_idx += 1
+                curr_batch_size = 0
+                batch = None
+
+
+def get_restart_info(history_path):
+    last = None
+    with open(history_path, 'r') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            last = row
+
+    return int(last['epoch']), float(last['val_loss'])
+
+
 def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scratch/sk7898/kd_output', num_epochs=300, train_epoch_size=4096, 
           validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64, model_type = 'cnn_L3_melspec2', random_state=20180216, 
-          learning_rate=0.00001, verbose=True, checkpoint_interval=10, gpus=1):
+          learning_rate=0.00001, verbose=True, checkpoint_interval=10, gpus=1, continue_model_dir=None):
 
     #m, inputs, outputs = load_model(weight_path, model_type, return_io=True, src_num_gpus=1)
     #audio_model = m.get_layer('audio_model')
@@ -362,10 +463,6 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
     data_subset_name = os.path.basename(train_data_dir)
     data_subset_name = data_subset_name[:data_subset_name.rindex('_')]
     model_id = os.path.join(data_subset_name, model_type)
-    model_dir = os.path.join(output_dir, 'embedding', model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-    
-    if not os.path.isdir(model_dir):
-        os.makedirs(model_dir)
 
     param_dict = {
           'train_data_dir': train_data_dir,
@@ -383,26 +480,28 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
           'verbose': verbose
     }
     
+    if continue_model_dir:
+        latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
+        m, inputs, outputs = load_model(latest_model_path, model_type, return_io=True, src_num_gpus=gpus)
+    else:
+        m, inputs, outputs = MODELS[model_type](num_gpus=gpus)
+
+    # Make sure the directories we need exist
+    if continue_model_dir:
+        model_dir = continue_model_dir
+
+    else:
+        model_dir = os.path.join(output_dir, 'embedding', model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+
+    if not os.path.isdir(model_dir):
+        os.makedirs(model_dir)
+
     param_dict['model_dir'] = model_dir
     train_config_path = os.path.join(model_dir, 'config.json')
     with open(train_config_path, 'w') as fd:
         json.dump(param_dict, fd, indent=2)
 
-    param_dict.update({
-          'latest_epoch': '-',
-          'latest_train_loss': '-',
-          'latest_validation_loss': '-',
-          'latest_train_acc': '-',
-          'latest_validation_acc': '-',
-          'best_train_loss': '-',
-          'best_validation_loss': '-',
-          'best_train_acc': '-',
-          'best_validation_acc': '-',
-    })
-
-    student, x_a, y_a = load_student_audio_model()
-
-    optimizer = keras.optimizers.SGD(lr=learning_rate, momentum=0.9, nesterov=True)
+    student, x_a, y_a = load_student_audio_model_withFFT()
 
     student.compile(Adam(lr=learning_rate),
                     loss='mean_squared_error',
@@ -413,6 +512,7 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
     model_spec = keras.utils.serialize_keras_object(student)
     with open(model_spec_path, 'wb') as fd:
         pickle.dump(model_spec, fd)
+
     model_json_path = os.path.join(model_dir, 'model.json')
     model_json = student.to_json()
     with open(model_json_path, 'w') as fd:
@@ -422,30 +522,42 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
     best_valid_loss_weight_path = os.path.join(model_dir, 'model_best_valid_loss.h5')
     checkpoint_weight_path = os.path.join(model_dir, 'model_checkpoint.{epoch:02d}.h5')
 
+    # Load information about last epoch for initializing callbacks and data generators
+    if continue_model_dir is not None:
+        prev_train_hist_path = os.path.join(continue_model_dir, 'history_csvlog.csv')
+        last_epoch_idx, last_val_loss = get_restart_info(prev_train_hist_path)
+
     # Set up callbacks
     cb = []
 
     best_val_loss_cb = keras.callbacks.ModelCheckpoint(best_valid_loss_weight_path,
-                                              save_weights_only=True,
+                                              save_weights_only=False,
                                               save_best_only=True,
                                               verbose=1,
                                               monitor='val_loss')
-    #if continue_model_dir is not None:
-    #    best_val_loss_cb.best = last_val_loss
+    if continue_model_dir is not None:
+        best_val_loss_cb.best = last_val_loss
     cb.append(best_val_loss_cb)
 
     checkpoint_cb = keras.callbacks.ModelCheckpoint(checkpoint_weight_path,
-                                              save_weights_only=True,
+                                              save_weights_only=False,
                                               period=checkpoint_interval)
-    #if continue_model_dir is not None:
-    #    checkpoint_cb.epochs_since_last_save = (last_epoch_idx + 1) % checkpoint_interval
+    if continue_model_dir is not None:
+        checkpoint_cb.epochs_since_last_save = (last_epoch_idx + 1) % checkpoint_interval
     cb.append(checkpoint_cb)
 
+
+    history_checkpoint = os.path.join(model_dir, 'history_checkpoint.pkl')
+    cb.append(LossHistory(history_checkpoint))
+
+    history_csvlog = os.path.join(model_dir, 'history_csvlog.csv')
+    cb.append(keras.callbacks.CSVLogger(history_csvlog, append=True, separator=','))
+
     #LOGGER.info('Setting up train data generator...')
-    #if continue_model_dir is not None:
-    #    train_start_batch_idx = train_epoch_size * (last_epoch_idx + 1)
-    #else:
-    train_start_batch_idx = None
+    if continue_model_dir is not None:
+        train_start_batch_idx = train_epoch_size * (last_epoch_idx + 1)
+    else:
+        train_start_batch_idx = None
 
     train_gen = data_generator(
         train_data_dir,
@@ -467,11 +579,23 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
                                          'audio',
                                          'label')
 
+    # Fit the model
+    if verbose:
+        verbosity = 1
+    else:
+        verbosity = 2
+
+    if continue_model_dir is not None:
+        initial_epoch = last_epoch_idx + 1
+    else:
+        initial_epoch = 0
+
     history = student.fit_generator(train_gen, train_epoch_size, num_epochs,
                                     validation_data=val_gen,
                                     validation_steps=validation_epoch_size,
                                     callbacks=cb,
-                                    verbose=1)
+                                    verbose=verbosity,
+                                    initial_epoch=initial_epoch)
 
     # Save history
     with open(os.path.join(model_dir, 'history.pkl'), 'wb') as fd:

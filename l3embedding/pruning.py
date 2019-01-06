@@ -246,8 +246,17 @@ def test(model, validation_data_dir, learning_rate=1e-4, validation_epoch_size=1
     
     return score
 
+def get_restart_info(history_path):
+    last = None
+    with open(history_path, 'r') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            last = row
 
-def train_withoutKD(model, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruning_without_kd_output',\
+    return int(last['epoch']), float(last['val_acc']), float(last['val_loss'])
+
+
+def train_withoutKD(model, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruning_finetune_output',\
                     num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64,\
                     validation_batch_size=64, model_type = 'cnn_L3_melspec2', random_state=20180216, 
                     learning_rate=0.00001, verbose=True, checkpoint_interval=10, gpus=1):
@@ -256,7 +265,7 @@ def train_withoutKD(model, train_data_dir, validation_data_dir, output_dir = '/s
     data_subset_name = os.path.basename(train_data_dir)
     data_subset_name = data_subset_name[:data_subset_name.rindex('_')]
     model_id = os.path.join(data_subset_name, model_type)
-    model_dir = os.path.join(output_dir, 'embedding', model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+    model_dir = os.path.join(output_dir, model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
     
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir)
@@ -286,13 +295,50 @@ def train_withoutKD(model, train_data_dir, validation_data_dir, output_dir = '/s
           'latest_epoch': '-',
           'latest_train_loss': '-',
           'latest_validation_loss': '-',
-          'latest_train_acc': '-',
-          'latest_validation_acc': '-',
           'best_train_loss': '-',
           'best_validation_loss': '-',
-          'best_train_acc': '-',
-          'best_validation_acc': '-',
     })
+
+    # Save the model
+    model_spec_path = os.path.join(model_dir, 'model_spec.pkl')
+    model_spec = keras.utils.serialize_keras_object(model)
+    with open(model_spec_path, 'wb') as fd:
+        pickle.dump(model_spec, fd)
+
+    model_json_path = os.path.join(model_dir, 'model.json')
+    model_json = student.to_json()
+    with open(model_json_path, 'w') as fd:
+        json.dump(model_json, fd, indent=2)
+
+    latest_weight_path = os.path.join(model_dir, 'model_latest.h5')
+    best_valid_loss_weight_path = os.path.join(model_dir, 'model_best_valid_loss.h5')
+    checkpoint_weight_path = os.path.join(model_dir, 'model_checkpoint.{epoch:02d}.h5')
+
+    # Set up callbacks
+    cb = []
+
+    best_val_loss_cb = keras.callbacks.ModelCheckpoint(best_valid_loss_weight_path,
+                                                       save_weights_only=False,
+                                                       save_best_only=True,
+                                                       verbose=1,
+                                                       monitor='val_loss')
+    #if continue_model_dir is not None:
+    #    best_val_loss_cb.best = last_val_loss
+    cb.append(best_val_loss_cb)
+
+    checkpoint_cb = keras.callbacks.ModelCheckpoint(checkpoint_weight_path,
+                                                    save_weights_only=False,
+                                                    period=checkpoint_interval)
+    #if continue_model_dir is not None:
+    #    checkpoint_cb.epochs_since_last_save = (last_epoch_idx + 1) % checkpoint_interval
+    cb.append(checkpoint_cb)
+
+    earlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=10)
+    reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5)
+
+    cb.append(earlyStopping)
+    cb.append(reduceLR)
+
 
     train_gen = data_generator(train_data_dir,
                                batch_size=train_batch_size,
@@ -326,7 +372,7 @@ def train_withoutKD(model, train_data_dir, validation_data_dir, output_dir = '/s
     print(history)
     return model
 
-def train_withKD(student, train_data_dir, validation_data_dir, weight_path, output_dir = '/scratch/sk7898/pruning_with_kd_output', num_epochs=300,\
+def train_withKD(student, train_data_dir, validation_data_dir, weight_path, output_dir = '/scratch/sk7898/pruning_kd_output', num_epochs=300,\
                  train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64, model_type = 'cnn_L3_melspec2',\
                  random_state=20180216, learning_rate=0.00001, verbose=True, checkpoint_interval=10, gpus=1):
     
@@ -334,7 +380,7 @@ def train_withKD(student, train_data_dir, validation_data_dir, weight_path, outp
     data_subset_name = os.path.basename(train_data_dir)
     data_subset_name = data_subset_name[:data_subset_name.rindex('_')]
     model_id = os.path.join(data_subset_name, model_type)
-    model_dir = os.path.join(output_dir, 'embedding', model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+    model_dir = os.path.join(output_dir, model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
     
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir)
@@ -364,17 +410,11 @@ def train_withKD(student, train_data_dir, validation_data_dir, weight_path, outp
           'latest_epoch': '-',
           'latest_train_loss': '-',
           'latest_validation_loss': '-',
-          'latest_train_acc': '-',
-          'latest_validation_acc': '-',
           'best_train_loss': '-',
           'best_validation_loss': '-',
-          'best_train_acc': '-',
-          'best_validation_acc': '-',
     })
 
     student, x_a, y_a = load_student_audio_model()
-
-    optimizer = keras.optimizers.SGD(lr=learning_rate, momentum=0.9, nesterov=True)
 
     student.compile(Adam(lr=learning_rate),
                     loss='mean_squared_error',
@@ -385,6 +425,7 @@ def train_withKD(student, train_data_dir, validation_data_dir, weight_path, outp
     model_spec = keras.utils.serialize_keras_object(student)
     with open(model_spec_path, 'wb') as fd:
         pickle.dump(model_spec, fd)
+    
     model_json_path = os.path.join(model_dir, 'model.json')
     model_json = student.to_json()
     with open(model_json_path, 'w') as fd:
@@ -398,7 +439,7 @@ def train_withKD(student, train_data_dir, validation_data_dir, weight_path, outp
     cb = []
 
     best_val_loss_cb = keras.callbacks.ModelCheckpoint(best_valid_loss_weight_path,
-                                                       save_weights_only=True,
+                                                       save_weights_only=False,
                                                        save_best_only=True,
                                                        verbose=1,
                                                        monitor='val_loss')
@@ -407,7 +448,7 @@ def train_withKD(student, train_data_dir, validation_data_dir, weight_path, outp
     cb.append(best_val_loss_cb)
 
     checkpoint_cb = keras.callbacks.ModelCheckpoint(checkpoint_weight_path,
-                                                    save_weights_only=True,
+                                                    save_weights_only=False,
                                                     period=checkpoint_interval)
     #if continue_model_dir is not None:
     #    checkpoint_cb.epochs_since_last_save = (last_epoch_idx + 1) % checkpoint_interval
@@ -475,7 +516,7 @@ def printList(sparsity_list):
         printStr += str(val) + ", "
     print(printStr)
 
-def pruning(weight_path, validation_dir, blockwise=False, layerwise=False, per_layer=False):
+def pruning(weight_path, validation_dir, output_dir = '/scratch/sk7898/pruned_model', blockwise=False, layerwise=False, per_layer=False):
     conv_blocks = 4
     
     sparsity_values = [70., 80., 85., 90., 95.]
@@ -483,7 +524,9 @@ def pruning(weight_path, validation_dir, blockwise=False, layerwise=False, per_l
     if per_layer:
         sparsity_layers = [0, 0, 0, 0, 0, 0, 0, 0]
     else:
+        val_acc = ["0.77128", "0.75373", "0.71586"]
         sparsity_layers = [[0, 30., 40., 50., 30., 50., 50., 60.],\
+                           [0, 40., 50., 60., 40., 60., 60., 70.],\
                            [0, 40., 50., 60., 40., 70., 70., 80.]]
 
         '''
@@ -525,11 +568,11 @@ def pruning(weight_path, validation_dir, blockwise=False, layerwise=False, per_l
                 print('----------------------------------------------------------------')
     
     if(layerwise and not per_layer):
+        c = 0
         print("Specific Pruning Values")
         print("**********************************************************************")
         for sparsity in sparsity_layers: 
             model, audio_model = load_audio_model_for_pruning(weight_path)
-            print(audio_model.summary())
             sparsity_vals = get_sparsity_layers(None, None, sparsity)
             sparsified_model, masks = sparsify_layer(audio_model, sparsity_vals)
 
@@ -539,6 +582,10 @@ def pruning(weight_path, validation_dir, blockwise=False, layerwise=False, per_l
             print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
             print('----------------------------------------------------------------')
             
+            pruned_model_name = 'pruned_audio_'+val_acc[c]+'.h5'
+            c = c+1
+            pruned_model_path = os.path.join(output_dir, pruned_model_name)
+            sparsified_model.save(pruned_model_path)
 
 weight_path = '/home/sk7898/l3embedding/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
 validation_dir = '/beegfs/work/AudioSetSamples/music_valid'
