@@ -489,7 +489,6 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
     # Make sure the directories we need exist
     if continue_model_dir:
         model_dir = continue_model_dir
-
     else:
         model_dir = os.path.join(output_dir, 'embedding', model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
 
@@ -553,7 +552,6 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
     history_csvlog = os.path.join(model_dir, 'history_csvlog.csv')
     cb.append(keras.callbacks.CSVLogger(history_csvlog, append=True, separator=','))
 
-    #LOGGER.info('Setting up train data generator...')
     if continue_model_dir is not None:
         train_start_batch_idx = train_epoch_size * (last_epoch_idx + 1)
     else:
