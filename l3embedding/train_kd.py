@@ -22,7 +22,8 @@ from keras import backend as K
 
 graph = tf.get_default_graph()
 weight_path = '/home/sk7898/l3embedding/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
-audio_model = load_embedding(weight_path, model_type = 'cnn_L3_melspec2', embedding_type = 'audio', pooling_type = 'short', tgt_num_gpus = 1)
+audio_model = load_embedding(weight_path, model_type = 'cnn_L3_melspec2', embedding_type = 'audio', \
+                             pooling_type = 'kd_256', kd_model=True, tgt_num_gpus = 1)
 
 ##########
 # 1. Added student model : load_student_audio_model
@@ -261,9 +262,9 @@ def load_student_audio_model_withFFT():
     return m, x_a, y_a
 
 
-def single_epoch_data_generator(data_dir, epoch_size, **kwargs):
+def single_epoch_data_generator(data_dir, epoch_size, kd_model, **kwargs):
     while True:
-        data_gen = data_generator(data_dir, **kwargs)
+        data_gen = data_generator(data_dir, kd_model, **kwargs)
         for idx, item in enumerate(data_gen):
             yield item
             # Once we generate all batches for an epoch, restart the generator
@@ -377,7 +378,7 @@ def data_generator_new(data_dir, batch_size=512, random_state=20180216, start_ba
                 batch = None
 
 
-def data_generator(data_dir, batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
+def data_generator(data_dir, kd_model=False, batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
     random.seed(random_state)
 
     batch = None
@@ -390,7 +391,11 @@ def data_generator(data_dir, batch_size=512, random_state=20180216, start_batch_
 
     # Limit keys to avoid producing batches with all of the metadata fields
     if not keys:
-        keys = ['audio']
+        if kd_model:
+            keys = ['audio']
+        else:
+            keys = ['audio', 'video', 'label']
+
 
     for fname in cycle_shuffle(os.listdir(data_dir)):
         batch_path = os.path.join(data_dir, fname)
@@ -425,16 +430,18 @@ def data_generator(data_dir, batch_size=512, random_state=20180216, start_batch_
                 # If we are starting from a particular batch, skip yielding all
                 # of the prior batches
                 if start_batch_idx is None or batch_idx >= start_batch_idx:
-                    # Preprocess video so samples are in [-1,1]
-                    #batch['video'] = 2 * img_as_float(batch['video']).astype('float32') - 1
+                    if not kd_model:
+                        # Preprocess video so samples are in [-1,1]
+                        batch['video'] = 2 * img_as_float(batch['video']).astype('float32') - 1
 
                     # Convert audio to float
                     batch['audio'] = pcm2float(batch['audio'], dtype='float32')
                         
-                    # Get the embedding layer output from the audio_model and flatten it to be treated as labels for the student audio model
-                    with graph.as_default():
-                        batch['label'] = audio_model.predict(batch['audio'])
-                                            
+                    if kd_model:
+                        # Get the embedding layer output from the audio_model and flatten it to be treated as labels for the student audio model
+                        with graph.as_default():
+                            batch['label'] = audio_model.predict(batch['audio'])
+                    
                     yield batch
 
                 batch_idx += 1
@@ -450,6 +457,28 @@ def get_restart_info(history_path):
             last = row
 
     return int(last['epoch']), float(last['val_loss'])
+
+
+def test(model, validation_data_dir, kd_model=False, learning_rate=1e-4, validation_epoch_size=1024, validation_batch_size=64, random_state=20180216):
+    loss = 'binary_crossentropy'
+    metrics = ['accuracy']
+
+    model.compile(Adam(lr=learning_rate),
+                  loss=loss,
+                  metrics=metrics)
+
+    val_gen = single_epoch_data_generator(validation_data_dir,
+                                          validation_epoch_size,
+                                          kd_model=kd_model,
+                                          batch_size=validation_batch_size,
+                                          random_state=random_state)
+
+    val_gen = pescador.maps.keras_tuples(val_gen,
+                                         ['video', 'audio'],
+                                         'label')
+    score = model.evaluate_generator(val_gen, steps=validation_epoch_size)
+    
+    return score
 
 
 def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scratch/sk7898/kd_output', num_epochs=300, train_epoch_size=4096, 
@@ -601,6 +630,18 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
 
     return history
 
+
+def get_reduced_embedding_acc(validation_data_dir, pruned_model_name):
+    model, inputs, outputs = load_model(weight_path, model_type='cnn_L3_melspec2', return_io=True, src_num_gpus=1)
+    model.get_layer('audio_model').set_weights(audio_model.get_weights())
+    pruned_model_path = os.path.join('../pruned_model', pruned_model_name)
+    audio_model.save(pruned_model_path)
+    score = test(model, validation_data_dir, kd_model=False)
+    print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
+
+
 train_data_dir = '/beegfs/work/AudioSetSamples/music_train' # _environmental/urban_train'
 validation_data_dir = '/beegfs/work/AudioSetSamples/music_valid' # _environmental/urban_valid'
-history = train(train_data_dir, validation_data_dir, weight_path)
+#history = train(train_data_dir, validation_data_dir, weight_path)
+#Score of new embedding size model
+get_reduced_embedding_acc(validation_data_dir, pruned_model_name='kd_embedding_256.h5')

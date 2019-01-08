@@ -129,7 +129,7 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, retu
 
 
 def load_embedding(weights_path, model_type, embedding_type, pooling_type,
-                   src_num_gpus=0, tgt_num_gpus=None, return_io=False):
+                   kd_model=False, src_num_gpus=0, tgt_num_gpus=None, return_io=False):
     """
     Loads an embedding model
 

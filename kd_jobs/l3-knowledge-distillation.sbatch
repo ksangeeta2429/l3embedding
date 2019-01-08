@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:2
 #SBATCH --job-name=l3-knowledge-distillation-melspec2
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=2
 #SBATCH --mem=62GB
-#SBATCH --time=7-0
+#SBATCH --time=1-0
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=sangeeta.osu@gmail.com
 #SBATCH --output="l3-knowledge-distillation-melspec2-%j.out"
