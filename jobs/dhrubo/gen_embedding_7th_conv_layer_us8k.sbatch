@@ -39,7 +39,6 @@ python $SRCDIR/05_generate_embedding_samples.py \
     --l3embedding-pooling-type $L3_POOLING_TYPE \
     --hop-size 0.1 \
     --gpus 0 \
-    --fold $SLURM_ARRAY_TASK_ID \
     --us8k-metadata-path $METADATA_PATH \
     $DATASET \
     $DATA_DIR \
