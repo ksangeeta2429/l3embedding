@@ -18,7 +18,7 @@ source activate l3embedding-cpu
 #SRCDIR=$HOME/dev/l3embedding
 SRCDIR=.
 L3_MODEL_PATH='models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
-L3_POOLING_TYPE='original'
+L3_POOLING_TYPE='short' #'original'
 US8K_PATH=/beegfs/jtc440/UrbanSound8K
 METADATA_PATH=$US8K_PATH/metadata/UrbanSound8K.csv
 DATA_DIR=$US8K_PATH/audio
