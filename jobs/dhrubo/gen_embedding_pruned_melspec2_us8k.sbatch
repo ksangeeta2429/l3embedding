@@ -41,6 +41,6 @@ python $SRCDIR/05_generate_embedding_samples.py \
     --gpus 0 \
     --fold $SLURM_ARRAY_TASK_ID \
     --us8k-metadata-path $METADATA_PATH \
-    $DATASET \
-    $DATA_DIR \
-    $OUTPUT_DIR
+    --dataset_name $DATASET \
+    --data_dir $DATA_DIR \
+    --output_dir $OUTPUT_DIR
