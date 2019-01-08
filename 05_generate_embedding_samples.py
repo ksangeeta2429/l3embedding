@@ -193,6 +193,10 @@ if __name__ == '__main__':
         json.dump(args, f)
     LOGGER.info('Saved configuration to {}'.format(config_path))
 
+    # Resetting features to 'l3'
+    if is_l3_comp:
+        features='l3'
+
     if dataset_name == 'us8k':
         if not metadata_path:
             raise ValueError('Must provide metadata file for UrbanSound8k')
