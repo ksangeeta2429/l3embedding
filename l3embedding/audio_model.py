@@ -1,6 +1,6 @@
 from keras.models import Model
 from keras.layers import Input, Conv2D, BatchNormalization, MaxPooling2D, \
-    Flatten, Activation, Lambda
+    MaxPooling1D, Flatten, Activation, Lambda
 from kapre.time_frequency import Spectrogram, Melspectrogram
 import tensorflow as tf
 import keras.regularizers as regularizers
@@ -442,7 +442,7 @@ def construct_cnn_L3_melspec2_audio_model():
     return m, x_a, y_a
 
 
-def convert_audio_model_to_embedding(audio_model, x_a, model_type, pooling_type='original'):
+def convert_audio_model_to_embedding(audio_model, x_a, model_type, pooling_type='original', kd_model=False):
     """
     Given and audio subnetwork, return a model that produces the learned
     embedding
@@ -474,13 +474,21 @@ def convert_audio_model_to_embedding(audio_model, x_a, model_type, pooling_type=
         'cnn_L3_melspec2': {
             'original': (8, 8),
             'short': (32, 24),
+            'kd_256': 2,
+            'kd_128': 4,
         }
     }
-
-    pool_size = pooling[model_type][pooling_type]
+    
+    if(kd_model):
+        pool_size = pooling[model_type]['short']
+        embedding_pool = pooling[model_type][pooling_type]
+    else:
+        pool_size = pooling[model_type][pooling_type]
 
     embed_layer = audio_model.get_layer('audio_embedding_layer')
     y_a = MaxPooling2D(pool_size=pool_size, padding='same')(embed_layer.output)
+    if(kd_model):
+        y_a = MaxPooling1D(pool_size=embedding_pool, padding='same')(y_a)
     y_a = Flatten()(y_a)
 
     m = Model(inputs=x_a, outputs=y_a)
