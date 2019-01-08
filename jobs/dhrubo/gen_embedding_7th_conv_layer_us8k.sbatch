@@ -13,7 +13,7 @@
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
-source activate l3embedding-new-cpu
+source activate l3embedding-cpu
 
 #SRCDIR=$HOME/dev/l3embedding
 SRCDIR=l3embedding
