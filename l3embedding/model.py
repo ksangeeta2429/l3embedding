@@ -183,13 +183,20 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
 
     m, inputs, output = load_model(weights_path, model_type, src_num_gpus=src_num_gpus,
                                    tgt_num_gpus=tgt_num_gpus, return_io=True)
-    x_i, x_a = inputs
+    if 'audioonly' in model_type:
+        x_a = inputs
+    else:
+        x_i, x_a = inputs
     if embedding_type == 'vision':
         m_embed_model = m.get_layer('vision_model')
         m_embed, x_embed, y_embed = VISION_EMBEDDING_MODELS[model_type](m_embed_model, x_i)
 
     elif embedding_type == 'audio':
-        m_embed_model = m.get_layer('audio_model')
+        if not 'audioonly' in model_type:
+            m_embed_model = m.get_layer('audio_model')
+        else:
+            m_embed_model = m
+
         # m_embed, x_embed, y_embed = AUDIO_EMBEDDING_MODELS[model_type](m_embed_model, x_a)
         if from_convlayer==8:
             m_embed, x_embed, y_embed = convert_audio_model_to_embedding(m_embed_model, x_a, model_type, pooling_type)
@@ -333,18 +340,19 @@ MODELS = {
     'tiny_L3': construct_tiny_L3,
     'cnn_L3_kapredbinputbn': construct_cnn_L3_kapredbinputbn,
     'cnn_L3_melspec1': construct_cnn_L3_melspec1,
-    'cnn_L3_melspec2': construct_cnn_L3_melspec2
+    'cnn_L3_melspec2': construct_cnn_L3_melspec2,
+    'cnn_L3_melspec2_audioonly': construct_cnn_L3_melspec2_audio_model
 }
 
 
 if __name__=='__main__':
-    model_path = '../models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
-    model_type = 'cnn_L3_melspec2'
+    # model_path = '../models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
+    model_path = '../pruned_model/pruned_audio_0.71586.h5'
+    model_type = 'cnn_L3_melspec2_audioonly'
     pooling_type = 'original'
     num_gpus = 0
-    from_convlayer = 7
 
     l3embedding_model = load_embedding(model_path,
                                        model_type,
                                        'audio', pooling_type,
-                                       tgt_num_gpus=num_gpus, from_convlayer=from_convlayer)
+                                       tgt_num_gpus=num_gpus, from_convlayer=8)
