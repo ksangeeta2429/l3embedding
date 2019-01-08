@@ -16,7 +16,7 @@ cd `git rev-parse --show-toplevel`
 source activate l3embedding-cpu
 
 #SRCDIR=$HOME/dev/l3embedding
-SRCDIR=l3embedding
+SRCDIR=.
 L3_MODEL_PATH='models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
 L3_POOLING_TYPE='original'
 US8K_PATH=/beegfs/jtc440/UrbanSound8K
