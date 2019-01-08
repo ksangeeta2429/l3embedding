@@ -476,6 +476,12 @@ def convert_audio_model_to_embedding(audio_model, x_a, model_type, pooling_type=
             'short': (32, 24),
             'kd_256': 2,
             'kd_128': 4,
+        },
+        'cnn_L3_melspec2_audioonly': {
+            'original': (8, 8),
+            'short': (32, 24),
+            'kd_256': 2,
+            'kd_128': 4,
         }
     }
     
