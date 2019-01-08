@@ -60,6 +60,7 @@ def parse_arguments():
                         type=str,
                         default='original',
                         help='Type of pooling used to downsample last conv layer of L3 embedding model')
+
     parser.add_argument('-lmt',
                         '--l3embedding-model-type',
                         dest='l3embedding_model_type',
@@ -67,6 +68,7 @@ def parse_arguments():
                         type=str,
                         default='cnn_L3_melspec2',
                         help='L3 embedding model type')
+
     parser.add_argument('-hs',
                         '--hop-size',
                         dest='hop_size',

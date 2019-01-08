@@ -35,12 +35,12 @@ python $SRCDIR/05_generate_embedding_samples.py \
     --verbose \
     --features 'l3comp' \
     --l3embedding-model-path $L3_MODEL_PATH \
-    --l3embedding_model_type $L3_MODEL_TYPE \
+    --l3embedding-model-type $L3_MODEL_TYPE \
     --l3embedding-pooling-type $L3_POOLING_TYPE \
     --hop-size 0.1 \
     --gpus 0 \
     --fold $SLURM_ARRAY_TASK_ID \
     --us8k-metadata-path $METADATA_PATH \
-    --dataset_name $DATASET \
-    --data_dir $DATA_DIR \
-    --output_dir $OUTPUT_DIR
+    $DATASET \
+    $DATA_DIR \
+    $OUTPUT_DIR
