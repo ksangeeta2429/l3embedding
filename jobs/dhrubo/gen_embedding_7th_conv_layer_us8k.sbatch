@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
-#SBATCH --job-name=generate-l3embedding-samples
+#SBATCH --job-name=gen-embedding-7th-conv-layer
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=name@email.com
-#SBATCH --output="generate-l3embedding-samples-%A-%a.out"
-#SBATCH --err="generate-l3embedding-samples-%A-%a.err"
+#SBATCH --output="gen-embedding-7th-conv-layer-%A-%a.out"
+#SBATCH --err="gen-embedding-7th-conv-layer-%A-%a.err"
 
 
 source ~/.bashrc
