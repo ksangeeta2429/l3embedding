@@ -5,8 +5,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64GB
 #SBATCH --time=7-0
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=name@email.com
+#SBATCH --mail-type=FAIL
 #SBATCH --output="gen-embedding-7th-conv-layer-%A-%a.out"
 #SBATCH --err="gen-embedding-7th-conv-layer-%A-%a.err"
 
