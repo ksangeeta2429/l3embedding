@@ -60,7 +60,13 @@ def parse_arguments():
                         type=str,
                         default='original',
                         help='Type of pooling used to downsample last conv layer of L3 embedding model')
-
+    parser.add_argument('-lmt',
+                        '--l3embedding-model-type',
+                        dest='l3embedding_model_type',
+                        action='store',
+                        type=str,
+                        default='cnn_L3_melspec2',
+                        help='Type of pooling used to downsample last conv layer of L3 embedding model')
     parser.add_argument('-hs',
                         '--hop-size',
                         dest='hop_size',
@@ -136,10 +142,24 @@ if __name__ == '__main__':
     LOGGER.info('Configuration: {}'.format(str(args)))
 
     is_l3_feature = features == 'l3'
-    if is_l3_feature and not model_path:
+    is_l3_comp = features == 'l3comp'
+    if is_l3_feature or is_l3_comp and not model_path:
         raise ValueError('Must provide model path is L3 embedding features are used')
 
-    if is_l3_feature:
+    if is_l3_comp:
+        # Get output dir
+        embedding_desc_str = model_path.replace('.h5','')
+        # If using an L3 model, make model arch. type and pooling type to path
+        dataset_output_dir = os.path.join(output_dir, 'features', dataset_name,
+                                          features, pooling_type, embedding_desc_str)
+        model_type = args['l3embedding_model_type']
+        # Load L3 embedding model if using L3 features
+        LOGGER.info('Loading embedding model...')
+        l3embedding_model = load_embedding(model_path,
+                                           model_type,
+                                           'audio', pooling_type,
+                                           tgt_num_gpus=num_gpus)
+    elif is_l3_feature:
         # Get output dir
         model_desc_start_idx = model_path.rindex('embedding')+10
         model_desc_end_idx = os.path.dirname(model_path).rindex('/')
