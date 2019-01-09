@@ -256,134 +256,21 @@ def get_restart_info(history_path):
     return int(last['epoch']), float(last['val_acc']), float(last['val_loss'])
 
 
-def train_withoutKD(model, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruning_finetune_output',\
-                    num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64,\
-                    validation_batch_size=64, model_type = 'cnn_L3_melspec2', random_state=20180216, 
-                    learning_rate=0.00001, verbose=True, checkpoint_interval=10, gpus=1):
+def train(train_data_dir, validation_data_dir, weight_path, finetune=False, output_dir = None, \
+          num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
+          model_type = 'cnn_L3_melspec2', random_state=20180216, learning_rate=0.001, verbose=True, \
+          checkpoint_interval=10, gpus=1, continue_model_dir=None):
 
-# Form model ID
-    data_subset_name = os.path.basename(train_data_dir)
-    data_subset_name = data_subset_name[:data_subset_name.rindex('_')]
-    model_id = os.path.join(data_subset_name, model_type)
-    model_dir = os.path.join(output_dir, model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-    
-    if not os.path.isdir(model_dir):
-        os.makedirs(model_dir)
+    if output_dir is None:
+        if finetune:
+            output_dir = '/scratch/sk7898/pruning_finetune_output'
+        else:
+            output_dir = '/scratch/sk7898/pruning_kd_output'
 
-    param_dict = {
-          'train_data_dir': train_data_dir,
-          'validation_data_dir': validation_data_dir,
-          'model_id': model_id,
-          'output_dir': output_dir,
-          'num_epochs': num_epochs,
-          'train_epoch_size': train_epoch_size,
-          'validation_epoch_size': validation_epoch_size,
-          'train_batch_size': train_batch_size,
-          'validation_batch_size': validation_batch_size,
-          'model_type': model_type,
-          'random_state': random_state,
-          'learning_rate': learning_rate,
-          'verbose': verbose
-    }
-    
-    param_dict['model_dir'] = model_dir
-    train_config_path = os.path.join(model_dir, 'config.json')
-    with open(train_config_path, 'w') as fd:
-        json.dump(param_dict, fd, indent=2)
-
-    param_dict.update({
-          'latest_epoch': '-',
-          'latest_train_loss': '-',
-          'latest_validation_loss': '-',
-          'best_train_loss': '-',
-          'best_validation_loss': '-',
-    })
-
-    # Save the model
-    model_spec_path = os.path.join(model_dir, 'model_spec.pkl')
-    model_spec = keras.utils.serialize_keras_object(model)
-    with open(model_spec_path, 'wb') as fd:
-        pickle.dump(model_spec, fd)
-
-    model_json_path = os.path.join(model_dir, 'model.json')
-    model_json = student.to_json()
-    with open(model_json_path, 'w') as fd:
-        json.dump(model_json, fd, indent=2)
-
-    latest_weight_path = os.path.join(model_dir, 'model_latest.h5')
-    best_valid_loss_weight_path = os.path.join(model_dir, 'model_best_valid_loss.h5')
-    checkpoint_weight_path = os.path.join(model_dir, 'model_checkpoint.{epoch:02d}.h5')
-
-    # Set up callbacks
-    cb = []
-
-    best_val_loss_cb = keras.callbacks.ModelCheckpoint(best_valid_loss_weight_path,
-                                                       save_weights_only=False,
-                                                       save_best_only=True,
-                                                       verbose=1,
-                                                       monitor='val_loss')
-    #if continue_model_dir is not None:
-    #    best_val_loss_cb.best = last_val_loss
-    cb.append(best_val_loss_cb)
-
-    checkpoint_cb = keras.callbacks.ModelCheckpoint(checkpoint_weight_path,
-                                                    save_weights_only=False,
-                                                    period=checkpoint_interval)
-    #if continue_model_dir is not None:
-    #    checkpoint_cb.epochs_since_last_save = (last_epoch_idx + 1) % checkpoint_interval
-    cb.append(checkpoint_cb)
-
-    earlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=10)
-    reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5)
-
-    cb.append(earlyStopping)
-    cb.append(reduceLR)
-
-
-    train_gen = data_generator(train_data_dir,
-                               batch_size=train_batch_size,
-                               random_state=random_state,
-                               start_batch_idx=None)
-
-    train_gen = pescador.maps.keras_tuples(train_gen,
-                                           ['video', 'audio'],
-                                           'label')
-
-    val_gen = single_epoch_data_generator(validation_data_dir,
-                                          validation_epoch_size,
-                                          batch_size=validation_batch_size,
-                                          random_state=random_state)
-
-    val_gen = pescador.maps.keras_tuples(val_gen,
-                                         ['video', 'audio'],
-                                         'label')
-
-    loss = 'categorical_crossentropy'
-    metrics = ['accuracy']
-    model.compile(Adam(lr=learning_rate),
-              loss=loss,
-              metrics=metrics)
-
-    history = model.fit_generator(train_gen, train_epoch_size, num_epochs,
-                                    validation_data=val_gen,
-                                    validation_steps=validation_epoch_size,
-                                    verbose=1)
-
-    print(history)
-    return model
-
-def train_withKD(student, train_data_dir, validation_data_dir, weight_path, output_dir = '/scratch/sk7898/pruning_kd_output', num_epochs=300,\
-                 train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64, model_type = 'cnn_L3_melspec2',\
-                 random_state=20180216, learning_rate=0.00001, verbose=True, checkpoint_interval=10, gpus=1):
-    
     # Form model ID
     data_subset_name = os.path.basename(train_data_dir)
     data_subset_name = data_subset_name[:data_subset_name.rindex('_')]
     model_id = os.path.join(data_subset_name, model_type)
-    model_dir = os.path.join(output_dir, model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-    
-    if not os.path.isdir(model_dir):
-        os.makedirs(model_dir)
 
     param_dict = {
           'train_data_dir': train_data_dir,
@@ -400,34 +287,42 @@ def train_withKD(student, train_data_dir, validation_data_dir, weight_path, outp
           'learning_rate': learning_rate,
           'verbose': verbose
     }
-    
+
+    # Make sure the directories we need exist
+    if continue_model_dir:
+        model_dir = continue_model_dir
+    else:
+        model_dir = os.path.join(output_dir, 'embedding', model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+
+    if not os.path.isdir(model_dir):
+        os.makedirs(model_dir)
+        
+    if continue_model_dir:
+        latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
+        model = load_model(latest_model_path)
+    else:
+        if finetune:
+            model, x_a, y_a = load_student_audio_model_withFFT()
+        else:
+            model, inputs, outputs = MODELS[model_type](num_gpus=gpus)
+
     param_dict['model_dir'] = model_dir
     train_config_path = os.path.join(model_dir, 'config.json')
     with open(train_config_path, 'w') as fd:
         json.dump(param_dict, fd, indent=2)
 
-    param_dict.update({
-          'latest_epoch': '-',
-          'latest_train_loss': '-',
-          'latest_validation_loss': '-',
-          'best_train_loss': '-',
-          'best_validation_loss': '-',
-    })
-
-    student, x_a, y_a = load_student_audio_model()
-
-    student.compile(Adam(lr=learning_rate),
-                    loss='mean_squared_error',
-                    metrics=['mae'])
+    if finetune:
+        model.compile(Adam(lr=learning_rate),
+                      loss='categorical_crossentropy',
+                      metrics=['accuracy'])
+    else:
+        model.compile(Adam(lr=learning_rate),
+                      loss='mean_squared_error',
+                      metrics=['mae'])
 
     # Save the model
-    model_spec_path = os.path.join(model_dir, 'model_spec.pkl')
-    model_spec = keras.utils.serialize_keras_object(student)
-    with open(model_spec_path, 'wb') as fd:
-        pickle.dump(model_spec, fd)
-    
     model_json_path = os.path.join(model_dir, 'model.json')
-    model_json = student.to_json()
+    model_json = model.to_json()
     with open(model_json_path, 'w') as fd:
         json.dump(model_json, fd, indent=2)
 
@@ -435,69 +330,119 @@ def train_withKD(student, train_data_dir, validation_data_dir, weight_path, outp
     best_valid_loss_weight_path = os.path.join(model_dir, 'model_best_valid_loss.h5')
     checkpoint_weight_path = os.path.join(model_dir, 'model_checkpoint.{epoch:02d}.h5')
 
+    # Load information about last epoch for initializing callbacks and data generators
+    if continue_model_dir is not None:
+        prev_train_hist_path = os.path.join(continue_model_dir, 'history_csvlog.csv')
+        last_epoch_idx, last_val_loss = get_restart_info(prev_train_hist_path)
+
     # Set up callbacks
     cb = []
+    cb.append(keras.callbacks.ModelCheckpoint(latest_weight_path,
+                                              save_weights_only=False,
+                                              verbose=1))
+
 
     best_val_loss_cb = keras.callbacks.ModelCheckpoint(best_valid_loss_weight_path,
                                                        save_weights_only=False,
                                                        save_best_only=True,
                                                        verbose=1,
                                                        monitor='val_loss')
-    #if continue_model_dir is not None:
-    #    best_val_loss_cb.best = last_val_loss
+    if continue_model_dir is not None:
+        best_val_loss_cb.best = last_val_loss
     cb.append(best_val_loss_cb)
 
     checkpoint_cb = keras.callbacks.ModelCheckpoint(checkpoint_weight_path,
                                                     save_weights_only=False,
                                                     period=checkpoint_interval)
-    #if continue_model_dir is not None:
-    #    checkpoint_cb.epochs_since_last_save = (last_epoch_idx + 1) % checkpoint_interval
+    if continue_model_dir is not None:
+        checkpoint_cb.epochs_since_last_save = (last_epoch_idx + 1) % checkpoint_interval
     cb.append(checkpoint_cb)
+
+    history_checkpoint = os.path.join(model_dir, 'history_checkpoint.pkl')
+    cb.append(LossHistory(history_checkpoint))
+
+    history_csvlog = os.path.join(model_dir, 'history_csvlog.csv')
+    cb.append(keras.callbacks.CSVLogger(history_csvlog, append=True, separator=','))
 
     earlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=10)
     reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5)
-    
+
     cb.append(earlyStopping)
     cb.append(reduceLR)
 
-    #LOGGER.info('Setting up train data generator...')
-    #if continue_model_dir is not None:
-    #    train_start_batch_idx = train_epoch_size * (last_epoch_idx + 1)
-    #else:
-    train_start_batch_idx = None
+    if continue_model_dir is not None:
+        train_start_batch_idx = train_epoch_size * (last_epoch_idx + 1)
+    else:
+        train_start_batch_idx = None
 
-    train_gen = data_generator(train_data_dir,
-                               batch_size=train_batch_size,
-                               random_state=random_state,
-                               start_batch_idx=train_start_batch_idx)
+    if finetune:
+        train_gen = data_generator(train_data_dir,
+                                   kd_model=False,
+                                   batch_size=train_batch_size,
+                                   random_state=random_state,
+                                   start_batch_idx=train_start_batch_idx)
 
-    train_gen = pescador.maps.keras_tuples(train_gen,
-                                           'audio',
-                                           'label')
+        train_gen = pescador.maps.keras_tuples(train_gen,
+                                               ['video', 'audio'],
+                                               'label')
 
-    val_gen = single_epoch_data_generator(validation_data_dir,
-                                          validation_epoch_size,
-                                          batch_size=validation_batch_size,
-                                          random_state=random_state)
+        val_gen = single_epoch_data_generator(validation_data_dir,
+                                              validation_epoch_size,
+                                              kd_model=False,
+                                              batch_size=validation_batch_size,
+                                              random_state=random_state)
 
-    val_gen = pescador.maps.keras_tuples(val_gen,
-                                         'audio',
-                                         'label')
+        val_gen = pescador.maps.keras_tuples(val_gen,
+                                             ['video', 'audio'],
+                                             'label')
 
-    history = student.fit_generator(train_gen, train_epoch_size, num_epochs,
+    else:
+        train_gen = data_generator(train_data_dir,
+                                   kd_model=True,
+                                   batch_size=train_batch_size,
+                                   random_state=random_state,
+                                   start_batch_idx=train_start_batch_idx)
+
+        train_gen = pescador.maps.keras_tuples(train_gen,
+                                               'audio',
+                                               'label')
+
+        val_gen = single_epoch_data_generator(validation_data_dir,
+                                              validation_epoch_size,
+                                              kd_model=True,
+                                              batch_size=validation_batch_size,
+                                              random_state=random_state)
+
+        val_gen = pescador.maps.keras_tuples(val_gen,
+                                             'audio',
+                                             'label')
+
+    # Fit the model
+    if verbose:
+        verbosity = 1
+    else:
+        verbosity = 2
+
+    if continue_model_dir is not None:
+        initial_epoch = last_epoch_idx + 1
+    else:
+        initial_epoch = 0
+
+    history = model.fit_generator(train_gen, train_epoch_size, num_epochs,
                                     validation_data=val_gen,
                                     validation_steps=validation_epoch_size,
                                     callbacks=cb,
-                                    verbose=1)
+                                    verbose=verbosity,
+                                    initial_epoch=initial_epoch)
 
     # Save history
     with open(os.path.join(model_dir, 'history.pkl'), 'wb') as fd:
         pickle.dump(history.history, fd)
 
-    return model
+    return history
 
 '''
-def finetune(l3_model, sparsified_audio_model, masks, train_data_dir, validation_data_dir, kd=False):
+def finetune(l3_model, sparsified_audio_model, masks, train_data_dir, validation_data_dir, finetune=False):
     if kd:
         #Fine-tuning with knowledge distillation
     else:

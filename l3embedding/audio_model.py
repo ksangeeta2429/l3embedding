@@ -1,6 +1,6 @@
 from keras.models import Model
 from keras.layers import Input, Conv2D, BatchNormalization, MaxPooling2D, \
-    MaxPooling1D, Flatten, Activation, Lambda
+    MaxPooling1D, Flatten, Activation, Lambda, Reshape
 from kapre.time_frequency import Spectrogram, Melspectrogram
 import tensorflow as tf
 import keras.regularizers as regularizers
@@ -479,7 +479,8 @@ def convert_audio_model_to_embedding(audio_model, x_a, model_type, pooling_type=
         }
     }
     
-    if(kd_model):
+    
+    if kd_model:
         pool_size = pooling[model_type]['short']
         embedding_pool = pooling[model_type][pooling_type]
     else:
@@ -487,11 +488,14 @@ def convert_audio_model_to_embedding(audio_model, x_a, model_type, pooling_type=
 
     embed_layer = audio_model.get_layer('audio_embedding_layer')
     y_a = MaxPooling2D(pool_size=pool_size, padding='same')(embed_layer.output)
-    if(kd_model):
-        y_a = MaxPooling1D(pool_size=embedding_pool, padding='same')(y_a)
+    
+    if kd_model:
+        y_a = Reshape((y_a.shape[3], 1))(y_a)
+        y_a = MaxPooling1D(pool_size=embedding_pool, border_mode='valid')(y_a)
+        
     y_a = Flatten()(y_a)
-
     m = Model(inputs=x_a, outputs=y_a)
+    
     return m, x_a, y_a
 
 

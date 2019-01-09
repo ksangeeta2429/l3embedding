@@ -23,7 +23,7 @@ from keras import backend as K
 graph = tf.get_default_graph()
 weight_path = '/home/sk7898/l3embedding/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
 audio_model = load_embedding(weight_path, model_type = 'cnn_L3_melspec2', embedding_type = 'audio', \
-                             pooling_type = 'kd_256', kd_model=True, tgt_num_gpus = 1)
+                             pooling_type = 'kd_128', kd_model=True, tgt_num_gpus = 1)
 
 ##########
 # 1. Added student model : load_student_audio_model
@@ -441,7 +441,7 @@ def data_generator(data_dir, kd_model=False, batch_size=512, random_state=201802
                         # Get the embedding layer output from the audio_model and flatten it to be treated as labels for the student audio model
                         with graph.as_default():
                             batch['label'] = audio_model.predict(batch['audio'])
-                    
+                                                
                     yield batch
 
                 batch_idx += 1
@@ -481,9 +481,10 @@ def test(model, validation_data_dir, kd_model=False, learning_rate=1e-4, validat
     return score
 
 
-def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scratch/sk7898/kd_output', num_epochs=300, train_epoch_size=4096, 
-          validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64, model_type = 'cnn_L3_melspec2', random_state=20180216, 
-          learning_rate=0.00001, verbose=True, checkpoint_interval=10, gpus=1, continue_model_dir=None):
+def train(train_data_dir, validation_data_dir, weight_path, kd_model=False, output_dir = '/scratch/sk7898/kd_output', \
+          num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
+          model_type = 'cnn_L3_melspec2', random_state=20180216, learning_rate=0.001, verbose=True, \
+          checkpoint_interval=10, gpus=1, continue_model_dir=None):
 
     #m, inputs, outputs = load_model(weight_path, model_type, return_io=True, src_num_gpus=1)
     #audio_model = m.get_layer('audio_model')
@@ -511,7 +512,7 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
     
     if continue_model_dir:
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
-        m, inputs, outputs = load_model(latest_model_path, model_type, return_io=True, src_num_gpus=gpus)
+        m, inputs, outputs = load_model(latest_model_path)
     else:
         m, inputs, outputs = MODELS[model_type](num_gpus=gpus)
 
@@ -536,11 +537,6 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
                     metrics=['mae'])
 
     # Save the model
-    model_spec_path = os.path.join(model_dir, 'model_spec.pkl')
-    model_spec = keras.utils.serialize_keras_object(student)
-    with open(model_spec_path, 'wb') as fd:
-        pickle.dump(model_spec, fd)
-
     model_json_path = os.path.join(model_dir, 'model.json')
     model_json = student.to_json()
     with open(model_json_path, 'w') as fd:
@@ -557,19 +553,23 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
 
     # Set up callbacks
     cb = []
+    cb.append(keras.callbacks.ModelCheckpoint(latest_weight_path,
+                                              save_weights_only=False,
+                                              verbose=1))
+
 
     best_val_loss_cb = keras.callbacks.ModelCheckpoint(best_valid_loss_weight_path,
-                                              save_weights_only=False,
-                                              save_best_only=True,
-                                              verbose=1,
-                                              monitor='val_loss')
+                                                       save_weights_only=False,
+                                                       save_best_only=True,
+                                                       verbose=1,
+                                                       monitor='val_loss')
     if continue_model_dir is not None:
         best_val_loss_cb.best = last_val_loss
     cb.append(best_val_loss_cb)
 
     checkpoint_cb = keras.callbacks.ModelCheckpoint(checkpoint_weight_path,
-                                              save_weights_only=False,
-                                              period=checkpoint_interval)
+                                                    save_weights_only=False,
+                                                    period=checkpoint_interval)
     if continue_model_dir is not None:
         checkpoint_cb.epochs_since_last_save = (last_epoch_idx + 1) % checkpoint_interval
     cb.append(checkpoint_cb)
@@ -581,26 +581,32 @@ def train(train_data_dir, validation_data_dir, weight_path, output_dir = '/scrat
     history_csvlog = os.path.join(model_dir, 'history_csvlog.csv')
     cb.append(keras.callbacks.CSVLogger(history_csvlog, append=True, separator=','))
 
+    earlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=10)
+    reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5)
+
+    cb.append(earlyStopping)
+    cb.append(reduceLR)
+
     if continue_model_dir is not None:
         train_start_batch_idx = train_epoch_size * (last_epoch_idx + 1)
     else:
         train_start_batch_idx = None
 
-    train_gen = data_generator(
-        train_data_dir,
-        batch_size=train_batch_size,
-        random_state=random_state,
-        start_batch_idx=train_start_batch_idx)
+    train_gen = data_generator(train_data_dir,
+                               kd_model=kd_model,
+                               batch_size=train_batch_size,
+                               random_state=random_state,
+                               start_batch_idx=train_start_batch_idx)
 
     train_gen = pescador.maps.keras_tuples(train_gen,
                                            'audio',
                                            'label')
 
-    val_gen = single_epoch_data_generator(
-        validation_data_dir,
-        validation_epoch_size,
-        batch_size=validation_batch_size,
-        random_state=random_state)
+    val_gen = single_epoch_data_generator(validation_data_dir,
+                                          validation_epoch_size,
+                                          kd_model=kd_model,
+                                          batch_size=validation_batch_size,
+                                          random_state=random_state)
 
     val_gen = pescador.maps.keras_tuples(val_gen,
                                          'audio',
@@ -642,6 +648,7 @@ def get_reduced_embedding_acc(validation_data_dir, pruned_model_name):
 
 train_data_dir = '/beegfs/work/AudioSetSamples/music_train' # _environmental/urban_train'
 validation_data_dir = '/beegfs/work/AudioSetSamples/music_valid' # _environmental/urban_valid'
-#history = train(train_data_dir, validation_data_dir, weight_path)
+
 #Score of new embedding size model
-get_reduced_embedding_acc(validation_data_dir, pruned_model_name='kd_embedding_256.h5')
+get_reduced_embedding_acc(validation_data_dir, pruned_model_name='kd_embedding_128.h5')
+#history = train(train_data_dir, validation_data_dir, weight_path, kd_model=True)
