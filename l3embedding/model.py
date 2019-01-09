@@ -1,6 +1,6 @@
 from keras.layers import concatenate, Dense
-from vision_model import *
-from audio_model import *
+from .vision_model import *
+from .audio_model import *
 from training_utils import multi_gpu_model
 
 
