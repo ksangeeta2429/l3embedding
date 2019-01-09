@@ -129,7 +129,8 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, retu
 
 
 def load_embedding(weights_path, model_type, embedding_type, pooling_type,
-                   kd_model=False, src_num_gpus=0, tgt_num_gpus=None, return_io=False):
+                   kd_model=False, src_num_gpus=0, tgt_num_gpus=None, return_io=False,
+                   from_convlayer=8):
     """
     Loads an embedding model
 
@@ -142,6 +143,7 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
                          (Type: str)
         pooling_type:    Type of pooling applied to final convolutional layer
                          (Type: str)
+        from_convlayer:  Get embedding from convlayer# (default is 8)
 
     Keyword Args:
         src_num_gpus:   Number of GPUs the saved model uses
@@ -161,17 +163,52 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
         y_i:    Embedding output Tensor/Layer. Not returned if return_io is False.
                 (Type: keras.layers.Layer)
     """
+
+    def relabel_embedding_layer(audio_model, embedding_layer_num):
+        count = 1
+
+        for layer in audio_model.layers:
+            layer_name = layer.name
+
+            if (layer_name[0:6] == 'conv2d' or layer_name == 'audio_embedding_layer'):
+                # Rename the conv layers as conv_1, conv_2 .... conv_8, and relabel audio embedding layer
+                if count == embedding_layer_num:
+                    layer.name = 'audio_embedding_layer'
+                else:
+                    layer.name = 'conv_' + str(count)
+
+                count += 1
+                # print (layer.name)
+        return audio_model
+
     m, inputs, output = load_model(weights_path, model_type, src_num_gpus=src_num_gpus,
                                    tgt_num_gpus=tgt_num_gpus, return_io=True)
-    x_i, x_a = inputs
+    if 'audioonly' in model_type:
+        x_a = inputs
+    else:
+        x_i, x_a = inputs
     if embedding_type == 'vision':
         m_embed_model = m.get_layer('vision_model')
         m_embed, x_embed, y_embed = VISION_EMBEDDING_MODELS[model_type](m_embed_model, x_i)
 
     elif embedding_type == 'audio':
-        m_embed_model = m.get_layer('audio_model')
+        if not 'audioonly' in model_type:
+            m_embed_model = m.get_layer('audio_model')
+        else:
+            m_embed_model = m
+
         # m_embed, x_embed, y_embed = AUDIO_EMBEDDING_MODELS[model_type](m_embed_model, x_a)
+<<<<<<< HEAD
         m_embed, x_embed, y_embed = convert_audio_model_to_embedding(m_embed_model, x_a, model_type, pooling_type, kd_model)
+||||||| merged common ancestors
+        m_embed, x_embed, y_embed = convert_audio_model_to_embedding(m_embed_model, x_a, model_type, pooling_type)
+=======
+        if from_convlayer==8:
+            m_embed, x_embed, y_embed = convert_audio_model_to_embedding(m_embed_model, x_a, model_type, pooling_type)
+        else:
+            m_embed, x_embed, y_embed = convert_audio_model_to_embedding(
+                relabel_embedding_layer(m_embed_model, from_convlayer), x_a, model_type, pooling_type)
+>>>>>>> fd285e110309cae7ac886b6663f69b5e0906098f
     else:
         raise ValueError('Invalid embedding type: "{}"'.format(embedding_type))
 
@@ -309,5 +346,19 @@ MODELS = {
     'tiny_L3': construct_tiny_L3,
     'cnn_L3_kapredbinputbn': construct_cnn_L3_kapredbinputbn,
     'cnn_L3_melspec1': construct_cnn_L3_melspec1,
-    'cnn_L3_melspec2': construct_cnn_L3_melspec2
+    'cnn_L3_melspec2': construct_cnn_L3_melspec2,
+    'cnn_L3_melspec2_audioonly': construct_cnn_L3_melspec2_audio_model
 }
+
+
+if __name__=='__main__':
+    # model_path = '../models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
+    model_path = '../pruned_model/pruned_audio_0.71586.h5'
+    model_type = 'cnn_L3_melspec2_audioonly'
+    pooling_type = 'original'
+    num_gpus = 0
+
+    l3embedding_model = load_embedding(model_path,
+                                       model_type,
+                                       'audio', pooling_type,
+                                       tgt_num_gpus=num_gpus, from_convlayer=8)
