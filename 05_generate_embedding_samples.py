@@ -158,15 +158,15 @@ if __name__ == '__main__':
         raise ValueError('Must provide model path is L3 embedding features are used')
 
     if is_l3_comp:
-        # Get output dir
-        embedding_desc_str = model_path.replace('.h5','')
         # If using an L3 model, make model arch. type and pooling type to path
         if from_conv_layer==8:
-            dataset_output_dir = os.path.join(output_dir, 'features', dataset_name,
-                                          features, pooling_type, embedding_desc_str)
+            embedding_desc_str = model_path.replace('.h5', '')
         else:
-            dataset_output_dir = os.path.join(output_dir, 'features', dataset_name,
-                                              features, pooling_type, embedding_desc_str, 'from_convlayer_' + str(from_conv_layer))
+            embedding_desc_str = os.path.join(os.path.dirname(model_path), 'from_convlayer_' + str(from_conv_layer), os.path.basename(model_path).replace('.h5', ''))
+
+        # Get output dir
+        dataset_output_dir = os.path.join(output_dir, 'features', dataset_name,
+                                          features, pooling_type, embedding_desc_str)
 
         model_type = args['l3embedding_model_type']
         # Load L3 embedding model if using L3 features
