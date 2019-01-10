@@ -19,6 +19,7 @@ SRCDIR=.
 L3_MODEL_PATH='models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
 L3_MODEL_TYPE='cnn_L3_melspec2'
 L3_POOLING_TYPE='short' #'original'
+FROM_CONV_LAYER=7
 US8K_PATH=/beegfs/jtc440/UrbanSound8K
 METADATA_PATH=$US8K_PATH/metadata/UrbanSound8K.csv
 DATA_DIR=$US8K_PATH/audio
@@ -36,6 +37,7 @@ python $SRCDIR/05_generate_embedding_samples.py \
     --features 'l3comp' \
     --l3embedding-model-path $L3_MODEL_PATH \
     --l3embedding-model-type $L3_MODEL_TYPE \
+    --from-conv-layer $FROM_CONV_LAYER \
     --l3embedding-pooling-type $L3_POOLING_TYPE \
     --hop-size 0.1 \
     --gpus 0 \

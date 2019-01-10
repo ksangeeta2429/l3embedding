@@ -69,6 +69,14 @@ def parse_arguments():
                         default='cnn_L3_melspec2',
                         help='L3 embedding model type')
 
+    parser.add_argument('-fcl',
+                        '--from-conv-layer',
+                        dest='from_conv_layer',
+                        action='store',
+                        type=int,
+                        default=8,
+                        help='Conv. layer to derive embedding from (1-8)')
+
     parser.add_argument('-hs',
                         '--hop-size',
                         dest='hop_size',
@@ -140,6 +148,7 @@ if __name__ == '__main__':
     output_dir = args['output_dir']
     dataset_name = args['dataset_name']
     fold_num = args['fold']
+    from_conv_layer = args['from_conv_layer']
 
     LOGGER.info('Configuration: {}'.format(str(args)))
 
@@ -152,15 +161,20 @@ if __name__ == '__main__':
         # Get output dir
         embedding_desc_str = model_path.replace('.h5','')
         # If using an L3 model, make model arch. type and pooling type to path
-        dataset_output_dir = os.path.join(output_dir, 'features', dataset_name,
+        if from_conv_layer==8:
+            dataset_output_dir = os.path.join(output_dir, 'features', dataset_name,
                                           features, pooling_type, embedding_desc_str)
+        else:
+            dataset_output_dir = os.path.join(output_dir, 'features', dataset_name,
+                                              features, pooling_type, embedding_desc_str, 'from_convlayer_' + str(from_conv_layer))
+
         model_type = args['l3embedding_model_type']
         # Load L3 embedding model if using L3 features
         LOGGER.info('Loading embedding model...')
         l3embedding_model = load_embedding(model_path,
                                            model_type,
                                            'audio', pooling_type,
-                                           tgt_num_gpus=num_gpus)
+                                           tgt_num_gpus=num_gpus, from_convlayer=from_conv_layer)
     elif is_l3_feature:
         # Get output dir
         model_desc_start_idx = model_path.rindex('embedding')+10
