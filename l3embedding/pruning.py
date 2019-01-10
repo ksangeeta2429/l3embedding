@@ -401,11 +401,11 @@ def test(model, validation_data_dir, learning_rate=1e-4, validation_epoch_size=1
                   loss=loss,
                   metrics=metrics)
 
-    val_gen = single_epoch_data_generator(
-        validation_data_dir,
-        validation_epoch_size,
-        batch_size=validation_batch_size,
-        random_state=random_state)
+    val_gen = single_epoch_data_generator(validation_data_dir,
+                                          validation_epoch_size,
+                                          batch_size=validation_batch_size,
+                                          kd_model=False,
+                                          random_state=random_state)
 
     val_gen = pescador.maps.keras_tuples(val_gen,
                                          ['video', 'audio'],
@@ -631,11 +631,11 @@ def retrain(l3_model, masks, train_data_dir, validation_data_dir, finetune=False
     if finetune:
         l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_kd(masks)
         model = initialize_weights(l3_model_kd, l3_model, is_L3=True)  
-        train(model, train_data_dir, validation_data_dir, finetune=finetune)
+        train(train_data_dir, validation_data_dir, model, pruning=True, finetune=finetune)
     else:
         audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model(masks)
         audio_model = initialize_weights(audio_model, l3_model, is_L3=False)
-        train(audio_model, validation_data_dir, finetune=finetune)
+        train(audio_model, validation_data_dir, audio_model, pruning=True, finetune=finetune)
 
 
 def zero_check(sparsity_list):
@@ -653,7 +653,7 @@ def printList(sparsity_list):
 
 
 def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model', blockwise=False,\
-            layerwise=False, per_layer=False, test_model=False, save_model=False, retrain_model=False, finetune = True):
+            layerwise=True, per_layer=False, test_model=True, save_model=False, retrain_model=False, finetune = True):
     
     conv_blocks = 4
     
@@ -678,7 +678,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
             
                 model.get_layer('audio_model').set_weights(sparsified_model.get_weights()) 
             
-                score = test(model, validation_dir)
+                score = test(model, validation_data_dir)
                 print('Conv Block Pruned: {0} Sparsity Value: {1}'.format(blockid+1, sparsity))
                 print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))     
                 print('---------------------------------------------------------------')
@@ -694,7 +694,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
 
                 model.get_layer('audio_model').set_weights(sparsified_model.get_weights())
 
-                score = test(model, validation_dir)
+                score = test(model, validation_data_dir)
                 print('Conv Layer Pruned: {0} Sparsity Value: {1}'.format(layerid+1, sparsity))
                 print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
                 print('----------------------------------------------------------------')
@@ -709,7 +709,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
             
             model.get_layer('audio_model').set_weights(sparsified_model.get_weights())
             if test_model:
-                score = test(model, validation_dir)
+                score = test(model, validation_data_dir)
                 printList(sparsity)
                 print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
                 print('----------------------------------------------------------------')
@@ -723,13 +723,12 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 retrain(model, masks, train_data_dir, validation_data_dir, finetune = finetune)
 
 
-pruning = False
-
+is_pruning = True
 train_data_dir = '/beegfs/work/AudioSetSamples/music_train'
 validation_data_dir = '/beegfs/work/AudioSetSamples/music_valid'
 
-if pruning:
-    pruning(weight_path, train_data_dir, validation_data_dir, blockwise=False, layerwise=True, per_layer=False, retrain_model=True, finetune=True)
+if is_pruning:
+    pruning(weight_path, train_data_dir, validation_data_dir, save_model=True, retrain_model=False, finetune=False)
 else:
     include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
     num_filters = [64, 128, 256, 128]
