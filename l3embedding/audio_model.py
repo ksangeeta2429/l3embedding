@@ -389,7 +389,7 @@ def construct_cnn_L3_melspec2_kd_audio_model(masks):
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
 
     
-    y_a = Lambda(lambda x: math_ops.multiply(y_a_2, y_a), trainable=False)(y_a)
+    y_a = Lambda(lambda x: math_ops.multiply(y_a_2, x), trainable=False)(y_a)
 
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
