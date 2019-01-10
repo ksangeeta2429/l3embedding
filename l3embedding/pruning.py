@@ -168,7 +168,7 @@ def sparsify_layer(model, sparsity_dict):
             
             target_weights[1] = layer.get_weights()[1]
             layer.set_weights(target_weights)
-                        
+
     return model, masks
 
 def sparsify_block(model, sparsity_dict):
@@ -256,7 +256,7 @@ def get_restart_info(history_path):
     return int(last['epoch']), float(last['val_acc']), float(last['val_loss'])
 
 
-def train(train_data_dir, validation_data_dir, weight_path, finetune=False, output_dir = None, \
+def train(model_to_retrain, train_data_dir, validation_data_dir, finetune=False, output_dir = None, \
           num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
           model_type = 'cnn_L3_melspec2', random_state=20180216, learning_rate=0.001, verbose=True, \
           checkpoint_interval=10, gpus=1, continue_model_dir=None):
@@ -301,10 +301,7 @@ def train(train_data_dir, validation_data_dir, weight_path, finetune=False, outp
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
         model = load_model(latest_model_path)
     else:
-        if finetune:
-            model, x_a, y_a = load_student_audio_model_withFFT()
-        else:
-            model, inputs, outputs = MODELS[model_type](num_gpus=gpus)
+        model = model_to_retrain
 
     param_dict['model_dir'] = model_dir
     train_config_path = os.path.join(model_dir, 'config.json')
@@ -441,13 +438,26 @@ def train(train_data_dir, validation_data_dir, weight_path, finetune=False, outp
 
     return history
 
-'''
-def finetune(l3_model, sparsified_audio_model, masks, train_data_dir, validation_data_dir, finetune=False):
-    if kd:
-        #Fine-tuning with knowledge distillation
+
+def initialize_weights(model, sparse_model, is_L3=True):
+    if is_L3:
+        audio_model = model.get_layer('audio_model')
+
+        for layer in audio_model.layers:
+            print(layer.name)
+        
+
+
+def retrain(l3_model, masks, train_data_dir, validation_data_dir, finetune=False):
+    if finetune:
+        model = construct_cnn_L3_melspec2_kd(masks)
+        model = initialize_weights(model, l3_model, is_L3=True)  
+        train(model, train_data_dir, validation_data_dir, finetune=finetune)
     else:
-        #Fine-tuning without knowledge distillation
-'''
+        audio_model = construct_cnn_L3_melspec2_kd_audio_model(masks) 
+        audio_model = initialize_weights(audio_model, l3_model.get_layer('audio_model'), is_L3=False)
+        train(audio_model, validation_data_dir, finetune=finetune)
+
 
 def zero_check(sparsity_list):
     for val in sparsity_list:
@@ -455,13 +465,17 @@ def zero_check(sparsity_list):
             return False
     return True
 
+
 def printList(sparsity_list):
     printStr = "Sparsity Values: "
     for val in sparsity_list:
         printStr += str(val) + ", "
     print(printStr)
 
-def pruning(weight_path, validation_dir, output_dir = '/scratch/sk7898/pruned_model', blockwise=False, layerwise=False, per_layer=False):
+
+def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model', blockwise=False,\
+            layerwise=False, per_layer=False, test_model=False, save_model=False, retrain_model=False):
+    
     conv_blocks = 4
     
     sparsity_values = [70., 80., 85., 90., 95.]
@@ -469,11 +483,12 @@ def pruning(weight_path, validation_dir, output_dir = '/scratch/sk7898/pruned_mo
     if per_layer:
         sparsity_layers = [0, 0, 0, 0, 0, 0, 0, 0]
     else:
-        sparsity_layers = [[0, 30., 40., 50., 30., 50., 50., 60.],\
+        sparsity_layers = [[0, 30., 40., 50., 30., 50., 50., 60.]]
+        ''',\
                            [0, 40., 50., 60., 40., 60., 60., 70.],\
                            [0, 40., 50., 60., 40., 70., 70., 80.]]
 
-        '''
+        
                            [0, 60., 60., 70., 50., 70., 70., 80.],\
                            [0, 70., 70., 75., 60., 80., 80., 85.],\
                            [0, 80., 80., 85., 40., 85., 85., 95.]]
@@ -520,16 +535,23 @@ def pruning(weight_path, validation_dir, output_dir = '/scratch/sk7898/pruned_mo
             sparsified_model, masks = sparsify_layer(audio_model, sparsity_vals)
             
             model.get_layer('audio_model').set_weights(sparsified_model.get_weights())
-            score = test(model, validation_dir)
-            printList(sparsity)
-            print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
-            print('----------------------------------------------------------------')
+            if test_model:
+                score = test(model, validation_dir)
+                printList(sparsity)
+                print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
+                print('----------------------------------------------------------------')
             
-            pruned_model_name = 'pruned_audio_'+str(score[1])+'.h5'
-            pruned_model_path = os.path.join(output_dir, pruned_model_name)
-            sparsified_model.save(pruned_model_path)
+            if save_model:
+                pruned_model_name = 'pruned_audio_'+str(score[1])+'.h5'
+                pruned_model_path = os.path.join(output_dir, pruned_model_name)
+                sparsified_model.save(pruned_model_path)
+
+            if retrain_model:
+                retrain(model, masks, train_data_dir, validation_data_dir, finetune=True)
+
 
 weight_path = '/home/sk7898/l3embedding/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
-validation_dir = '/beegfs/work/AudioSetSamples/music_valid'
-#validation_dir = '/beegfs/work/AudioSetSamples_environmental/environmental_valid'
-pruning(weight_path, validation_dir, blockwise=False, layerwise=True, per_layer=False)
+train_data_dir = '/beegfs/work/AudioSetSamples/music_train'
+validation_data_dir = '/beegfs/work/AudioSetSamples/music_valid'
+
+pruning(weight_path, train_data_dir, validation_data_dir, blockwise=False, layerwise=True, per_layer=False, retrain_model=True)

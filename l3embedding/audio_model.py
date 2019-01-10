@@ -4,6 +4,9 @@ from keras.layers import Input, Conv2D, BatchNormalization, MaxPooling2D, \
 from kapre.time_frequency import Spectrogram, Melspectrogram
 import tensorflow as tf
 import keras.regularizers as regularizers
+from tensorflow.python.ops import math_ops
+from tensorflow.python.ops import nn
+from tensorflow.python.layers import utils
 
 def construct_cnn_L3_orig_audio_model():
     """
@@ -320,6 +323,145 @@ def construct_cnn_L3_melspec1_audio_model():
                  kernel_initializer='he_normal',
                  name='audio_embedding_layer', padding='same',
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = MaxPooling2D(pool_size=pool_size_a_4)(y_a)
+
+    y_a = Flatten()(y_a)
+
+    m = Model(inputs=x_a, outputs=y_a)
+    m.name = 'audio_model'
+
+    return m, x_a, y_a
+
+
+def construct_cnn_L3_melspec2_kd_audio_model(masks):
+    weight_decay = 1e-5
+    ####
+    # Audio subnetwork
+    ####
+    n_dft = 2048
+    #n_win = 480
+    #n_hop = n_win//2
+    n_mels = 256
+    n_hop = 242
+    asr = 48000
+    audio_window_dur = 1
+    # INPUT
+    x_a = Input(shape=(1, asr * audio_window_dur), dtype='float32')
+
+    # MELSPECTROGRAM PREPROCESSING
+    # 128 x 199 x 1
+    y_a = Melspectrogram(n_dft=n_dft, n_hop=n_hop, n_mels=n_mels,
+                      sr=asr, power_melgram=1.0, htk=True, # n_win=n_win,
+                      return_decibel_melgram=True, padding='same')(x_a)
+    y_a = BatchNormalization()(y_a)
+
+    # CONV BLOCK 1
+    n_filter_a_1 = 64
+    filt_size_a_1 = (3, 3)
+    pool_size_a_1 = (2, 2)
+    y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
+                 kernel_initializer='he_normal',
+                 name='conv_1',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+
+    if 'conv_1' in masks:
+        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_1'], \
+                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
+                 kernel_initializer='he_normal',
+                 name='conv_2',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+
+    if 'conv_2' in masks:
+        print(masks['conv_2'].shape)
+        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_2'],\
+                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = MaxPooling2D(pool_size=pool_size_a_1, strides=2)(y_a)
+
+    # CONV BLOCK 2
+    n_filter_a_2 = 128
+    filt_size_a_2 = (3, 3)
+    pool_size_a_2 = (2, 2)
+    y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
+                 kernel_initializer='he_normal',
+                 name='conv_3',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    if 'conv_3' in masks:
+        print(masks['conv_3'].shape)
+        #y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_3'],\
+        #                                                        padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
+                 kernel_initializer='he_normal',
+                 name='conv_4',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    if 'conv_4' in masks:
+        print(masks['conv_4'].shape)
+        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_4'],\
+                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = MaxPooling2D(pool_size=pool_size_a_2, strides=2)(y_a)
+
+    # CONV BLOCK 3
+    n_filter_a_3 = 256
+    filt_size_a_3 = (3, 3)
+    pool_size_a_3 = (2, 2)
+    y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
+                 kernel_initializer='he_normal',
+                 name='conv_5',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    if 'conv_5' in masks:
+        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_5'],\
+                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
+                 kernel_initializer='he_normal',
+                 name='conv_6',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    if 'conv_6' in masks:
+        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_6'],\
+                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = MaxPooling2D(pool_size=pool_size_a_3, strides=2)(y_a)
+
+    # CONV BLOCK 4
+    n_filter_a_4 = 512
+    filt_size_a_4 = (3, 3)
+    pool_size_a_4 = (32, 24)
+    y_a = Conv2D(n_filter_a_4, filt_size_a_4, padding='same',
+                 kernel_initializer='he_normal',
+                 name='conv_7',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    if 'conv_7' in masks:
+        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_7'],\
+                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+        
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = Conv2D(n_filter_a_4, filt_size_a_4,
+                 kernel_initializer='he_normal',
+                 name='audio_embedding_layer', padding='same',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    if 'conv_8' in masks:
+        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_8'],\
+                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+    
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
     y_a = MaxPooling2D(pool_size=pool_size_a_4)(y_a)
