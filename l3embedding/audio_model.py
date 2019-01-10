@@ -7,6 +7,8 @@ import keras.regularizers as regularizers
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import nn
 from tensorflow.python.layers import utils
+from keras import backend as K
+from tensorflow.python.framework import dtypes
 
 def construct_cnn_L3_orig_audio_model():
     """
@@ -336,6 +338,12 @@ def construct_cnn_L3_melspec1_audio_model():
 
 
 def construct_cnn_L3_melspec2_kd_audio_model(masks):
+    
+    def get_masked_output(y, masks, layer_name):
+        out = nn.convolution(input=tf.ones_like(y), filter=masks[layer_name], padding='SAME', data_format='NHWC')
+        out = K.cast(K.greater(K.abs(out), 0.0), dtypes.float32)
+        return out
+
     weight_decay = 1e-5
     ####
     # Audio subnetwork
@@ -361,14 +369,17 @@ def construct_cnn_L3_melspec2_kd_audio_model(masks):
     n_filter_a_1 = 64
     filt_size_a_1 = (3, 3)
     pool_size_a_1 = (2, 2)
+
+    #y_a_1 = get_masked_output(y_a, masks, 'conv_1')
+
     y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
                  kernel_initializer='he_normal',
                  name='conv_1',
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
 
-    if 'conv_1' in masks:
-        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_1'], \
-                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+    #y_a = Lambda(lambda x: math_ops.multiply(y_a_1, x), trainable=False)(y_a)
+
+    y_a_2 = get_masked_output(y_a, masks, 'conv_2')
 
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
@@ -377,10 +388,8 @@ def construct_cnn_L3_melspec2_kd_audio_model(masks):
                  name='conv_2',
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
 
-    if 'conv_2' in masks:
-        print(masks['conv_2'].shape)
-        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_2'],\
-                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+    
+    y_a = Lambda(lambda x: math_ops.multiply(y_a_2, y_a), trainable=False)(y_a)
 
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
@@ -390,14 +399,16 @@ def construct_cnn_L3_melspec2_kd_audio_model(masks):
     n_filter_a_2 = 128
     filt_size_a_2 = (3, 3)
     pool_size_a_2 = (2, 2)
+    y_a_3 = get_masked_output(y_a, masks, 'conv_3')
+
     y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
                  kernel_initializer='he_normal',
                  name='conv_3',
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-    if 'conv_3' in masks:
-        print(masks['conv_3'].shape)
-        #y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_3'],\
-        #                                                        padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+
+    y_a = Lambda(lambda x: math_ops.multiply(y_a_3, x), trainable=False)(y_a)
+
+    y_a_4 = get_masked_output(y_a, masks, 'conv_4')
 
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
@@ -405,10 +416,8 @@ def construct_cnn_L3_melspec2_kd_audio_model(masks):
                  kernel_initializer='he_normal',
                  name='conv_4',
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-    if 'conv_4' in masks:
-        print(masks['conv_4'].shape)
-        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_4'],\
-                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+
+    y_a = Lambda(lambda x: math_ops.multiply(y_a_4, x), trainable=False)(y_a)
 
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
@@ -418,23 +427,27 @@ def construct_cnn_L3_melspec2_kd_audio_model(masks):
     n_filter_a_3 = 256
     filt_size_a_3 = (3, 3)
     pool_size_a_3 = (2, 2)
+
+    y_a_5 = get_masked_output(y_a, masks, 'conv_5')
+
     y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
                  kernel_initializer='he_normal',
                  name='conv_5',
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-    if 'conv_5' in masks:
-        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_5'],\
-                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+
+    y_a = Lambda(lambda x: math_ops.multiply(y_a_5, x), trainable=False)(y_a)
 
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
+
+    y_a_6 = get_masked_output(y_a, masks, 'conv_6')
+
     y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
                  kernel_initializer='he_normal',
                  name='conv_6',
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-    if 'conv_6' in masks:
-        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_6'],\
-                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+
+    y_a = Lambda(lambda x: math_ops.multiply(y_a_6, x), trainable=False)(y_a)
 
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
@@ -444,23 +457,26 @@ def construct_cnn_L3_melspec2_kd_audio_model(masks):
     n_filter_a_4 = 512
     filt_size_a_4 = (3, 3)
     pool_size_a_4 = (32, 24)
+
+    y_a_7 = get_masked_output(y_a, masks, 'conv_7')
+
     y_a = Conv2D(n_filter_a_4, filt_size_a_4, padding='same',
                  kernel_initializer='he_normal',
                  name='conv_7',
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-    if 'conv_7' in masks:
-        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_7'],\
-                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+
+    y_a = Lambda(lambda x: math_ops.multiply(y_a_7, x), trainable=False)(y_a)
         
+    y_a_8 = get_masked_output(y_a, masks, 'conv_8')
+
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
     y_a = Conv2D(n_filter_a_4, filt_size_a_4,
                  kernel_initializer='he_normal',
                  name='audio_embedding_layer', padding='same',
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-    if 'conv_8' in masks:
-        y_a = Lambda(lambda x: math_ops.multiply(nn.convolution(input=tf.ones_like(x), filter=masks['conv_8'],\
-                                                                padding='SAME', data_format='NHWC'), x), trainable=False)(y_a)
+    
+    y_a = Lambda(lambda x: math_ops.multiply(y_a_8, x), trainable=False)(y_a)
     
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)

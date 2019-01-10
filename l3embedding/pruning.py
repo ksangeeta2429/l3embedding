@@ -156,19 +156,24 @@ def calculate_threshold(weights, ratio):
 def sparsify_layer(model, sparsity_dict):
     masks = {}
     for layer in model.layers:
-        if ('conv_' in layer.name and sparsity_dict[layer.name]):
+        if 'conv_' in layer.name:
             target_weights = np.empty_like(layer.get_weights())
             weights = layer.get_weights()[0]
-            threshold = calculate_threshold(weights, sparsity_dict[layer.name])
-            mask      = K.cast(K.greater(K.abs(weights), threshold), dtypes.float32)
+
+            if sparsity_dict[layer.name]:
+                threshold = calculate_threshold(weights, sparsity_dict[layer.name])
+                mask      = K.cast(K.greater(K.abs(weights), threshold), dtypes.float32)
+                new_weights = weights * K.eval(mask)
+                target_weights[0] = new_weights
+            
+                target_weights[1] = layer.get_weights()[1]
+                layer.set_weights(target_weights)
+
+            else:
+                mask = K.ones_like(weights)
 
             masks[layer.name] = mask
-            new_weights = weights * K.eval(mask)
-            target_weights[0] = new_weights
             
-            target_weights[1] = layer.get_weights()[1]
-            layer.set_weights(target_weights)
-
     return model, masks
 
 def sparsify_block(model, sparsity_dict):
@@ -224,6 +229,7 @@ def load_audio_model_for_pruning(weight_path, model_type = 'cnn_L3_melspec2'):
             count += 1
             #print (layer.name)
     return m, audio_model
+
 
 def test(model, validation_data_dir, learning_rate=1e-4, validation_epoch_size=1024, validation_batch_size=64, random_state=20180216):
     loss = 'binary_crossentropy'
@@ -451,8 +457,8 @@ def initialize_weights(model, sparse_model, is_L3=True):
 def retrain(l3_model, masks, train_data_dir, validation_data_dir, finetune=False):
     if finetune:
         model = construct_cnn_L3_melspec2_kd(masks)
-        model = initialize_weights(model, l3_model, is_L3=True)  
-        train(model, train_data_dir, validation_data_dir, finetune=finetune)
+        #model = initialize_weights(model, l3_model, is_L3=True)  
+        #train(model, train_data_dir, validation_data_dir, finetune=finetune)
     else:
         audio_model = construct_cnn_L3_melspec2_kd_audio_model(masks) 
         audio_model = initialize_weights(audio_model, l3_model.get_layer('audio_model'), is_L3=False)
