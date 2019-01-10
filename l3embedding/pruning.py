@@ -1,6 +1,9 @@
 import os
 import random
 import csv
+import datetime
+import json
+import pickle
 import numpy as np
 from keras.regularizers import l2
 import tensorflow as tf
@@ -44,6 +47,38 @@ from tensorflow.python.framework import dtypes
 #
 ##########
 
+graph = tf.get_default_graph()
+weight_path = '/home/sk7898/l3embedding/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
+audio_model = load_embedding(weight_path, model_type = 'cnn_L3_melspec2', embedding_type = 'audio', \
+                             pooling_type = 'short', kd_model=False, tgt_num_gpus = 1)
+
+class LossHistory(keras.callbacks.Callback):
+    """
+    Keras callback to record loss history
+    """
+
+    def __init__(self, outfile):
+        super().__init__()
+        self.outfile = outfile
+
+    def on_train_begin(self, logs=None):
+        if logs is None:
+            logs = {}
+        self.loss = []
+        self.val_loss = []
+
+    # def on_batch_end(self, batch, logs={}):
+    def on_epoch_end(self, epoch, logs=None):
+        if logs is None:
+            logs = {}
+        self.loss.append(logs.get('loss'))
+        self.val_loss.append(logs.get('val_loss'))
+
+        loss_dict = {'loss': self.loss, 'val_loss': self.val_loss}
+        with open(self.outfile, 'wb') as fp:
+            pickle.dump(loss_dict, fp)
+
+
 def cycle_shuffle(iterable, shuffle=True):
     lst = list(iterable)
     while True:
@@ -52,26 +87,36 @@ def cycle_shuffle(iterable, shuffle=True):
             random.shuffle(lst)
 
 
-def data_generator(data_dir, batch_size=512, random_state=20180123,
-                   start_batch_idx=None, keys=None):
+
+def data_generator(data_dir, kd_model=False, batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
     random.seed(random_state)
 
     batch = None
     curr_batch_size = 0
     batch_idx = 0
+    file_idx = 0
+    start_label_idx = 0
+    global graph
+    global audio_model
 
     # Limit keys to avoid producing batches with all of the metadata fields
     if not keys:
-        keys = ['audio', 'video', 'label']
+        if kd_model:
+            keys = ['audio']
+        else:
+            keys = ['audio', 'video', 'label']
+
 
     for fname in cycle_shuffle(os.listdir(data_dir)):
         batch_path = os.path.join(data_dir, fname)
+
         blob_start_idx = 0
 
         blob = h5py.File(batch_path, 'r')
         blob_size = len(blob['label'])
 
         while blob_start_idx < blob_size:
+            #embedding_output = None
             blob_end_idx = min(blob_start_idx + batch_size - curr_batch_size, blob_size)
 
             # If we are starting from a particular batch, skip computing all of
@@ -90,29 +135,33 @@ def data_generator(data_dir, batch_size=512, random_state=20180123,
 
             if blob_end_idx == blob_size:
                 blob.close()
-            
-            
+
             if curr_batch_size == batch_size:
                 # If we are starting from a particular batch, skip yielding all
                 # of the prior batches
                 if start_batch_idx is None or batch_idx >= start_batch_idx:
-                    # Preprocess video so samples are in [-1,1]
-                    batch['video'] = 2 * img_as_float(batch['video']).astype('float32') - 1
+                    if not kd_model:
+                        # Preprocess video so samples are in [-1,1]
+                        batch['video'] = 2 * img_as_float(batch['video']).astype('float32') - 1
 
                     # Convert audio to float
                     batch['audio'] = pcm2float(batch['audio'], dtype='float32')
-
+                        
+                    if kd_model:
+                        # Get the embedding layer output from the audio_model and flatten it to be treated as labels for the student audio model
+                        with graph.as_default():
+                            batch['label'] = audio_model.predict(batch['audio'])
+                                                
                     yield batch
 
                 batch_idx += 1
-                
                 curr_batch_size = 0
                 batch = None
 
 
-def single_epoch_data_generator(data_dir, epoch_size, **kwargs):
+def single_epoch_data_generator(data_dir, epoch_size, kd_model, **kwargs):
     while True:
-        data_gen = data_generator(data_dir, **kwargs)
+        data_gen = data_generator(data_dir, kd_model, **kwargs)
         for idx, item in enumerate(data_gen):
             yield item
             # Once we generate all batches for an epoch, restart the generator
@@ -176,6 +225,7 @@ def sparsify_layer(model, sparsity_dict):
             
     return model, masks
 
+
 def sparsify_block(model, sparsity_dict):
     conv_blocks = 4
 
@@ -212,6 +262,118 @@ def sparsify_block(model, sparsity_dict):
             #print(new_weights)
                         
     return model
+
+
+def load_student_audio_model_withFFT(include_layers, num_filters = [64, 128, 256, 512]):
+    weight_decay = 1e-5
+    ####
+    # Audio subnetwork
+    ####
+    n_dft = 2048
+    #n_win = 480
+    #n_hop = n_win//2
+    n_mels = 256
+    n_hop = 242
+    asr = 48000
+    audio_window_dur = 1
+    # INPUT
+    x_a = Input(shape=(1, asr * audio_window_dur), dtype='float32')
+
+    # MELSPECTROGRAM PREPROCESSING
+    # 128 x 199 x 1
+    y_a = Melspectrogram(n_dft=n_dft, n_hop=n_hop, n_mels=n_mels,
+                      sr=asr, power_melgram=1.0, htk=True, # n_win=n_win,
+                      return_decibel_melgram=True, padding='same')(x_a)
+    y_a = BatchNormalization()(y_a)
+
+    # CONV BLOCK 1
+    n_filter_a_1 = num_filters[0]
+    filt_size_a_1 = (3, 3)
+    pool_size_a_1 = (2, 2)
+    
+    if include_layers[0]:
+        y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
+                     kernel_initializer='he_normal',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+
+    if include_layers[1]:
+        y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
+                     kernel_initializer='he_normal',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+        y_a = MaxPooling2D(pool_size=pool_size_a_1, strides=2)(y_a)
+
+    # CONV BLOCK 2
+    n_filter_a_2 = num_filters[1]
+    filt_size_a_2 = (3, 3)
+    pool_size_a_2 = (2, 2)
+
+    if include_layers[2]:
+        y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
+                     kernel_initializer='he_normal',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+
+    if include_layers[3]:
+        y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
+                     kernel_initializer='he_normal',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+        y_a = MaxPooling2D(pool_size=pool_size_a_2, strides=2)(y_a)
+
+    # CONV BLOCK 3
+    n_filter_a_3 = num_filters[2]
+    filt_size_a_3 = (3, 3)
+    pool_size_a_3 = (2, 2)
+
+    if include_layers[4]:
+        y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
+                     kernel_initializer='he_normal',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+    
+    if include_layers[5]:
+        y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
+                     kernel_initializer='he_normal',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+        y_a = MaxPooling2D(pool_size=pool_size_a_3, strides=2)(y_a)
+
+    # CONV BLOCK 4
+    n_filter_a_4 = num_filters[3]
+    filt_size_a_4 = (3, 3)
+    pool_size_a_4 = (32, 24)
+    if include_layers[6]:
+        y_a = Conv2D(n_filter_a_4, filt_size_a_4, padding='same',
+                     kernel_initializer='he_normal',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+    
+    if include_layers[7]:
+        y_a = Conv2D(n_filter_a_4, filt_size_a_4,
+                     kernel_initializer='he_normal',
+                     name='student_embedding_layer', padding='same',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+        y_a = MaxPooling2D(pool_size=pool_size_a_4)(y_a)
+
+    y_a = Flatten()(y_a)
+
+    m = Model(inputs=x_a, outputs=y_a)
+    m.name = 'student_model'
+
+    return m, x_a, y_a
+
 
 def load_audio_model_for_pruning(weight_path, model_type = 'cnn_L3_melspec2'):
     
@@ -252,6 +414,7 @@ def test(model, validation_data_dir, learning_rate=1e-4, validation_epoch_size=1
     
     return score
 
+
 def get_restart_info(history_path):
     last = None
     with open(history_path, 'r') as f:
@@ -262,16 +425,19 @@ def get_restart_info(history_path):
     return int(last['epoch']), float(last['val_acc']), float(last['val_loss'])
 
 
-def train(model_to_retrain, train_data_dir, validation_data_dir, finetune=False, output_dir = None, \
-          num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
+def train(train_data_dir, validation_data_dir, model_to_train = None, include_layers = [1, 1, 1, 1, 1, 1, 1, 1], \
+          num_filters = [64, 128, 256, 512], pruning=True, finetune=False, output_dir = None, num_epochs=300, \
+          train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
           model_type = 'cnn_L3_melspec2', random_state=20180216, learning_rate=0.001, verbose=True, \
           checkpoint_interval=10, gpus=1, continue_model_dir=None):
 
     if output_dir is None:
-        if finetune:
+        if pruning and finetune:
             output_dir = '/scratch/sk7898/pruning_finetune_output'
-        else:
+        elif pruning and not finetune:
             output_dir = '/scratch/sk7898/pruning_kd_output'
+        else:
+            output_dir = '/scratch/sk7898/reduced_kd_output'
 
     # Form model ID
     data_subset_name = os.path.basename(train_data_dir)
@@ -307,7 +473,12 @@ def train(model_to_retrain, train_data_dir, validation_data_dir, finetune=False,
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
         model = load_model(latest_model_path)
     else:
-        model = model_to_retrain
+        if pruning:
+            model = model_to_train
+        else:
+            model, x_a, y_a = load_student_audio_model_withFFT(include_layers = include_layers,\
+                                                               num_filters = num_filters)
+    
 
     param_dict['model_dir'] = model_dir
     train_config_path = os.path.join(model_dir, 'config.json')
@@ -324,10 +495,12 @@ def train(model_to_retrain, train_data_dir, validation_data_dir, finetune=False,
                       metrics=['mae'])
 
     # Save the model
+    '''
     model_json_path = os.path.join(model_dir, 'model.json')
     model_json = model.to_json()
     with open(model_json_path, 'w') as fd:
         json.dump(model_json, fd, indent=2)
+    '''
 
     latest_weight_path = os.path.join(model_dir, 'model_latest.h5')
     best_valid_loss_weight_path = os.path.join(model_dir, 'model_best_valid_loss.h5')
@@ -445,23 +618,23 @@ def train(model_to_retrain, train_data_dir, validation_data_dir, finetune=False,
     return history
 
 
-def initialize_weights(model, sparse_model, is_L3=True):
+def initialize_weights(masked_model, sparse_model, is_L3=True):
     if is_L3:
-        audio_model = model.get_layer('audio_model')
-
-        for layer in audio_model.layers:
-            print(layer.name)
-        
+        masked_model.set_weights(sparse_model.get_weights())
+    else:
+        masked_model.set_weights(sparse_model.get_layer('audio_model').get_weights())
+    
+    return masked_model
 
 
 def retrain(l3_model, masks, train_data_dir, validation_data_dir, finetune=False):
     if finetune:
-        model = construct_cnn_L3_melspec2_kd(masks)
-        #model = initialize_weights(model, l3_model, is_L3=True)  
-        #train(model, train_data_dir, validation_data_dir, finetune=finetune)
+        l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_kd(masks)
+        model = initialize_weights(l3_model_kd, l3_model, is_L3=True)  
+        train(model, train_data_dir, validation_data_dir, finetune=finetune)
     else:
-        audio_model = construct_cnn_L3_melspec2_kd_audio_model(masks) 
-        audio_model = initialize_weights(audio_model, l3_model.get_layer('audio_model'), is_L3=False)
+        audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model(masks)
+        audio_model = initialize_weights(audio_model, l3_model, is_L3=False)
         train(audio_model, validation_data_dir, finetune=finetune)
 
 
@@ -480,7 +653,7 @@ def printList(sparsity_list):
 
 
 def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model', blockwise=False,\
-            layerwise=False, per_layer=False, test_model=False, save_model=False, retrain_model=False):
+            layerwise=False, per_layer=False, test_model=False, save_model=False, retrain_model=False, finetune = True):
     
     conv_blocks = 4
     
@@ -489,16 +662,10 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     if per_layer:
         sparsity_layers = [0, 0, 0, 0, 0, 0, 0, 0]
     else:
-        sparsity_layers = [[0, 30., 40., 50., 30., 50., 50., 60.]]
-        ''',\
-                           [0, 40., 50., 60., 40., 60., 60., 70.],\
-                           [0, 40., 50., 60., 40., 70., 70., 80.]]
-
-        
-                           [0, 60., 60., 70., 50., 70., 70., 80.],\
+        sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.],\
                            [0, 70., 70., 75., 60., 80., 80., 85.],\
                            [0, 80., 80., 85., 40., 85., 85., 95.]]
-        '''
+                                                     
     if(blockwise and zero_check(sparsity_blks)):
         print("Block-wise Pruning")
         print("*********************************************************************")
@@ -553,11 +720,18 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 sparsified_model.save(pruned_model_path)
 
             if retrain_model:
-                retrain(model, masks, train_data_dir, validation_data_dir, finetune=True)
+                retrain(model, masks, train_data_dir, validation_data_dir, finetune = finetune)
 
 
-weight_path = '/home/sk7898/l3embedding/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
+pruning = False
+
 train_data_dir = '/beegfs/work/AudioSetSamples/music_train'
 validation_data_dir = '/beegfs/work/AudioSetSamples/music_valid'
 
-pruning(weight_path, train_data_dir, validation_data_dir, blockwise=False, layerwise=True, per_layer=False, retrain_model=True)
+if pruning:
+    pruning(weight_path, train_data_dir, validation_data_dir, blockwise=False, layerwise=True, per_layer=False, retrain_model=True, finetune=True)
+else:
+    include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
+    num_filters = [64, 128, 256, 128]
+    train(train_data_dir, validation_data_dir, include_layers = include_layers, \
+          num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
