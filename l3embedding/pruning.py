@@ -517,7 +517,7 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
           num_filters = [64, 128, 256, 512], pruning=True, finetune=False, output_dir = None, num_epochs=300,
           train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,
           model_type = 'cnn_L3_melspec2', log_path=None, disable_logging=False, random_state=20180216,
-          learning_rate=0.001, verbose=True, checkpoint_interval=10, gpus=1, sparsity_values=[], continue_model_dir=None,
+          learning_rate=0.001, verbose=True, checkpoint_interval=10, gpus=1, sparsity=[], continue_model_dir=None,
           gsheet_id=None, google_dev_app_name=None):
 
     init_console_logger(LOGGER, verbose=verbose)
@@ -556,7 +556,7 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
         'output_dir': output_dir,
         'include_layers': include_layers,
         'num_filters': num_filters,
-        'sparsity': sparsity_values,
+        'sparsity': sparsity,
         'pruning': pruning,
         'finetune': finetune,
         'knowledge_distilled': kd_flag,
@@ -806,7 +806,7 @@ def printList(sparsity_list):
 
 
 def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model',
-            blockwise=False, layerwise=True, per_layer=False, test_model=False, save_model=False,
+            blockwise=False, layerwise=True, per_layer=False, sparsity_layers=[], test_model=False, save_model=False,
             retrain_model=False, finetune = True, **kwargs):
     
     conv_blocks = 4
@@ -816,9 +816,12 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     if per_layer:
         sparsity_layers = [0, 0, 0, 0, 0, 0, 0, 0]
     else:
-        sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.],\
-                           [0, 70., 70., 75., 60., 80., 80., 85.],\
-                           [0, 80., 80., 85., 40., 85., 85., 95.]]
+        if sparsity_layers==[]:
+            sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.],
+                               [0, 70., 70., 75., 60., 80., 80., 85.],
+                               [0, 80., 80., 85., 40., 85., 85., 95.]]
+        else:
+            sparsity_layers = [sparsity_layers]
                                                      
     if(blockwise and zero_check(sparsity_blks)):
         LOGGER.info("Block-wise Pruning")
@@ -878,7 +881,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                     LOGGER.info('Retraining model with fine tuning')
                 else:
                     LOGGER.info('Retraining model with knowledge distillation')
-                retrain(model, masks, train_data_dir, validation_data_dir, sparsity_values=sparsity_values,
+                retrain(model, masks, train_data_dir, validation_data_dir, sparsity=sparsity,
                         finetune = finetune, **kwargs)
 
 

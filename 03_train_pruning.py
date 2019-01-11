@@ -134,6 +134,15 @@ def parse_arguments():
                         default=False,
                         help='Disables logging if flag enabled')
 
+    parser.add_argument('-spl',
+                        '--sparsity-layers',
+                        dest='sparsity_layers',
+                        action='store',
+                        default=[],
+                        type=float,
+                        nargs='+',
+                        help='<Required> Set flag')
+
     parser.add_argument('-ret',
                         '--retrain',
                         dest='retrain_model',
