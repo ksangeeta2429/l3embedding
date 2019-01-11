@@ -821,8 +821,8 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                            [0, 80., 80., 85., 40., 85., 85., 95.]]
                                                      
     if(blockwise and zero_check(sparsity_blks)):
-        print("Block-wise Pruning")
-        print("*********************************************************************")
+        LOGGER.info("Block-wise Pruning")
+        LOGGER.info("*********************************************************************")
     
         for sparsity in sparsity_values:
             for blockid in range(conv_blocks):
@@ -833,13 +833,13 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 model.get_layer('audio_model').set_weights(sparsified_model.get_weights()) 
             
                 score = test(model, validation_data_dir)
-                print('Conv Block Pruned: {0} Sparsity Value: {1}'.format(blockid+1, sparsity))
-                print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))     
-                print('---------------------------------------------------------------')
+                LOGGER.info('Conv Block Pruned: {0} Sparsity Value: {1}'.format(blockid+1, sparsity))
+                LOGGER.info('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
+                LOGGER.info('---------------------------------------------------------------')
     
     if(layerwise and per_layer):
-        print("Layer-wise Pruning")
-        print("**********************************************************************")
+        LOGGER.info("Layer-wise Pruning")
+        LOGGER.info("**********************************************************************")
         for sparsity in sparsity_values:
             for layerid in range(conv_blocks*2):
                 model, audio_model = load_audio_model_for_pruning(weight_path)
@@ -849,9 +849,9 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 model.get_layer('audio_model').set_weights(sparsified_model.get_weights())
 
                 score = test(model, validation_data_dir)
-                print('Conv Layer Pruned: {0} Sparsity Value: {1}'.format(layerid+1, sparsity))
-                print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
-                print('----------------------------------------------------------------')
+                LOGGER.info('Conv Layer Pruned: {0} Sparsity Value: {1}'.format(layerid+1, sparsity))
+                LOGGER.info('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
+                LOGGER.info('----------------------------------------------------------------')
     
     if(layerwise and not per_layer):
         print("Specific Pruning Values")
@@ -865,8 +865,8 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
             if test_model:
                 score = test(model, validation_data_dir)
                 printList(sparsity)
-                print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
-                print('----------------------------------------------------------------')
+                LOGGER.info('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
+                LOGGER.info('----------------------------------------------------------------')
             
             if save_model:
                 pruned_model_name = 'pruned_audio_'+str(score[1])+'.h5'
@@ -874,6 +874,10 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 sparsified_model.save(pruned_model_path)
 
             if retrain_model:
+                if(finetune):
+                    LOGGER.info('Retraining model with fine tuning')
+                else:
+                    LOGGER.info('Retraining model with knowledge distillation')
                 retrain(model, masks, train_data_dir, validation_data_dir, sparsity_values=sparsity_values,
                         finetune = finetune, **kwargs)
 

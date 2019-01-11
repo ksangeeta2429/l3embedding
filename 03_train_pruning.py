@@ -136,10 +136,17 @@ def parse_arguments():
 
     parser.add_argument('-ret',
                         '--retrain',
-                        dest='finetune',
+                        dest='retrain_model',
                         action='store_true',
                         default=False,
                         help='Retrain model? (Default if yes: fine tune)')
+
+    parser.add_argument('-kd',
+                        '--knowledge-distillation',
+                        dest='finetune',
+                        action='store_false',
+                        default=True,
+                        help='Knowledge distillation')
 
     parser.add_argument('weight_path',
                         action='store',
