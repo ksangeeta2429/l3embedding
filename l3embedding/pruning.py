@@ -527,15 +527,21 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
 
     kd_flag = False
 
-    if output_dir is None:
-        if pruning and finetune:
+
+    if pruning and finetune:
+        if output_dir is None:
             output_dir = '/scratch/sk7898/pruning_finetune_output'
-        elif pruning and not finetune:
+        model_attribute = 'pruning_finetune'
+    elif pruning and not finetune:
+        if output_dir is None:
             output_dir = '/scratch/sk7898/pruning_kd_output'
-            kd_flag = True
-        else:
+        kd_flag = True
+        model_attribute = 'pruning_kd'
+    else:
+        if output_dir is None:
             output_dir = '/scratch/sk7898/reduced_kd_output'
-            kd_flag = True
+        kd_flag = True
+        model_attribute = 'reduced_kd'
 
     # Form model ID
     data_subset_name = os.path.basename(train_data_dir)
@@ -578,7 +584,7 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
     if continue_model_dir:
         model_dir = continue_model_dir
     else:
-        model_dir = os.path.join(output_dir, 'embedding', model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+        model_dir = os.path.join(output_dir, 'embedding', model_attribute, model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
 
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir)
