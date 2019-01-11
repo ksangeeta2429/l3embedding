@@ -59,7 +59,7 @@ LOGGER.setLevel(logging.DEBUG)
 ##########
 
 graph = tf.get_default_graph()
-weight_path = '/home/sk7898/l3embedding/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
+weight_path = 'models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
 audio_model = load_embedding(weight_path, model_type = 'cnn_L3_melspec2', embedding_type = 'audio', \
                              pooling_type = 'short', kd_model=False, tgt_num_gpus = 1)
 
@@ -517,7 +517,7 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
           num_filters = [64, 128, 256, 512], pruning=True, finetune=False, output_dir = None, num_epochs=300,
           train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,
           model_type = 'cnn_L3_melspec2', log_path=None, disable_logging=False, random_state=20180216,
-          learning_rate=0.001, verbose=True, checkpoint_interval=10, gpus=1, continue_model_dir=None,
+          learning_rate=0.001, verbose=True, checkpoint_interval=10, gpus=1, sparsity_values=[], continue_model_dir=None,
           gsheet_id=None, google_dev_app_name=None):
 
     init_console_logger(LOGGER, verbose=verbose)
@@ -556,6 +556,7 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
         'output_dir': output_dir,
         'include_layers': include_layers,
         'num_filters': num_filters,
+        'sparsity': sparsity_values,
         'pruning': pruning,
         'finetune': finetune,
         'knowledge_distilled': kd_flag,
@@ -779,15 +780,15 @@ def initialize_weights(masked_model, sparse_model, is_L3=True):
     return masked_model
 
 
-def retrain(l3_model, masks, train_data_dir, validation_data_dir, finetune=False):
+def retrain(l3_model, masks, train_data_dir, validation_data_dir, finetune=True, **kwargs):
     if finetune:
         l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_kd(masks)
         model = initialize_weights(l3_model_kd, l3_model, is_L3=True)  
-        train(train_data_dir, validation_data_dir, model, pruning=True, finetune=finetune)
+        train(train_data_dir, validation_data_dir, model, pruning=True, finetune=finetune, **kwargs)
     else:
         audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model(masks)
         audio_model = initialize_weights(audio_model, l3_model, is_L3=False)
-        train(audio_model, validation_data_dir, audio_model, pruning=True, finetune=finetune)
+        train(train_data_dir, validation_data_dir, audio_model, pruning=True, finetune=finetune, **kwargs)
 
 
 def zero_check(sparsity_list):
@@ -804,8 +805,9 @@ def printList(sparsity_list):
     print(printStr)
 
 
-def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model', blockwise=False,\
-            layerwise=True, per_layer=False, test_model=True, save_model=False, retrain_model=False, finetune = True):
+def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model',
+            blockwise=False, layerwise=True, per_layer=False, test_model=False, save_model=False,
+            retrain_model=False, finetune = True, **kwargs):
     
     conv_blocks = 4
     
@@ -872,17 +874,23 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 sparsified_model.save(pruned_model_path)
 
             if retrain_model:
-                retrain(model, masks, train_data_dir, validation_data_dir, finetune = finetune)
+                retrain(model, masks, train_data_dir, validation_data_dir, sparsity_values=sparsity_values,
+                        finetune = finetune, **kwargs)
 
 
-is_pruning = True
-train_data_dir = '/beegfs/work/AudioSetSamples/music_train'
-validation_data_dir = '/beegfs/work/AudioSetSamples/music_valid'
+def main():
+    is_pruning = True
+    train_data_dir = '/beegfs/work/AudioSetSamples/music_train'
+    validation_data_dir = '/beegfs/work/AudioSetSamples/music_valid'
 
-if is_pruning:
-    pruning(weight_path, train_data_dir, validation_data_dir, save_model=True, retrain_model=False, finetune=False)
-else:
-    include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
-    num_filters = [64, 128, 256, 128]
-    train(train_data_dir, validation_data_dir, include_layers = include_layers, \
-          num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
+    if is_pruning:
+        pruning(weight_path, train_data_dir, validation_data_dir, save_model=True,
+                test_model=True, retrain_model=False, finetune=False)
+    else:
+        include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
+        num_filters = [64, 128, 256, 128]
+        train(train_data_dir, validation_data_dir, include_layers = include_layers,
+              num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
+
+if __name__=='__main__':
+    main()

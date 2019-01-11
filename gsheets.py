@@ -19,6 +19,7 @@ PRUNED_EMBEDDING_FIELD_NAMES = [
     'model_type',
     'include_layers',
     'num_filters',
+    'sparsity',
     'pruning',
     'finetune',
     'knowledge_distilled',
