@@ -878,17 +878,10 @@ def get_sparsity_filters(conv_layers, conv_filters, sparsity_filters):
     return sparsity_dict, new_num_filters
 
 
-<<<<<<< HEAD
+
 def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model', blockwise=False,\
-            layerwise=False, filterwise=False, per_layer=False, test_model=True, save_model=False, retrain_model=False, finetune=True):
-||||||| merged common ancestors
-def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model', blockwise=False,\
-            layerwise=True, per_layer=False, test_model=True, save_model=False, retrain_model=False, finetune = True):
-=======
-def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model',
-            blockwise=False, layerwise=True, per_layer=False, sparsity=[], test_model=False, save_model=False,
-            retrain_model=False, finetune = True, **kwargs):
->>>>>>> 32a7674bf14e99454439aa0a8ec8079416fd025e
+            layerwise=True, per_layer=False, filterwise=False, sparsity=[],
+            test_model=False, save_model=False, retrain_model=False, finetune = True, **kwargs):
     
     conv_blocks = 4
     
@@ -896,11 +889,14 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     sparsity_blks = [0, 0, 0, 0]
     if per_layer:
         sparsity_layers = [0, 0, 0, 0, 0, 0, 0, 0]
-<<<<<<< HEAD
     elif not per_layer and not filterwise:
-        sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.],\
-                           [0, 70., 70., 75., 60., 80., 80., 85.],\
-                           [0, 80., 80., 85., 40., 85., 85., 95.]]
+        if sparsity==[]:
+            sparsity_layers =   [[0, 60., 60., 70., 50., 70., 70., 80.],\
+                                [0, 70., 70., 75., 60., 80., 80., 85.],\
+                                [0, 80., 80., 85., 40., 85., 85., 95.]]
+        else:
+            sparsity_layers = [sparsity]
+
     elif filterwise:
         #Use values like 0.5, 0.625, 0.75, 0.875, 0.9375
         sparsity_filters = [0, 50., 50., 50., 50., 50., 50., 50.]
@@ -916,24 +912,8 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
         
         new_model, x_a, y_a = load_student_audio_model_withFFT(include_layers = [1, 1, 1, 1, 1, 1, 1, 1],\
                                                      num_filters = num_filters)
-        reduced_model = drop_filters(audio_model, new_model, filter_sparsity) 
-                                  
-||||||| merged common ancestors
-    else:
-        sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.],\
-                           [0, 70., 70., 75., 60., 80., 80., 85.],\
-                           [0, 80., 80., 85., 40., 85., 85., 95.]]
-                                                     
-=======
-    else:
-        if sparsity==[]:
-            sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.],
-                               [0, 70., 70., 75., 60., 80., 80., 85.],
-                               [0, 80., 80., 85., 40., 85., 85., 95.]]
-        else:
-            sparsity_layers = [sparsity]
-                                                     
->>>>>>> 32a7674bf14e99454439aa0a8ec8079416fd025e
+        reduced_model = drop_filters(audio_model, new_model, filter_sparsity)
+
     if(blockwise and zero_check(sparsity_blks)):
         LOGGER.info("Block-wise Pruning")
         LOGGER.info("*********************************************************************")
@@ -989,21 +969,12 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 sparsified_model.save(pruned_model_path)
 
             if retrain_model:
-<<<<<<< HEAD
-                retrain(model, masks, train_data_dir, validation_data_dir, finetune = finetune)
-    
-||||||| merged common ancestors
-                retrain(model, masks, train_data_dir, validation_data_dir, finetune = finetune)
-
-=======
                 if(finetune):
                     LOGGER.info('Retraining model with fine tuning')
                 else:
                     LOGGER.info('Retraining model with knowledge distillation')
                 retrain(model, masks, train_data_dir, validation_data_dir, output_dir, sparsity=sparsity,
                         finetune = finetune, **kwargs)
-
->>>>>>> 32a7674bf14e99454439aa0a8ec8079416fd025e
 
 def main():
     is_pruning = True
@@ -1012,30 +983,13 @@ def main():
 
     if is_pruning:
         pruning(weight_path, train_data_dir, validation_data_dir, save_model=True,
-                test_model=True, retrain_model=False, finetune=False)
+                test_model=True, filterwise=True, retrain_model=False, finetune=False)
     else:
         include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
         num_filters = [64, 128, 256, 128]
         train(train_data_dir, validation_data_dir, include_layers = include_layers,
               num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
 
-<<<<<<< HEAD
-if is_pruning:
-    pruning(weight_path, train_data_dir, validation_data_dir, filterwise=True, save_model=True, retrain_model=False, finetune=False)
-else:
-    include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
-    num_filters = [64, 128, 256, 128]
-    train(train_data_dir, validation_data_dir, include_layers = include_layers, \
-          num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
-||||||| merged common ancestors
-if is_pruning:
-    pruning(weight_path, train_data_dir, validation_data_dir, save_model=True, retrain_model=False, finetune=False)
-else:
-    include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
-    num_filters = [64, 128, 256, 128]
-    train(train_data_dir, validation_data_dir, include_layers = include_layers, \
-          num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
-=======
+
 if __name__=='__main__':
     main()
->>>>>>> 32a7674bf14e99454439aa0a8ec8079416fd025e
