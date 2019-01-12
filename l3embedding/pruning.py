@@ -780,15 +780,17 @@ def initialize_weights(masked_model, sparse_model, is_L3=True):
     return masked_model
 
 
-def retrain(l3_model, masks, train_data_dir, validation_data_dir, finetune=True, **kwargs):
+def retrain(l3_model, masks, train_data_dir, validation_data_dir, output_dir, finetune=True, **kwargs):
     if finetune:
         l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_kd(masks)
         model = initialize_weights(l3_model_kd, l3_model, is_L3=True)  
-        train(train_data_dir, validation_data_dir, model, pruning=True, finetune=finetune, **kwargs)
+        train(train_data_dir, validation_data_dir, model,
+              output_dir=output_dir, pruning=True, finetune=finetune, **kwargs)
     else:
         audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model(masks)
         audio_model = initialize_weights(audio_model, l3_model, is_L3=False)
-        train(train_data_dir, validation_data_dir, audio_model, pruning=True, finetune=finetune, **kwargs)
+        train(train_data_dir, validation_data_dir, audio_model,
+              output_dir=output_dir, pruning=True, finetune=finetune, **kwargs)
 
 
 def zero_check(sparsity_list):
@@ -882,7 +884,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                     LOGGER.info('Retraining model with fine tuning')
                 else:
                     LOGGER.info('Retraining model with knowledge distillation')
-                retrain(model, masks, train_data_dir, validation_data_dir, sparsity=sparsity,
+                retrain(model, masks, train_data_dir, validation_data_dir, output_dir, sparsity=sparsity,
                         finetune = finetune, **kwargs)
 
 
