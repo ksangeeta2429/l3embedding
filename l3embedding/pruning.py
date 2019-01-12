@@ -34,13 +34,11 @@ LOGGER.setLevel(logging.DEBUG)
 
 
 ##########
-# Pruning Version 1 :
-# Step 1: Prune without fine-tuning [with different sparsity levels] and the threshold values are decided by sparsity
-#         a) Same (Block): Prune each with same sparsity value
-#         b) Variable (Block): Prune in three fashion: 1) less more more more 2) less more more less 3) monotonically increasing
-#         c) Layer wise: with information from 1b
+# Pruning Version 1:
+# Step 1: Prune each layer with different aprsity levels to decide the sensitivity of each 
+#         Prune whole model after deciding the sensitivity of each layer and test the performance
 # Step 2: Fine-tune the whole model at a go
-# Step 3: Fine-tune the model CONV block wise
+# Step 3: Use knowledge distillation setting to retrain the pruned model. This does not take into account the AVC problem.
 
 ##########
 # Step 1
@@ -53,9 +51,18 @@ LOGGER.setLevel(logging.DEBUG)
 ##########
 
 ##########
-# Pruning Version 2 : Prune whole feature-maps
+# Pruning Version 2: Iterative pruning
+# Prune and fine-tune each layer at a time
+##########
+
+##########
+# Pruning Version 3: Prune whole feature-maps
 # Pseudo-code
-#
+# Step 1: Get the magnitude of each filter
+# Step 2: Experiment with different sparsity values and drop the resulting insignificant filters (with magnitude lesser than the threshold)
+# Step 3: Drop the channels corresponding to the dropped filters in the layer's output
+# Step 4: Form the new architecture according to the new number of filters
+# Step 5: Freeze the video model and fine-tune the audio and the merged Dense layers
 ##########
 
 graph = tf.get_default_graph()
@@ -352,7 +359,7 @@ def sparsify_block(model, sparsity_dict):
     return model
 
 
-def load_student_audio_model_withFFT(include_layers, num_filters = [64, 128, 256, 512]):
+def load_student_audio_model_withFFT(include_layers, num_filters = [64, 64, 128, 128, 256, 256, 512, 512]):
     weight_decay = 1e-5
     ####
     # Audio subnetwork
@@ -375,80 +382,83 @@ def load_student_audio_model_withFFT(include_layers, num_filters = [64, 128, 256
     y_a = BatchNormalization()(y_a)
 
     # CONV BLOCK 1
-    n_filter_a_1 = num_filters[0]
     filt_size_a_1 = (3, 3)
     pool_size_a_1 = (2, 2)
     
     if include_layers[0]:
-        y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
+        y_a = Conv2D(num_filters[0], filt_size_a_1, padding='same',
                      kernel_initializer='he_normal',
+                     name='conv_1',
                      kernel_regularizer=regularizers.l2(weight_decay))(y_a)
         y_a = BatchNormalization()(y_a)
         y_a = Activation('relu')(y_a)
 
     if include_layers[1]:
-        y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
+        y_a = Conv2D(num_filters[1], filt_size_a_1, padding='same',
                      kernel_initializer='he_normal',
+                     name='conv_2',
                      kernel_regularizer=regularizers.l2(weight_decay))(y_a)
         y_a = BatchNormalization()(y_a)
         y_a = Activation('relu')(y_a)
         y_a = MaxPooling2D(pool_size=pool_size_a_1, strides=2)(y_a)
 
     # CONV BLOCK 2
-    n_filter_a_2 = num_filters[1]
     filt_size_a_2 = (3, 3)
     pool_size_a_2 = (2, 2)
 
     if include_layers[2]:
-        y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
+        y_a = Conv2D(num_filters[2], filt_size_a_2, padding='same',
                      kernel_initializer='he_normal',
+                     name='conv_3',
                      kernel_regularizer=regularizers.l2(weight_decay))(y_a)
         y_a = BatchNormalization()(y_a)
         y_a = Activation('relu')(y_a)
 
     if include_layers[3]:
-        y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
+        y_a = Conv2D(num_filters[3], filt_size_a_2, padding='same',
                      kernel_initializer='he_normal',
+                     name='conv_4',
                      kernel_regularizer=regularizers.l2(weight_decay))(y_a)
         y_a = BatchNormalization()(y_a)
         y_a = Activation('relu')(y_a)
         y_a = MaxPooling2D(pool_size=pool_size_a_2, strides=2)(y_a)
 
     # CONV BLOCK 3
-    n_filter_a_3 = num_filters[2]
     filt_size_a_3 = (3, 3)
     pool_size_a_3 = (2, 2)
 
     if include_layers[4]:
-        y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
+        y_a = Conv2D(num_filters[4], filt_size_a_3, padding='same',
                      kernel_initializer='he_normal',
+                     name='conv_5',
                      kernel_regularizer=regularizers.l2(weight_decay))(y_a)
         y_a = BatchNormalization()(y_a)
         y_a = Activation('relu')(y_a)
     
     if include_layers[5]:
-        y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
+        y_a = Conv2D(num_filters[5], filt_size_a_3, padding='same',
                      kernel_initializer='he_normal',
+                     name='conv_6',
                      kernel_regularizer=regularizers.l2(weight_decay))(y_a)
         y_a = BatchNormalization()(y_a)
         y_a = Activation('relu')(y_a)
         y_a = MaxPooling2D(pool_size=pool_size_a_3, strides=2)(y_a)
 
     # CONV BLOCK 4
-    n_filter_a_4 = num_filters[3]
     filt_size_a_4 = (3, 3)
     pool_size_a_4 = (32, 24)
     if include_layers[6]:
-        y_a = Conv2D(n_filter_a_4, filt_size_a_4, padding='same',
+        y_a = Conv2D(num_filters[6], filt_size_a_4, padding='same',
                      kernel_initializer='he_normal',
+                     name='conv_7',
                      kernel_regularizer=regularizers.l2(weight_decay))(y_a)
         y_a = BatchNormalization()(y_a)
         y_a = Activation('relu')(y_a)
     
     if include_layers[7]:
-        y_a = Conv2D(n_filter_a_4, filt_size_a_4,
+        y_a = Conv2D(num_filters[7], filt_size_a_4,
                      kernel_initializer='he_normal',
-                     name='student_embedding_layer', padding='same',
+                     name='conv_8', padding='same',
                      kernel_regularizer=regularizers.l2(weight_decay))(y_a)
     
         y_a = BatchNormalization()(y_a)
@@ -795,21 +805,90 @@ def retrain(l3_model, masks, train_data_dir, validation_data_dir, output_dir, fi
 
 def zero_check(sparsity_list):
     for val in sparsity_list:
-        if(val):
+        if val:
             return False
     return True
 
 
-def printList(sparsity_list):
-    printStr = "Sparsity Values: "
-    for val in sparsity_list:
+def printList(plist):
+    printStr = "List Values: "
+    for val in plist:
         printStr += str(val) + ", "
     print(printStr)
 
+def printDict(pDict):
+    printStr = "Dictionary Key and Values: "
+    for key in pDict:
+        printStr += str(key)+ ": "+ str(pDict[key])+ ", "
+    print(printStr)
 
+def drop_filters(model, new_model, sparsity_dict):
+    weights_dict = {}
+    for i, layer in enumerate(model.layers):
+        if layer.name in sparsity_dict:
+            if sparsity_dict[layer.name]:
+                filters_mag = []
+                new_weights = np.empty_like(new_model.get_layer(layer.name).get_weights())
+
+                if layer.name in weights_dict:
+                    weights = weights_dict[layer.name]
+                else:
+                    weights = layer.get_weights()[0]
+            
+                biases = layer.get_weights()[1]
+            
+                for channel in range(weights.shape[3]):
+                    filters_mag.append(np.sum(np.abs(weights[:, :, :, channel]))) 
+            
+                threshold = calculate_threshold(filters_mag, sparsity_dict[layer.name])    
+                mask      = K.cast(K.greater(filters_mag, threshold), dtypes.float32)
+            
+                #print(K.eval(threshold))
+                non_dropped_ch = K.eval(tf.where(mask > 0))
+            
+                new_weights[0] = K.eval(tf.gather(weights, [y for x in non_dropped_ch for y in x], axis = -1))
+                new_weights[1] = K.eval(tf.gather(biases, [y for x in non_dropped_ch for y in x], axis = 0))
+
+                next_conv = 'conv_'+ str(int(layer.name[5])+1)
+                if not 'conv_8' in layer.name: 
+                    weights_dict[next_conv] = K.eval(tf.gather(model.get_layer(next_conv).get_weights()[0], \
+                                                               [y for x in non_dropped_ch for y in x], axis = 2))
+                
+                new_model.get_layer(layer.name).set_weights(new_weights)
+                #print(new_weights[0].shape)
+            
+            else:
+                new_model.get_layer(layer.name).set_weights(layer.get_weights())
+                #print(layer.get_weights()[0].shape)
+
+    return new_model
+            
+
+def get_sparsity_filters(conv_layers, conv_filters, sparsity_filters):
+    sparsity_dict = {}
+    new_num_filters = []
+    for i, layer in enumerate(conv_layers):
+        if sparsity_filters[i]:
+            new_num_filters.append(int((100. - sparsity_filters[i])/100 * conv_filters[i]))
+        else:
+            new_num_filters.append(conv_filters[i])
+
+        sparsity_dict[layer] = sparsity_filters[i]
+
+    return sparsity_dict, new_num_filters
+
+
+<<<<<<< HEAD
+def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model', blockwise=False,\
+            layerwise=False, filterwise=False, per_layer=False, test_model=True, save_model=False, retrain_model=False, finetune=True):
+||||||| merged common ancestors
+def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model', blockwise=False,\
+            layerwise=True, per_layer=False, test_model=True, save_model=False, retrain_model=False, finetune = True):
+=======
 def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model',
             blockwise=False, layerwise=True, per_layer=False, sparsity=[], test_model=False, save_model=False,
             retrain_model=False, finetune = True, **kwargs):
+>>>>>>> 32a7674bf14e99454439aa0a8ec8079416fd025e
     
     conv_blocks = 4
     
@@ -817,6 +896,35 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     sparsity_blks = [0, 0, 0, 0]
     if per_layer:
         sparsity_layers = [0, 0, 0, 0, 0, 0, 0, 0]
+<<<<<<< HEAD
+    elif not per_layer and not filterwise:
+        sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.],\
+                           [0, 70., 70., 75., 60., 80., 80., 85.],\
+                           [0, 80., 80., 85., 40., 85., 85., 95.]]
+    elif filterwise:
+        #Use values like 0.5, 0.625, 0.75, 0.875, 0.9375
+        sparsity_filters = [0, 50., 50., 50., 50., 50., 50., 50.]
+    else:
+        print("Incorrect Pruning selection")
+
+    if filterwise:
+        filter_sparsity = {}
+        conv_layers = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6', 'conv_7', 'conv_8']
+        conv_filters = [64, 64, 128, 128, 256, 256, 512, 512]
+        model, audio_model = load_audio_model_for_pruning(weight_path)
+        filter_sparsity, num_filters = get_sparsity_filters(conv_layers, conv_filters, sparsity_filters)
+        
+        new_model, x_a, y_a = load_student_audio_model_withFFT(include_layers = [1, 1, 1, 1, 1, 1, 1, 1],\
+                                                     num_filters = num_filters)
+        reduced_model = drop_filters(audio_model, new_model, filter_sparsity) 
+                                  
+||||||| merged common ancestors
+    else:
+        sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.],\
+                           [0, 70., 70., 75., 60., 80., 80., 85.],\
+                           [0, 80., 80., 85., 40., 85., 85., 95.]]
+                                                     
+=======
     else:
         if sparsity==[]:
             sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.],
@@ -825,6 +933,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
         else:
             sparsity_layers = [sparsity]
                                                      
+>>>>>>> 32a7674bf14e99454439aa0a8ec8079416fd025e
     if(blockwise and zero_check(sparsity_blks)):
         LOGGER.info("Block-wise Pruning")
         LOGGER.info("*********************************************************************")
@@ -880,6 +989,13 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 sparsified_model.save(pruned_model_path)
 
             if retrain_model:
+<<<<<<< HEAD
+                retrain(model, masks, train_data_dir, validation_data_dir, finetune = finetune)
+    
+||||||| merged common ancestors
+                retrain(model, masks, train_data_dir, validation_data_dir, finetune = finetune)
+
+=======
                 if(finetune):
                     LOGGER.info('Retraining model with fine tuning')
                 else:
@@ -887,6 +1003,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 retrain(model, masks, train_data_dir, validation_data_dir, output_dir, sparsity=sparsity,
                         finetune = finetune, **kwargs)
 
+>>>>>>> 32a7674bf14e99454439aa0a8ec8079416fd025e
 
 def main():
     is_pruning = True
@@ -902,5 +1019,23 @@ def main():
         train(train_data_dir, validation_data_dir, include_layers = include_layers,
               num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
 
+<<<<<<< HEAD
+if is_pruning:
+    pruning(weight_path, train_data_dir, validation_data_dir, filterwise=True, save_model=True, retrain_model=False, finetune=False)
+else:
+    include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
+    num_filters = [64, 128, 256, 128]
+    train(train_data_dir, validation_data_dir, include_layers = include_layers, \
+          num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
+||||||| merged common ancestors
+if is_pruning:
+    pruning(weight_path, train_data_dir, validation_data_dir, save_model=True, retrain_model=False, finetune=False)
+else:
+    include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
+    num_filters = [64, 128, 256, 128]
+    train(train_data_dir, validation_data_dir, include_layers = include_layers, \
+          num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
+=======
 if __name__=='__main__':
     main()
+>>>>>>> 32a7674bf14e99454439aa0a8ec8079416fd025e

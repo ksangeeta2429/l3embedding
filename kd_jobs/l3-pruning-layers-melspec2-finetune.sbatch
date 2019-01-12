@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=l3-pruning-layers-melspec2
+#SBATCH --job-name=l3-pruning-layers-melspec2-finetune
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=64GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=FAIL
-#SBATCH --output="l3-layers-melspec2-%j.out"
-#SBATCH --err="l3-layers-melspec2-%j.err"
+#SBATCH --output="l3-pruning-layers-melspec2-finetune-%j.out"
+#SBATCH --err="l3-pruning-layers-melspec2-finetune-%j.err"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
@@ -39,7 +39,7 @@ python $SRCDIR/03_train_pruning.py \
     --validation-batch-size 64 \
     --checkpoint-interval 10 \
     --retrain \
-    --sparsity ${SPARSITY[*]}
+    --sparsity ${SPARSITY[*]} \
     --gpus $NUM_GPUS \
     --learning-rate 0.00001 \
     --random-state 20180216 \
