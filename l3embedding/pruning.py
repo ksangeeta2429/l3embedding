@@ -806,7 +806,7 @@ def printList(sparsity_list):
 
 
 def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model',
-            blockwise=False, layerwise=True, per_layer=False, sparsity_layers=[], test_model=False, save_model=False,
+            blockwise=False, layerwise=True, per_layer=False, sparsity=[], test_model=False, save_model=False,
             retrain_model=False, finetune = True, **kwargs):
     
     conv_blocks = 4
@@ -816,12 +816,12 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     if per_layer:
         sparsity_layers = [0, 0, 0, 0, 0, 0, 0, 0]
     else:
-        if sparsity_layers==[]:
+        if sparsity==[]:
             sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.],
                                [0, 70., 70., 75., 60., 80., 80., 85.],
                                [0, 80., 80., 85., 40., 85., 85., 95.]]
         else:
-            sparsity_layers = [sparsity_layers]
+            sparsity_layers = [sparsity]
                                                      
     if(blockwise and zero_check(sparsity_blks)):
         LOGGER.info("Block-wise Pruning")
@@ -857,9 +857,10 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 LOGGER.info('----------------------------------------------------------------')
     
     if(layerwise and not per_layer):
-        print("Specific Pruning Values")
-        print("**********************************************************************")
-        for sparsity in sparsity_layers: 
+        LOGGER.info("Specific Pruning Values")
+        LOGGER.info("**********************************************************************")
+        for sparsity in sparsity_layers:
+            LOGGER.info('Sparsity: {0}'.format(sparsity))
             model, audio_model = load_audio_model_for_pruning(weight_path)
             sparsity_vals = get_sparsity_layers(None, None, sparsity)
             sparsified_model, masks = sparsify_layer(audio_model, sparsity_vals)
