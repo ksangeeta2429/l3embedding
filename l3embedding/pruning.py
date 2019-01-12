@@ -1,9 +1,12 @@
+import getpass
+import git
 import os
 import random
 import csv
 import datetime
 import json
 import pickle
+import csv
 import numpy as np
 from keras.regularizers import l2
 import tensorflow as tf
@@ -11,16 +14,24 @@ import keras
 from keras.optimizers import Adam
 import pescador
 from keras.layers import *
-from audio import pcm2float
+from .audio import pcm2float
 import h5py
 from keras.models import Model
-from model import *
+from .model import *
 from keras.optimizers import Adam
 import pescador
 from skimage import img_as_float
 from keras import backend as K
 from tensorflow.python.ops import math_ops
 from tensorflow.python.framework import dtypes
+import copy
+from gsheets import get_credentials, append_row, update_experiment, get_row
+from googleapiclient import discovery
+from log import *
+
+LOGGER = logging.getLogger('prunedl3embedding')
+LOGGER.setLevel(logging.DEBUG)
+
 
 ##########
 # Pruning Version 1:
@@ -55,7 +66,7 @@ from tensorflow.python.framework import dtypes
 ##########
 
 graph = tf.get_default_graph()
-weight_path = '/home/sk7898/l3embedding/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
+weight_path = 'models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
 audio_model = load_embedding(weight_path, model_type = 'cnn_L3_melspec2', embedding_type = 'audio', \
                              pooling_type = 'short', kd_model=False, tgt_num_gpus = 1)
 
@@ -93,6 +104,83 @@ def cycle_shuffle(iterable, shuffle=True):
         if shuffle:
             random.shuffle(lst)
 
+class GSheetLogger(keras.callbacks.Callback):
+    """
+    Keras callback to update Google Sheets Spreadsheet
+    """
+
+    def __init__(self, google_dev_app_name, spreadsheet_id, param_dict):
+        super(GSheetLogger).__init__()
+        self.google_dev_app_name = google_dev_app_name
+        self.spreadsheet_id = spreadsheet_id
+        self.credentials = get_credentials(google_dev_app_name)
+        self.service = discovery.build('sheets', 'v4', credentials=self.credentials)
+        self.param_dict = copy.deepcopy(param_dict)
+
+        row_num = get_row(self.service, self.spreadsheet_id, self.param_dict, 'prunedembedding')
+        if row_num is None:
+            append_row(self.service, self.spreadsheet_id, self.param_dict, 'prunedembedding')
+
+    def on_train_begin(self, logs=None):
+        if logs is None:
+            logs = {}
+        self.best_train_loss = float('inf')
+        self.best_valid_loss = float('inf')
+        self.best_train_acc = float('-inf')
+        self.best_valid_acc = float('-inf')
+
+    # def on_batch_end(self, batch, logs={}):
+    def on_epoch_end(self, epoch, logs=None):
+        if logs is None:
+            logs = {}
+        latest_epoch = epoch
+        latest_train_loss = logs.get('loss')
+        latest_valid_loss = logs.get('val_loss')
+        latest_train_acc = logs.get('acc')
+        latest_valid_acc = logs.get('val_acc')
+
+        if latest_train_loss < self.best_train_loss:
+            self.best_train_loss = latest_train_loss
+        if latest_valid_loss < self.best_valid_loss:
+            self.best_valid_loss = latest_valid_loss
+        if latest_train_acc > self.best_train_acc:
+            self.best_train_acc = latest_train_acc
+        if latest_valid_acc > self.best_valid_acc:
+            self.best_valid_acc = latest_valid_acc
+
+        values = [
+            latest_epoch, latest_train_loss, latest_valid_loss,
+            latest_train_acc, latest_valid_acc, self.best_train_loss,
+            self.best_valid_loss, self.best_train_acc, self.best_valid_acc]
+
+        update_experiment(self.service, self.spreadsheet_id, self.param_dict,
+                          'R', 'Z', values, 'prunedembedding')
+
+
+class TimeHistory(keras.callbacks.Callback):
+    """
+    Keras callback to log epoch and batch running time
+    """
+    # Copied from https://stackoverflow.com/a/43186440/1260544
+    def on_train_begin(self, logs=None):
+        self.epoch_times = []
+        self.batch_times = []
+
+    def on_epoch_begin(self, batch, logs=None):
+        self.epoch_time_start = time.time()
+
+    def on_epoch_end(self, batch, logs=None):
+        t = time.time() - self.epoch_time_start
+        LOGGER.info('Epoch took {} seconds'.format(t))
+        self.epoch_times.append(t)
+
+    def on_batch_begin(self, batch, logs=None):
+        self.batch_time_start = time.time()
+
+    def on_batch_end(self, batch, logs=None):
+        t = time.time() - self.batch_time_start
+        LOGGER.info('Batch took {} seconds'.format(t))
+        self.batch_times.append(t)
 
 
 def data_generator(data_dir, kd_model=False, batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
@@ -435,19 +523,35 @@ def get_restart_info(history_path):
     return int(last['epoch']), float(last['val_acc']), float(last['val_loss'])
 
 
-def train(train_data_dir, validation_data_dir, model_to_train = None, include_layers = [1, 1, 1, 1, 1, 1, 1, 1], \
-          num_filters = [64, 128, 256, 512], pruning=True, finetune=False, output_dir = None, num_epochs=300, \
-          train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
-          model_type = 'cnn_L3_melspec2', random_state=20180216, learning_rate=0.001, verbose=True, \
-          checkpoint_interval=10, gpus=1, continue_model_dir=None):
+def train(train_data_dir, validation_data_dir, model_to_train = None, include_layers = [1, 1, 1, 1, 1, 1, 1, 1],
+          num_filters = [64, 128, 256, 512], pruning=True, finetune=False, output_dir = None, num_epochs=300,
+          train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,
+          model_type = 'cnn_L3_melspec2', log_path=None, disable_logging=False, random_state=20180216,
+          learning_rate=0.001, verbose=True, checkpoint_interval=10, gpus=1, sparsity=[], continue_model_dir=None,
+          gsheet_id=None, google_dev_app_name=None):
 
-    if output_dir is None:
-        if pruning and finetune:
+    init_console_logger(LOGGER, verbose=verbose)
+    if not disable_logging:
+        init_file_logger(LOGGER, log_path=log_path)
+    LOGGER.debug('Initialized logging.')
+
+    kd_flag = False
+
+
+    if pruning and finetune:
+        if output_dir is None:
             output_dir = '/scratch/sk7898/pruning_finetune_output'
-        elif pruning and not finetune:
+        model_attribute = 'pruning_finetune'
+    elif pruning and not finetune:
+        if output_dir is None:
             output_dir = '/scratch/sk7898/pruning_kd_output'
-        else:
+        kd_flag = True
+        model_attribute = 'pruning_kd'
+    else:
+        if output_dir is None:
             output_dir = '/scratch/sk7898/reduced_kd_output'
+        kd_flag = True
+        model_attribute = 'reduced_kd'
 
     # Form model ID
     data_subset_name = os.path.basename(train_data_dir)
@@ -455,26 +559,43 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
     model_id = os.path.join(data_subset_name, model_type)
 
     param_dict = {
-          'train_data_dir': train_data_dir,
-          'validation_data_dir': validation_data_dir,
-          'model_id': model_id,
-          'output_dir': output_dir,
-          'num_epochs': num_epochs,
-          'train_epoch_size': train_epoch_size,
-          'validation_epoch_size': validation_epoch_size,
-          'train_batch_size': train_batch_size,
-          'validation_batch_size': validation_batch_size,
-          'model_type': model_type,
-          'random_state': random_state,
-          'learning_rate': learning_rate,
-          'verbose': verbose
+        'username': getpass.getuser(),
+        'train_data_dir': train_data_dir,
+        'validation_data_dir': validation_data_dir,
+        'model_id': model_id,
+        'output_dir': output_dir,
+        'include_layers': include_layers,
+        'num_filters': num_filters,
+        'sparsity': sparsity,
+        'pruning': pruning,
+        'finetune': finetune,
+        'knowledge_distilled': kd_flag,
+        'num_epochs': num_epochs,
+        'train_epoch_size': train_epoch_size,
+        'validation_epoch_size': validation_epoch_size,
+        'train_batch_size': train_batch_size,
+        'validation_batch_size': validation_batch_size,
+        'model_type': model_type,
+        'random_state': random_state,
+        'learning_rate': learning_rate,
+        'verbose': verbose,
+        'checkpoint_interval': checkpoint_interval,
+        'log_path': log_path,
+        'disable_logging': disable_logging,
+        'gpus': gpus,
+        'continue_model_dir': continue_model_dir,
+        'git_commit': git.Repo(os.path.dirname(os.path.abspath(__file__)),
+                               search_parent_directories=True).head.object.hexsha,
+        'gsheet_id': gsheet_id,
+        'google_dev_app_name': google_dev_app_name
     }
+    LOGGER.info('Training with the following arguments: {}'.format(param_dict))
 
     # Make sure the directories we need exist
     if continue_model_dir:
         model_dir = continue_model_dir
     else:
-        model_dir = os.path.join(output_dir, 'embedding', model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+        model_dir = os.path.join(output_dir, 'embedding', model_attribute, model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
 
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir)
@@ -495,6 +616,7 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
     with open(train_config_path, 'w') as fd:
         json.dump(param_dict, fd, indent=2)
 
+    LOGGER.info('Compiling model...')
     if finetune:
         model.compile(Adam(lr=learning_rate),
                       loss='categorical_crossentropy',
@@ -503,6 +625,20 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
         model.compile(Adam(lr=learning_rate),
                       loss='mean_squared_error',
                       metrics=['mae'])
+
+    LOGGER.info('Model files can be found in "{}"'.format(model_dir))
+
+    param_dict.update({
+        'latest_epoch': '-',
+        'latest_train_loss': '-',
+        'latest_validation_loss': '-',
+        'latest_train_acc': '-',
+        'latest_validation_acc': '-',
+        'best_train_loss': '-',
+        'best_validation_loss': '-',
+        'best_train_acc': '-',
+        'best_validation_acc': '-',
+    })
 
     # Save the model
     '''
@@ -513,13 +649,14 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
     '''
 
     latest_weight_path = os.path.join(model_dir, 'model_latest.h5')
+    best_valid_acc_weight_path = os.path.join(model_dir, 'model_best_valid_accuracy.h5')
     best_valid_loss_weight_path = os.path.join(model_dir, 'model_best_valid_loss.h5')
     checkpoint_weight_path = os.path.join(model_dir, 'model_checkpoint.{epoch:02d}.h5')
 
     # Load information about last epoch for initializing callbacks and data generators
     if continue_model_dir is not None:
         prev_train_hist_path = os.path.join(continue_model_dir, 'history_csvlog.csv')
-        last_epoch_idx, last_val_loss = get_restart_info(prev_train_hist_path)
+        last_epoch_idx, last_val_acc, last_val_loss = get_restart_info(prev_train_hist_path)
 
     # Set up callbacks
     cb = []
@@ -527,6 +664,16 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
                                               save_weights_only=False,
                                               verbose=1))
 
+    # Accuracy only relevant when no knowledge distillation
+    if not kd_flag:
+        best_val_acc_cb = keras.callbacks.ModelCheckpoint(best_valid_acc_weight_path,
+                                                          save_weights_only=True,
+                                                          save_best_only=True,
+                                                          verbose=1,
+                                                          monitor='val_acc')
+        if continue_model_dir is not None:
+            best_val_acc_cb.best = last_val_acc
+        cb.append(best_val_acc_cb)
 
     best_val_loss_cb = keras.callbacks.ModelCheckpoint(best_valid_loss_weight_path,
                                                        save_weights_only=False,
@@ -556,6 +703,10 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
     cb.append(earlyStopping)
     cb.append(reduceLR)
 
+    if gsheet_id:
+        cb.append(GSheetLogger(google_dev_app_name, gsheet_id, param_dict))
+
+    LOGGER.info('Setting up train data generator...')
     if continue_model_dir is not None:
         train_start_batch_idx = train_epoch_size * (last_epoch_idx + 1)
     else:
@@ -604,6 +755,7 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
                                              'label')
 
     # Fit the model
+    LOGGER.info('Fitting model...')
     if verbose:
         verbosity = 1
     else:
@@ -620,11 +772,12 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
                                     callbacks=cb,
                                     verbose=verbosity,
                                     initial_epoch=initial_epoch)
-
+    LOGGER.info('Done training. Saving results to disk...')
     # Save history
     with open(os.path.join(model_dir, 'history.pkl'), 'wb') as fd:
         pickle.dump(history.history, fd)
 
+    LOGGER.info('Done!')
     return history
 
 
@@ -637,15 +790,15 @@ def initialize_weights(masked_model, sparse_model, is_L3=True):
     return masked_model
 
 
-def retrain(l3_model, masks, train_data_dir, validation_data_dir, finetune=False):
+def retrain(l3_model, masks, train_data_dir, validation_data_dir, finetune=True, **kwargs):
     if finetune:
         l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_kd(masks)
         model = initialize_weights(l3_model_kd, l3_model, is_L3=True)  
-        train(train_data_dir, validation_data_dir, model, pruning=True, finetune=finetune)
+        train(train_data_dir, validation_data_dir, model, pruning=True, finetune=finetune, **kwargs)
     else:
         audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model(masks)
         audio_model = initialize_weights(audio_model, l3_model, is_L3=False)
-        train(audio_model, validation_data_dir, audio_model, pruning=True, finetune=finetune)
+        train(train_data_dir, validation_data_dir, audio_model, pruning=True, finetune=finetune, **kwargs)
 
 
 def zero_check(sparsity_list):
@@ -723,8 +876,17 @@ def get_sparsity_filters(conv_layers, conv_filters, sparsity_filters):
     return sparsity_dict, new_num_filters
 
 
+<<<<<<< HEAD
 def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model', blockwise=False,\
             layerwise=False, filterwise=False, per_layer=False, test_model=True, save_model=False, retrain_model=False, finetune=True):
+||||||| merged common ancestors
+def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model', blockwise=False,\
+            layerwise=True, per_layer=False, test_model=True, save_model=False, retrain_model=False, finetune = True):
+=======
+def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model',
+            blockwise=False, layerwise=True, per_layer=False, sparsity=[], test_model=False, save_model=False,
+            retrain_model=False, finetune = True, **kwargs):
+>>>>>>> 32a7674bf14e99454439aa0a8ec8079416fd025e
     
     conv_blocks = 4
     
@@ -732,6 +894,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     sparsity_blks = [0, 0, 0, 0]
     if per_layer:
         sparsity_layers = [0, 0, 0, 0, 0, 0, 0, 0]
+<<<<<<< HEAD
     elif not per_layer and not filterwise:
         sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.],\
                            [0, 70., 70., 75., 60., 80., 80., 85.],\
@@ -753,9 +916,25 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                                                      num_filters = num_filters)
         reduced_model = drop_filters(audio_model, new_model, filter_sparsity) 
                                   
+||||||| merged common ancestors
+    else:
+        sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.],\
+                           [0, 70., 70., 75., 60., 80., 80., 85.],\
+                           [0, 80., 80., 85., 40., 85., 85., 95.]]
+                                                     
+=======
+    else:
+        if sparsity==[]:
+            sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.],
+                               [0, 70., 70., 75., 60., 80., 80., 85.],
+                               [0, 80., 80., 85., 40., 85., 85., 95.]]
+        else:
+            sparsity_layers = [sparsity]
+                                                     
+>>>>>>> 32a7674bf14e99454439aa0a8ec8079416fd025e
     if(blockwise and zero_check(sparsity_blks)):
-        print("Block-wise Pruning")
-        print("*********************************************************************")
+        LOGGER.info("Block-wise Pruning")
+        LOGGER.info("*********************************************************************")
     
         for sparsity in sparsity_values:
             for blockid in range(conv_blocks):
@@ -766,13 +945,13 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 model.get_layer('audio_model').set_weights(sparsified_model.get_weights()) 
             
                 score = test(model, validation_data_dir)
-                print('Conv Block Pruned: {0} Sparsity Value: {1}'.format(blockid+1, sparsity))
-                print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))     
-                print('---------------------------------------------------------------')
+                LOGGER.info('Conv Block Pruned: {0} Sparsity Value: {1}'.format(blockid+1, sparsity))
+                LOGGER.info('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
+                LOGGER.info('---------------------------------------------------------------')
     
     if(layerwise and per_layer):
-        print("Layer-wise Pruning")
-        print("**********************************************************************")
+        LOGGER.info("Layer-wise Pruning")
+        LOGGER.info("**********************************************************************")
         for sparsity in sparsity_values:
             for layerid in range(conv_blocks*2):
                 model, audio_model = load_audio_model_for_pruning(weight_path)
@@ -782,14 +961,15 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 model.get_layer('audio_model').set_weights(sparsified_model.get_weights())
 
                 score = test(model, validation_data_dir)
-                print('Conv Layer Pruned: {0} Sparsity Value: {1}'.format(layerid+1, sparsity))
-                print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
-                print('----------------------------------------------------------------')
+                LOGGER.info('Conv Layer Pruned: {0} Sparsity Value: {1}'.format(layerid+1, sparsity))
+                LOGGER.info('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
+                LOGGER.info('----------------------------------------------------------------')
     
     if(layerwise and not per_layer):
-        print("Specific Pruning Values")
-        print("**********************************************************************")
-        for sparsity in sparsity_layers: 
+        LOGGER.info("Specific Pruning Values")
+        LOGGER.info("**********************************************************************")
+        for sparsity in sparsity_layers:
+            LOGGER.info('Sparsity: {0}'.format(sparsity))
             model, audio_model = load_audio_model_for_pruning(weight_path)
             sparsity_vals = get_sparsity_layers(None, None, sparsity)
             sparsified_model, masks = sparsify_layer(audio_model, sparsity_vals)
@@ -798,8 +978,8 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
             if test_model:
                 score = test(model, validation_data_dir)
                 printList(sparsity)
-                print('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
-                print('----------------------------------------------------------------')
+                LOGGER.info('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
+                LOGGER.info('----------------------------------------------------------------')
             
             if save_model:
                 pruned_model_name = 'pruned_audio_'+str(score[1])+'.h5'
@@ -807,13 +987,37 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 sparsified_model.save(pruned_model_path)
 
             if retrain_model:
+<<<<<<< HEAD
                 retrain(model, masks, train_data_dir, validation_data_dir, finetune = finetune)
     
+||||||| merged common ancestors
+                retrain(model, masks, train_data_dir, validation_data_dir, finetune = finetune)
 
-is_pruning = True
-train_data_dir = '/beegfs/work/AudioSetSamples/music_train'
-validation_data_dir = '/beegfs/work/AudioSetSamples/music_valid'
+=======
+                if(finetune):
+                    LOGGER.info('Retraining model with fine tuning')
+                else:
+                    LOGGER.info('Retraining model with knowledge distillation')
+                retrain(model, masks, train_data_dir, validation_data_dir, sparsity=sparsity,
+                        finetune = finetune, **kwargs)
 
+>>>>>>> 32a7674bf14e99454439aa0a8ec8079416fd025e
+
+def main():
+    is_pruning = True
+    train_data_dir = '/beegfs/work/AudioSetSamples/music_train'
+    validation_data_dir = '/beegfs/work/AudioSetSamples/music_valid'
+
+    if is_pruning:
+        pruning(weight_path, train_data_dir, validation_data_dir, save_model=True,
+                test_model=True, retrain_model=False, finetune=False)
+    else:
+        include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
+        num_filters = [64, 128, 256, 128]
+        train(train_data_dir, validation_data_dir, include_layers = include_layers,
+              num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
+
+<<<<<<< HEAD
 if is_pruning:
     pruning(weight_path, train_data_dir, validation_data_dir, filterwise=True, save_model=True, retrain_model=False, finetune=False)
 else:
@@ -821,3 +1025,15 @@ else:
     num_filters = [64, 128, 256, 128]
     train(train_data_dir, validation_data_dir, include_layers = include_layers, \
           num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
+||||||| merged common ancestors
+if is_pruning:
+    pruning(weight_path, train_data_dir, validation_data_dir, save_model=True, retrain_model=False, finetune=False)
+else:
+    include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
+    num_filters = [64, 128, 256, 128]
+    train(train_data_dir, validation_data_dir, include_layers = include_layers, \
+          num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
+=======
+if __name__=='__main__':
+    main()
+>>>>>>> 32a7674bf14e99454439aa0a8ec8079416fd025e

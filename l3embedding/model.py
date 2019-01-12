@@ -1,7 +1,7 @@
 from keras.layers import concatenate, Dense
-from vision_model import *
-from audio_model import *
-from training_utils import multi_gpu_model
+from .vision_model import *
+from .audio_model import *
+from .training_utils import multi_gpu_model
 
 
 def L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, model_name, layer_size=128):
