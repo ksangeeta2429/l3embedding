@@ -27,7 +27,7 @@ OUTPUT_DIR=/scratch/dr2915/l3pruning
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=1
-SPARSITY=(0 60. 60. 70. 50. 70. 70. 80.)
+SPARSITY=( "$@" ) # Command line args list
 FINETUNE=True
 
 python $SRCDIR/03_train_pruning.py \
