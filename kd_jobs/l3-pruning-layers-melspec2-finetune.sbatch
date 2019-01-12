@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:4
 #SBATCH --job-name=l3-pruning-layers-melspec2-finetune
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=2
@@ -17,8 +17,6 @@ source activate l3embedding-new-cpu
 module purge
 module load cudnn/9.0v7.3.0.29
 
-python pruning.py
-
 SRCDIR=.
 WEIGHT_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
 TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples/music_train
@@ -26,7 +24,7 @@ VAL_DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
 OUTPUT_DIR=/scratch/dr2915/l3pruning
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
-NUM_GPUS=1
+NUM_GPUS=4
 SPARSITY=( "$@" ) # Command line args list
 FINETUNE=True
 

@@ -17,6 +17,7 @@ from keras.layers import *
 from .audio import pcm2float
 import h5py
 from keras.models import Model
+from .training_utils import multi_gpu_model
 from .model import *
 from keras.optimizers import Adam
 import pescador
@@ -780,7 +781,6 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
     LOGGER.info('Done!')
     return history
 
-
 def initialize_weights(masked_model, sparse_model, is_L3=True):
     if is_L3:
         masked_model.set_weights(sparse_model.get_weights())
@@ -790,17 +790,21 @@ def initialize_weights(masked_model, sparse_model, is_L3=True):
     return masked_model
 
 
-def retrain(l3_model, masks, train_data_dir, validation_data_dir, output_dir, finetune=True, **kwargs):
+def retrain(l3_model, masks, train_data_dir, validation_data_dir, output_dir, gpus=0, finetune=True, **kwargs):
     if finetune:
         l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_kd(masks)
-        model = initialize_weights(l3_model_kd, l3_model, is_L3=True)  
+        model = initialize_weights(l3_model_kd, l3_model, is_L3=True)
+        if gpus > 1:
+            model = multi_gpu_model(model, gpus=gpus)
         train(train_data_dir, validation_data_dir, model,
-              output_dir=output_dir, pruning=True, finetune=finetune, **kwargs)
+              output_dir=output_dir, pruning=True, finetune=finetune, gpus=gpus, **kwargs)
     else:
         audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model(masks)
         audio_model = initialize_weights(audio_model, l3_model, is_L3=False)
+        if gpus > 1:
+            audio_model = multi_gpu_model(audio_model, gpus=gpus)
         train(train_data_dir, validation_data_dir, audio_model,
-              output_dir=output_dir, pruning=True, finetune=finetune, **kwargs)
+              output_dir=output_dir, pruning=True, finetune=finetune, gpus=gpus, **kwargs)
 
 
 def zero_check(sparsity_list):
