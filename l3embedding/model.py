@@ -314,7 +314,7 @@ def construct_cnn_L3_melspec2():
     m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_kapredbinputbn')
     return m
 
-
+@gpu_wrapper
 def construct_cnn_L3_melspec2_kd(masks):
     """
     Returns
