@@ -157,6 +157,20 @@ def parse_arguments():
                         default=True,
                         help='Knowledge distillation')
 
+    parser.add_argument('-tst',
+                        '--test-model',
+                        dest='test_model',
+                        action='store_true',
+                        default=False,
+                        help='Test model?')
+
+    parser.add_argument('-sav',
+                        '--save-model',
+                        dest='save_model',
+                        action='store_true',
+                        default=False,
+                        help='Save model?')
+
     parser.add_argument('weight_path',
                         action='store',
                         type=str,
