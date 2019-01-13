@@ -21,7 +21,7 @@ SRCDIR=.
 WEIGHT_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
 TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples/music_train
 VAL_DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
-OUTPUT_DIR=/scratch/dr2915/l3pruning_modelonly
+OUTPUT_DIR=$SRCDIR/pruned_model/
 NUM_GPUS=1
 SPARSITY=( "$@" ) # Command line args list
 
