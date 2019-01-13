@@ -810,7 +810,7 @@ def retrain(l3_model, masks, train_data_dir, validation_data_dir, output_dir, gp
     if finetune:
         l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_kd(masks=masks)
 
-        model = initialize_weights(masked_model=l3_model_kd, sparse_model=l3_model, is_L3=True, input=x_a, output=y_a)
+        model, inp, out = initialize_weights(masked_model=l3_model_kd, sparse_model=l3_model, is_L3=True, input=x_a, output=y_a)
 
         # Convert to multi-gpu model
         #if gpus > 1:
@@ -819,7 +819,7 @@ def retrain(l3_model, masks, train_data_dir, validation_data_dir, output_dir, gp
               output_dir=output_dir, pruning=True, finetune=finetune, gpus=gpus, **kwargs)
     else:
         audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model(masks)
-        audio_model = initialize_weights(audio_model, l3_model, is_L3=False)
+        audio_model, inp, out = initialize_weights(audio_model, l3_model, is_L3=False)
         # Convert to multi-gpu model
         # Convert to multi-gpu model
         #if gpus > 1:
