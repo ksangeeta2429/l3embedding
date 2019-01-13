@@ -781,25 +781,40 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
     LOGGER.info('Done!')
     return history
 
+def gpu_wrapper_4gpus(model_f):
+    """
+    Decorator for creating multi-gpu models
+    """
+    def wrapped(*args, **kwargs):
+        m, inp, out = model_f(*args, **kwargs)
+        num_gpus = 4
+        if num_gpus > 1:
+            m = multi_gpu_model(m, gpus=num_gpus)
 
-def initialize_weights(masked_model=None, sparse_model=None, is_L3=True):
+        return m, inp, out
+
+    return wrapped
+
+
+@gpu_wrapper_4gpus
+def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=None, output=None):
     if is_L3:
         masked_model.set_weights(sparse_model.get_weights())
     else:
         masked_model.set_weights(sparse_model.get_layer('audio_model').get_weights())
-    
-    return masked_model
+    print(masked_model.get_layer('audio_model').summary())
+    return masked_model, input, output
 
 
 def retrain(l3_model, masks, train_data_dir, validation_data_dir, output_dir, gpus=0, finetune=True, **kwargs):
     if finetune:
         l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_kd(masks=masks)
 
-        model = initialize_weights(masked_model=l3_model_kd, sparse_model=l3_model, is_L3=True)
+        model = initialize_weights(masked_model=l3_model_kd, sparse_model=l3_model, is_L3=True, input=x_a, output=y_a)
 
         # Convert to multi-gpu model
-        if gpus > 1:
-            model = multi_gpu_model(model, gpus=gpus)
+        #if gpus > 1:
+        #    model = multi_gpu_model(model, gpus=gpus)
         train(train_data_dir, validation_data_dir, model,
               output_dir=output_dir, pruning=True, finetune=finetune, gpus=gpus, **kwargs)
     else:
@@ -807,8 +822,8 @@ def retrain(l3_model, masks, train_data_dir, validation_data_dir, output_dir, gp
         audio_model = initialize_weights(audio_model, l3_model, is_L3=False)
         # Convert to multi-gpu model
         # Convert to multi-gpu model
-        if gpus > 1:
-            audio_model = multi_gpu_model(audio_model, gpus=gpus)
+        #if gpus > 1:
+        #    audio_model = multi_gpu_model(audio_model, gpus=gpus)
         train(train_data_dir, validation_data_dir, audio_model,
               output_dir=output_dir, pruning=True, finetune=finetune, gpus=gpus, **kwargs)
 
