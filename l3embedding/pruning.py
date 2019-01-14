@@ -155,7 +155,7 @@ class GSheetLogger(keras.callbacks.Callback):
             self.best_valid_loss, self.best_train_acc, self.best_valid_acc]
 
         update_experiment(self.service, self.spreadsheet_id, self.param_dict,
-                          'R', 'Z', values, 'prunedembedding')
+                          'X', 'AF', values, 'prunedembedding')
 
 
 class TimeHistory(keras.callbacks.Callback):
