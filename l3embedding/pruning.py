@@ -300,6 +300,7 @@ def calculate_threshold(weights, ratio):
         
 def sparsify_layer(model, sparsity_dict):
     masks = {}
+    thresholds = {}
     for layer in model.layers:
         if 'conv_' in layer.name:
             target_weights = np.empty_like(layer.get_weights())
@@ -315,11 +316,13 @@ def sparsify_layer(model, sparsity_dict):
                 layer.set_weights(target_weights)
 
             else:
+                threshold = 0.0
                 mask = K.ones_like(weights)
 
             masks[layer.name] = mask
-            
-    return model, masks
+            thresholds[layer.name] = threshold
+
+    return model, masks, thresholds
 
 
 def sparsify_block(model, sparsity_dict):
@@ -791,9 +794,10 @@ def initialize_weights(masked_model=None, sparse_model=None, is_L3=True):
     return masked_model
 
 
-def retrain(l3_model, masks, train_data_dir, validation_data_dir, output_dir, gpus=0, finetune=True, **kwargs):
+def retrain(l3_model, thresholds, train_data_dir, validation_data_dir, output_dir, gpus=0, finetune=True, **kwargs):
     if finetune:
-        l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_kd(masks=masks)
+        l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_kd_multiGPU(thresholds=thresholds)
+        #l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_kd(masks=masks)
 
         model = initialize_weights(masked_model=l3_model_kd, sparse_model=l3_model, is_L3=True)
 
@@ -803,7 +807,8 @@ def retrain(l3_model, masks, train_data_dir, validation_data_dir, output_dir, gp
         train(train_data_dir, validation_data_dir, model,
               output_dir=output_dir, pruning=True, finetune=finetune, gpus=gpus, **kwargs)
     else:
-        audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model(masks)
+        audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model_multiGPU(thresholds=thresholds)
+        #audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model(masks)
         audio_model = initialize_weights(audio_model, l3_model, is_L3=False)
         # Convert to multi-gpu model
         # Convert to multi-gpu model
@@ -889,8 +894,8 @@ def get_sparsity_filters(conv_layers, conv_filters, sparsity_filters):
 
 
 
-def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model', blockwise=False,\
-            layerwise=True, per_layer=False, filterwise=False, sparsity=[],
+def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model',\
+            blockwise=False, layerwise=True, per_layer=False, filterwise=False, sparsity=[],
             test_model=False, save_model=False, retrain_model=False, finetune = True, **kwargs):
     
     conv_blocks = 4
@@ -901,9 +906,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
         sparsity_layers = [0, 0, 0, 0, 0, 0, 0, 0]
     elif not per_layer and not filterwise:
         if sparsity==[]:
-            sparsity_layers =   [[0, 60., 60., 70., 50., 70., 70., 80.],\
-                                [0, 70., 70., 75., 60., 80., 80., 85.],\
-                                [0, 80., 80., 85., 40., 85., 85., 95.]]
+            sparsity_layers =   [[0, 60., 60., 70., 50., 70., 70., 80.]]
         else:
             sparsity_layers = [sparsity]
 
@@ -944,7 +947,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
             for layerid in range(conv_blocks*2):
                 model, audio_model = load_audio_model_for_pruning(weight_path)
                 sparsity_vals = get_sparsity_layers(layerid, sparsity, sparsity_layers)
-                sparsified_model, masks = sparsify_layer(audio_model, sparsity_vals)
+                sparsified_model, masks, thresholds = sparsify_layer(audio_model, sparsity_vals)
 
                 model.get_layer('audio_model').set_weights(sparsified_model.get_weights())
 
@@ -960,7 +963,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
             LOGGER.info('Sparsity: {0}'.format(sparsity))
             model, audio_model = load_audio_model_for_pruning(weight_path)
             sparsity_vals = get_sparsity_layers(None, None, sparsity)
-            sparsified_model, masks = sparsify_layer(audio_model, sparsity_vals)
+            sparsified_model, masks, thresholds = sparsify_layer(audio_model, sparsity_vals)
             
             model.get_layer('audio_model').set_weights(sparsified_model.get_weights())
             if test_model:
@@ -979,7 +982,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                     LOGGER.info('Retraining model with fine tuning')
                 else:
                     LOGGER.info('Retraining model with knowledge distillation')
-                retrain(model, masks, train_data_dir, validation_data_dir, output_dir, sparsity=sparsity,
+                retrain(model, thresholds, train_data_dir, validation_data_dir, output_dir, sparsity=sparsity,
                         finetune = finetune, **kwargs)
 
 def main():
@@ -988,8 +991,8 @@ def main():
     validation_data_dir = '/beegfs/work/AudioSetSamples/music_valid'
 
     if is_pruning:
-        pruning(weight_path, train_data_dir, validation_data_dir, save_model=True,
-                test_model=True, filterwise=True, retrain_model=False, finetune=False)
+        pruning(weight_path, train_data_dir, validation_data_dir, save_model=False, layerwise=True, per_layer=False,
+                test_model=False, filterwise=False, retrain_model=True, finetune=True)
     else:
         include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
         num_filters = [64, 64, 128, 128, 256, 256]

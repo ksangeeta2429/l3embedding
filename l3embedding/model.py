@@ -315,6 +315,25 @@ def construct_cnn_L3_melspec2():
     return m
 
 @gpu_wrapper
+def construct_cnn_L3_melspec2_kd(thresholds):
+    """
+    Returns
+    -------
+    model:  L3 CNN model
+            (Type: keras.models.Model)
+    inputs: Model inputs
+            (Type: list[keras.layers.Input])
+    outputs: Model outputs
+            (Type: keras.layers.Layer)
+    """
+    vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
+    audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model_multiGPU(thresholds)
+
+    m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_kapredbinputbn_kd')
+    return m
+
+
+@gpu_wrapper
 def construct_cnn_L3_melspec2_kd(masks):
     """
     Returns
