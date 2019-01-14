@@ -15,3 +15,5 @@ sleep 1
 sbatch --export=filename=pruned_audio_0.5031585693359375.h5 gen_embedding_pruned_melspec2_us8k.sbatch
 sleep 1
 sbatch --export=filename=pruned_audio_0.49981689453125.h5 gen_embedding_pruned_melspec2_us8k.sbatch
+sleep 1
+sbatch --export=filename=pruned_audio_0.4983367919921875.h5 gen_embedding_pruned_melspec2_us8k.sbatch
