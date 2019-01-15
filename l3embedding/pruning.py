@@ -812,12 +812,11 @@ def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=N
         #model = keras.models.load_model('model.h5', custom_objects={'MaskedConv2D': MaskedConv2D, 'Melspectrogram': Melspectrogram})
         
         #print(model.summary())
-        for layer1, layer2 in zip(masked_model.get_layer('audio_model').layers, sparse_model.get_layer('audio_model').layers):
-            print(layer1.name)
-            for i, weight in enumerate(layer1.get_weights()):
-                print(weight.shape)
-                #layer1.set_weights(layer2.get_weights())
-            
+        #for layer1, layer2 in zip(masked_model.get_layer('audio_model').layers, sparse_model.get_layer('audio_model').layers):
+        #    print(layer1.name)
+        #    for i, weight in enumerate(layer1.get_weights()):
+        #        print(weight.shape)
+        masked_model.set_weights(sparse_model.get_weights())    
         
     else:
         masked_model.set_weights(sparse_model.get_layer('audio_model').get_weights())

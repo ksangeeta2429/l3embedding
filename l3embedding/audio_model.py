@@ -80,13 +80,6 @@ class MaskedConv2D(Layer):
     input_dim = input_shape[channel_axis]
     kernel_shape = self.kernel_size + (input_dim, self.filters)
 
-
-    self.mask = self.add_weight(name='mask',
-                                shape=kernel_shape,
-                                initializer=init_ops.ones_initializer(),
-                                trainable=False,
-                                dtype=dtypes.float32)
-
     self.kernel = self.add_weight(name='kernel',
                                   shape=kernel_shape,
                                   initializer=self.kernel_initializer,
