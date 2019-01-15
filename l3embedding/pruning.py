@@ -367,120 +367,6 @@ def sparsify_block(model, sparsity_dict):
     return model
 
 
-def load_student_audio_model_withFFT(include_layers, num_filters = [64, 64, 128, 128, 256, 256, 512, 512]):
-    weight_decay = 1e-5
-    ####
-    # Audio subnetwork
-    ####
-    n_dft = 2048
-    #n_win = 480
-    #n_hop = n_win//2
-    n_mels = 256
-    n_hop = 242
-    asr = 48000
-    audio_window_dur = 1
-    # INPUT
-    x_a = Input(shape=(1, asr * audio_window_dur), dtype='float32')
-
-    # MELSPECTROGRAM PREPROCESSING
-    # 128 x 199 x 1
-    y_a = Melspectrogram(n_dft=n_dft, n_hop=n_hop, n_mels=n_mels,
-                      sr=asr, power_melgram=1.0, htk=True, # n_win=n_win,
-                      return_decibel_melgram=True, padding='same')(x_a)
-    y_a = BatchNormalization()(y_a)
-
-    # CONV BLOCK 1
-    filt_size_a_1 = (3, 3)
-    pool_size_a_1 = (2, 2)
-    
-    if include_layers[0]:
-        y_a = Conv2D(num_filters[0], filt_size_a_1, padding='same',
-                     kernel_initializer='he_normal',
-                     name='conv_1',
-                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-        y_a = BatchNormalization()(y_a)
-        y_a = Activation('relu')(y_a)
-
-    if include_layers[1]:
-        y_a = Conv2D(num_filters[1], filt_size_a_1, padding='same',
-                     kernel_initializer='he_normal',
-                     name='conv_2',
-                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-        y_a = BatchNormalization()(y_a)
-        y_a = Activation('relu')(y_a)
-        y_a = MaxPooling2D(pool_size=pool_size_a_1, strides=2)(y_a)
-
-    # CONV BLOCK 2
-    filt_size_a_2 = (3, 3)
-    pool_size_a_2 = (2, 2)
-
-    if include_layers[2]:
-        y_a = Conv2D(num_filters[2], filt_size_a_2, padding='same',
-                     kernel_initializer='he_normal',
-                     name='conv_3',
-                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-        y_a = BatchNormalization()(y_a)
-        y_a = Activation('relu')(y_a)
-
-    if include_layers[3]:
-        y_a = Conv2D(num_filters[3], filt_size_a_2, padding='same',
-                     kernel_initializer='he_normal',
-                     name='conv_4',
-                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-        y_a = BatchNormalization()(y_a)
-        y_a = Activation('relu')(y_a)
-        y_a = MaxPooling2D(pool_size=pool_size_a_2, strides=2)(y_a)
-
-    # CONV BLOCK 3
-    filt_size_a_3 = (3, 3)
-    pool_size_a_3 = (2, 2)
-
-    if include_layers[4]:
-        y_a = Conv2D(num_filters[4], filt_size_a_3, padding='same',
-                     kernel_initializer='he_normal',
-                     name='conv_5',
-                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-        y_a = BatchNormalization()(y_a)
-        y_a = Activation('relu')(y_a)
-    
-    if include_layers[5]:
-        y_a = Conv2D(num_filters[5], filt_size_a_3, padding='same',
-                     kernel_initializer='he_normal',
-                     name='conv_6',
-                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-        y_a = BatchNormalization()(y_a)
-        y_a = Activation('relu')(y_a)
-        y_a = MaxPooling2D(pool_size=pool_size_a_3, strides=2)(y_a)
-
-    # CONV BLOCK 4
-    filt_size_a_4 = (3, 3)
-    pool_size_a_4 = (32, 24)
-    if include_layers[6]:
-        y_a = Conv2D(num_filters[6], filt_size_a_4, padding='same',
-                     kernel_initializer='he_normal',
-                     name='conv_7',
-                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-        y_a = BatchNormalization()(y_a)
-        y_a = Activation('relu')(y_a)
-    
-    if include_layers[7]:
-        y_a = Conv2D(num_filters[7], filt_size_a_4,
-                     kernel_initializer='he_normal',
-                     name='conv_8', padding='same',
-                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
-    
-        y_a = BatchNormalization()(y_a)
-        y_a = Activation('relu')(y_a)
-        y_a = MaxPooling2D(pool_size=pool_size_a_4)(y_a)
-
-    y_a = Flatten()(y_a)
-
-    m = Model(inputs=x_a, outputs=y_a)
-    m.name = 'student_model'
-
-    return m, x_a, y_a
-
-
 def load_audio_model_for_pruning(weight_path, model_type = 'cnn_L3_melspec2'):
     
     m, inputs, outputs = load_model(weight_path, model_type, return_io=True, src_num_gpus=1)
@@ -531,12 +417,12 @@ def get_restart_info(history_path):
     return int(last['epoch']), float(last['val_acc']), float(last['val_loss'])
 
 
-def train(train_data_dir, validation_data_dir, model_to_train = None, include_layers = [1, 1, 1, 1, 1, 1, 1, 1],
+def train(train_data_dir, validation_data_dir, sparse_l3 = None, include_layers = [1, 1, 1, 1, 1, 1, 1, 1],
           num_filters = [64, 128, 256, 512], pruning=True, finetune=False, output_dir = None, num_epochs=300,
           train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,
           model_type = 'cnn_L3_melspec2', log_path=None, disable_logging=False, random_state=20180216,
           learning_rate=0.001, verbose=True, checkpoint_interval=10, gpus=1, sparsity=[], continue_model_dir=None,
-          gsheet_id=None, google_dev_app_name=None):
+          gsheet_id=None, google_dev_app_name=None, thresholds=None):
 
     init_console_logger(LOGGER, verbose=verbose)
     if not disable_logging:
@@ -544,7 +430,6 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
     LOGGER.debug('Initialized logging.')
 
     kd_flag = False
-
 
     if pruning and finetune:
         if output_dir is None:
@@ -610,10 +495,16 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
         
     if continue_model_dir:
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
-        model = load_model(latest_model_path)
+        model, inputs, outputs  = load_model(latest_model_path, model_type, return_io=True, src_num_gpus=gpus, thresholds=thresholds)
     else:
         if pruning:
-            model = model_to_train
+            if finetune:
+                l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_masked(thresholds=thresholds)
+                model, inputs, outputs = initialize_weights(masked_model=l3_model_kd, sparse_model=sparse_l3, is_L3=True, input=x_a, output=y_a)
+
+            else:
+                audio_model, x_a, y_a = construct_cnn_L3_melspec2_masked_audio_model(thresholds)
+                model, x_a, y_a = initialize_weights(masked_model=audio_model, sparse_model=sparse_l3, is_L3=False, input=x_a, output=y_a)           
         else:
             model, x_a, y_a = load_student_audio_model_withFFT(include_layers = include_layers,\
                                                                num_filters = num_filters)
@@ -669,7 +560,7 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
     # Set up callbacks
     cb = []
     cb.append(keras.callbacks.ModelCheckpoint(latest_weight_path,
-                                              save_weights_only=False,
+                                              save_weights_only=True,
                                               verbose=1))
 
     # Accuracy only relevant when no knowledge distillation
@@ -684,7 +575,7 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
         cb.append(best_val_acc_cb)
 
     best_val_loss_cb = keras.callbacks.ModelCheckpoint(best_valid_loss_weight_path,
-                                                       save_weights_only=False,
+                                                       save_weights_only=True,
                                                        save_best_only=True,
                                                        verbose=1,
                                                        monitor='val_loss')
@@ -693,7 +584,7 @@ def train(train_data_dir, validation_data_dir, model_to_train = None, include_la
     cb.append(best_val_loss_cb)
 
     checkpoint_cb = keras.callbacks.ModelCheckpoint(checkpoint_weight_path,
-                                                    save_weights_only=False,
+                                                    save_weights_only=True,
                                                     period=checkpoint_interval)
     if continue_model_dir is not None:
         checkpoint_cb.epochs_since_last_save = (last_epoch_idx + 1) % checkpoint_interval
@@ -803,49 +694,15 @@ def gpu_wrapper_4gpus(model_f):
     return wrapped
 
 
-#@gpu_wrapper_4gpus
+@gpu_wrapper_4gpus
 def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=None, output=None):
     if is_L3:
-        audio = masked_model.get_layer('audio_model')
-                
-        #masked_model.save('model.h5')
-        #model = keras.models.load_model('model.h5', custom_objects={'MaskedConv2D': MaskedConv2D, 'Melspectrogram': Melspectrogram})
-        
-        #print(model.summary())
-        #for layer1, layer2 in zip(masked_model.get_layer('audio_model').layers, sparse_model.get_layer('audio_model').layers):
-        #    print(layer1.name)
-        #    for i, weight in enumerate(layer1.get_weights()):
-        #        print(weight.shape)
         masked_model.set_weights(sparse_model.get_weights())    
         
     else:
         masked_model.set_weights(sparse_model.get_layer('audio_model').get_weights())
         
     return masked_model, input, output
-
-
-def retrain(l3_model, thresholds, train_data_dir, validation_data_dir, output_dir, gpus=0, finetune=True, **kwargs):
-    if finetune:
-        l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_kd_multiGPU(thresholds=thresholds)
-        #l3_model_kd, x_a, y_a = construct_cnn_L3_melspec2_kd(masks=masks)
-
-        model, inp, out = initialize_weights(masked_model=l3_model_kd, sparse_model=l3_model, is_L3=True, input=x_a, output=y_a)
-
-        # Convert to multi-gpu model
-        #if gpus > 1:
-        #    model = multi_gpu_model(model, gpus=gpus)
-        #train(train_data_dir, validation_data_dir, model,
-        #      output_dir=output_dir, pruning=True, finetune=finetune, gpus=gpus, **kwargs)
-    else:
-        audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model_multiGPU(thresholds=thresholds)
-        #audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model(masks)
-        audio_model = initialize_weights(audio_model, l3_model, is_L3=False)
-        # Convert to multi-gpu model
-        # Convert to multi-gpu model
-        #if gpus > 1:
-        #    audio_model = multi_gpu_model(audio_model, gpus=gpus)
-        train(train_data_dir, validation_data_dir, audio_model,
-              output_dir=output_dir, pruning=True, finetune=finetune, gpus=gpus, **kwargs)
 
 
 def zero_check(sparsity_list):
@@ -1012,8 +869,8 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                     LOGGER.info('Retraining model with fine tuning')
                 else:
                     LOGGER.info('Retraining model with knowledge distillation')
-                retrain(model, thresholds, train_data_dir, validation_data_dir, output_dir, sparsity=sparsity,
-                        finetune = finetune, **kwargs)
+                train(train_data_dir, validation_data_dir, model, output_dir, sparsity=sparsity, thresholds=thresholds,\
+                      finetune = finetune, **kwargs)
 
 def main():
     is_pruning = True
@@ -1032,3 +889,4 @@ def main():
 
 if __name__=='__main__':
     main()
+

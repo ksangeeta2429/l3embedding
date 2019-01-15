@@ -11,7 +11,7 @@ VAL_DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
 OUTPUT_DIR=/scratch/sk7898/pruned_model
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
-NUM_GPUS=1
+NUM_GPUS=4
 SPARSITY=(0 0.3 0.4 0.5 0.3 0.5 0.5 0.6) # Command line args list
 FINETUNE=True
 

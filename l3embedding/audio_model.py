@@ -513,7 +513,7 @@ def construct_cnn_L3_melspec1_audio_model():
     return m, x_a, y_a
 
 
-def construct_cnn_L3_melspec2_kd_audio_model_multiGPU(thresholds):
+def construct_cnn_L3_melspec2_masked_audio_model(thresholds):
     weight_decay = 1e-5
     ####
     # Audio subnetwork
@@ -756,6 +756,120 @@ def construct_cnn_L3_melspec2_kd_audio_model(masks):
 
     m = Model(inputs=x_a, outputs=y_a)
     m.name = 'audio_model'
+
+    return m, x_a, y_a
+
+
+def load_student_audio_model_withFFT(include_layers, num_filters = [64, 64, 128, 128, 256, 256, 512, 512]):
+    weight_decay = 1e-5
+    ####
+    # Audio subnetwork
+    ####
+    n_dft = 2048
+    #n_win = 480
+    #n_hop = n_win//2
+    n_mels = 256
+    n_hop = 242
+    asr = 48000
+    audio_window_dur = 1
+    # INPUT
+    x_a = Input(shape=(1, asr * audio_window_dur), dtype='float32')
+
+    # MELSPECTROGRAM PREPROCESSING
+    # 128 x 199 x 1
+    y_a = Melspectrogram(n_dft=n_dft, n_hop=n_hop, n_mels=n_mels,
+                      sr=asr, power_melgram=1.0, htk=True, # n_win=n_win,
+                      return_decibel_melgram=True, padding='same')(x_a)
+    y_a = BatchNormalization()(y_a)
+
+    # CONV BLOCK 1
+    filt_size_a_1 = (3, 3)
+    pool_size_a_1 = (2, 2)
+    
+    if include_layers[0]:
+        y_a = Conv2D(num_filters[0], filt_size_a_1, padding='same',
+                     kernel_initializer='he_normal',
+                     name='conv_1',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+
+    if include_layers[1]:
+        y_a = Conv2D(num_filters[1], filt_size_a_1, padding='same',
+                     kernel_initializer='he_normal',
+                     name='conv_2',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+        y_a = MaxPooling2D(pool_size=pool_size_a_1, strides=2)(y_a)
+
+    # CONV BLOCK 2
+    filt_size_a_2 = (3, 3)
+    pool_size_a_2 = (2, 2)
+
+    if include_layers[2]:
+        y_a = Conv2D(num_filters[2], filt_size_a_2, padding='same',
+                     kernel_initializer='he_normal',
+                     name='conv_3',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+
+    if include_layers[3]:
+        y_a = Conv2D(num_filters[3], filt_size_a_2, padding='same',
+                     kernel_initializer='he_normal',
+                     name='conv_4',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+        y_a = MaxPooling2D(pool_size=pool_size_a_2, strides=2)(y_a)
+
+    # CONV BLOCK 3
+    filt_size_a_3 = (3, 3)
+    pool_size_a_3 = (2, 2)
+
+    if include_layers[4]:
+        y_a = Conv2D(num_filters[4], filt_size_a_3, padding='same',
+                     kernel_initializer='he_normal',
+                     name='conv_5',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+    
+    if include_layers[5]:
+        y_a = Conv2D(num_filters[5], filt_size_a_3, padding='same',
+                     kernel_initializer='he_normal',
+                     name='conv_6',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+        y_a = MaxPooling2D(pool_size=pool_size_a_3, strides=2)(y_a)
+
+    # CONV BLOCK 4
+    filt_size_a_4 = (3, 3)
+    pool_size_a_4 = (32, 24)
+    if include_layers[6]:
+        y_a = Conv2D(num_filters[6], filt_size_a_4, padding='same',
+                     kernel_initializer='he_normal',
+                     name='conv_7',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+    
+    if include_layers[7]:
+        y_a = Conv2D(num_filters[7], filt_size_a_4,
+                     kernel_initializer='he_normal',
+                     name='conv_8', padding='same',
+                     kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    
+        y_a = BatchNormalization()(y_a)
+        y_a = Activation('relu')(y_a)
+        y_a = MaxPooling2D(pool_size=pool_size_a_4)(y_a)
+
+    y_a = Flatten()(y_a)
+
+    m = Model(inputs=x_a, outputs=y_a)
+    m.name = 'student_model'
 
     return m, x_a, y_a
 

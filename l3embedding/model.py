@@ -35,7 +35,7 @@ def L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, model_name
     return m, [x_i, x_a], y
 
 
-def convert_num_gpus(model, inputs, outputs, model_type, src_num_gpus, tgt_num_gpus):
+def convert_num_gpus(model, inputs, outputs, model_type, src_num_gpus, tgt_num_gpus, thresholds=None):
     """
     Converts a multi-GPU model to a model that uses a different number of GPUs
 
@@ -73,7 +73,10 @@ def convert_num_gpus(model, inputs, outputs, model_type, src_num_gpus, tgt_num_g
     if src_num_gpus <= 1 and tgt_num_gpus <= 1:
         return model, inputs, outputs
 
-    m_new, inputs_new, output_new = MODELS[model_type]()
+    if thresholds is not None:
+        m_new, inputs_new, output_new = PRUNING_MODELS[model_type](thresholds)
+    else:    
+        m_new, inputs_new, output_new = MODELS[model_type]()
     m_new.set_weights(model.layers[-2].get_weights())
 
     if tgt_num_gpus > 1:
@@ -82,7 +85,7 @@ def convert_num_gpus(model, inputs, outputs, model_type, src_num_gpus, tgt_num_g
     return m_new, inputs_new, output_new
 
 
-def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, return_io=False):
+def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, thresholds=None, return_io=False):
     """
     Loads an audio-visual correspondence model
 
@@ -110,17 +113,26 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, retu
         y_i:    Embedding output Tensor/Layer. Not returned if return_io is False.
                 (Type: keras.layers.Layer)
     """
-    if model_type not in MODELS:
-        raise ValueError('Invalid model type: "{}"'.format(model_type))
+    if thresholds is not None:
+        if model_type not in PRUNING_MODELS:
+            raise ValueError('Invalid model type: "{}"'.format(model_type))
+        
+    else:
+        if model_type not in MODELS:
+            raise ValueError('Invalid model type: "{}"'.format(model_type))
 
-    m, inputs, output = MODELS[model_type]()
+    if thresholds is not None:
+        m, inputs, output = PRUNING_MODELS[model_type](thresholds)
+    else:
+        m, inputs, output = MODELS[model_type]()
+    
     if src_num_gpus > 1:
         m = multi_gpu_model(m, gpus=src_num_gpus)
     m.load_weights(weights_path)
 
     if tgt_num_gpus is not None and src_num_gpus != tgt_num_gpus:
         m, inputs, output = convert_num_gpus(m, inputs, output, model_type,
-                                             src_num_gpus, tgt_num_gpus)
+                                             src_num_gpus, tgt_num_gpus, thresholds)
 
     if return_io:
         return m, inputs, output
@@ -315,7 +327,7 @@ def construct_cnn_L3_melspec2():
     return m
 
 @gpu_wrapper
-def construct_cnn_L3_melspec2_kd_multiGPU(thresholds):
+def construct_cnn_L3_melspec2_masked(thresholds):
     """
     Returns
     -------
@@ -327,9 +339,9 @@ def construct_cnn_L3_melspec2_kd_multiGPU(thresholds):
             (Type: keras.layers.Layer)
     """
     vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
-    audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model_multiGPU(thresholds)
+    audio_model, x_a, y_a = construct_cnn_L3_melspec2_masked_audio_model(thresholds)
 
-    m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_kapredbinputbn_kd')
+    m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_masked')
     return m
 
 
@@ -380,6 +392,11 @@ MODELS = {
     'cnn_L3_melspec1': construct_cnn_L3_melspec1,
     'cnn_L3_melspec2': construct_cnn_L3_melspec2,
     'cnn_L3_melspec2_audioonly': construct_cnn_L3_melspec2_audio_model
+}
+
+PRUNING_MODELS = {
+    'cnn_L3_melspec2_masked': construct_cnn_L3_melspec2_masked,
+    'cnn_L3_melspec2_masked_audio': construct_cnn_L3_melspec2_masked_audio_model
 }
 
 
