@@ -29,6 +29,7 @@ import copy
 from gsheets import get_credentials, append_row, update_experiment, get_row
 from googleapiclient import discovery
 from log import *
+from kapre.time_frequency import Spectrogram, Melspectrogram
 
 LOGGER = logging.getLogger('prunedl3embedding')
 LOGGER.setLevel(logging.DEBUG)
@@ -295,7 +296,9 @@ def get_sparsity_layers(layer, sparsity_layer, sparsity_value_layers):
 
 
 def calculate_threshold(weights, ratio):
-    return tf.contrib.distributions.percentile(K.abs(weights), ratio)
+    np_thresh = np.percentile(np.abs(weights), ratio)
+    tf_thresh = tf.contrib.distributions.percentile(K.abs(weights), ratio)
+    return tf_thresh, np_thresh
 
         
 def sparsify_layer(model, sparsity_dict):
@@ -307,20 +310,21 @@ def sparsify_layer(model, sparsity_dict):
             weights = layer.get_weights()[0]
 
             if sparsity_dict[layer.name]:
-                threshold = calculate_threshold(weights, sparsity_dict[layer.name])
+                threshold, np_threshold = calculate_threshold(weights, sparsity_dict[layer.name])
+                tf_threshold = K.eval(threshold)
                 mask      = K.cast(K.greater(K.abs(weights), threshold), dtypes.float32)
                 new_weights = weights * K.eval(mask)
                 target_weights[0] = new_weights
             
                 target_weights[1] = layer.get_weights()[1]
                 layer.set_weights(target_weights)
-
+            
             else:
-                threshold = 0.0
+                tf_threshold = 0.0
                 mask = K.ones_like(weights)
 
             masks[layer.name] = mask
-            thresholds[layer.name] = threshold
+            thresholds[layer.name] = tf_threshold
 
     return model, masks, thresholds
 
@@ -337,7 +341,7 @@ def sparsify_block(model, sparsity_dict):
             weights_2 = model.get_layer(layer_2).get_weights()[0]
             weights = np.append(weights_1.flatten(), weights_2.flatten())
             
-            threshold = calculate_threshold(weights, sparsity_dict[layer_1])
+            threshold, np_threshold = calculate_threshold(weights, sparsity_dict[layer_1])
 
             #print(K.eval(threshold))
             target_weights_1 = np.empty_like(model.get_layer(layer_1).get_weights())
@@ -799,13 +803,25 @@ def gpu_wrapper_4gpus(model_f):
     return wrapped
 
 
-@gpu_wrapper_4gpus
+#@gpu_wrapper_4gpus
 def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=None, output=None):
     if is_L3:
-        masked_model.set_weights(sparse_model.get_weights())
+        audio = masked_model.get_layer('audio_model')
+                
+        #masked_model.save('model.h5')
+        #model = keras.models.load_model('model.h5', custom_objects={'MaskedConv2D': MaskedConv2D, 'Melspectrogram': Melspectrogram})
+        
+        #print(model.summary())
+        for layer1, layer2 in zip(masked_model.get_layer('audio_model').layers, sparse_model.get_layer('audio_model').layers):
+            print(layer1.name)
+            for i, weight in enumerate(layer1.get_weights()):
+                print(weight.shape)
+                #layer1.set_weights(layer2.get_weights())
+            
+        
     else:
         masked_model.set_weights(sparse_model.get_layer('audio_model').get_weights())
-    print(masked_model.get_layer('audio_model').summary())
+        
     return masked_model, input, output
 
 
@@ -819,8 +835,8 @@ def retrain(l3_model, thresholds, train_data_dir, validation_data_dir, output_di
         # Convert to multi-gpu model
         #if gpus > 1:
         #    model = multi_gpu_model(model, gpus=gpus)
-        train(train_data_dir, validation_data_dir, model,
-              output_dir=output_dir, pruning=True, finetune=finetune, gpus=gpus, **kwargs)
+        #train(train_data_dir, validation_data_dir, model,
+        #      output_dir=output_dir, pruning=True, finetune=finetune, gpus=gpus, **kwargs)
     else:
         audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model_multiGPU(thresholds=thresholds)
         #audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model(masks)

@@ -315,7 +315,7 @@ def construct_cnn_L3_melspec2():
     return m
 
 @gpu_wrapper
-def construct_cnn_L3_melspec2_kd(thresholds):
+def construct_cnn_L3_melspec2_kd_multiGPU(thresholds):
     """
     Returns
     -------

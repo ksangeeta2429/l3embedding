@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
 
-module purge
-module load cuda/8.0.44
-module load cudnn/8.0v6.0
-
 source ~/.bashrc
 source activate l3embedding-new-cpu
 cd `git rev-parse --show-toplevel`
 
-SRCDIR=.
+SRCDIR=/home/sk7898/l3embedding
 WEIGHT_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
 TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples/music_train
 VAL_DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
@@ -16,8 +12,12 @@ OUTPUT_DIR=/scratch/sk7898/pruned_model
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=1
-SPARSITY=( "$@" ) # Command line args list
+SPARSITY=(0 0.3 0.4 0.5 0.3 0.5 0.5 0.6) # Command line args list
 FINETUNE=True
+
+module purge
+module load cuda/8.0.44
+module load cudnn/8.0v6.0
 
 python $SRCDIR/03_train_pruning.py \
     --num-epochs 300 \
