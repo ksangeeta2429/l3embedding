@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+#SBATCH --gres=gpu:4
+#SBATCH --job-name=l3-pruning-layers-melspec2-finetune
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=64GB
+#SBATCH --time=7-0
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=sangeeta.osu@gmail.com
+#SBATCH --output="l3-pruning-layers-melspec2-finetune-%j.out"
+#SBATCH --err="l3-pruning-layers-melspec2-finetune-%j.err"
+
 source ~/.bashrc
 source activate l3embedding-new-cpu
 cd `git rev-parse --show-toplevel`
@@ -8,12 +19,12 @@ SRCDIR=/home/sk7898/l3embedding
 WEIGHT_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
 TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples/music_train
 VAL_DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
-OUTPUT_DIR=/scratch/sk7898/pruned_model
+OUTPUT_DIR=/scratch/sk7898/l3pruning
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
-SPARSITY=(0 0.3 0.4 0.5 0.3 0.5 0.5 0.6) # Command line args list
-FINETUNE=True
+SPARSITY=( "$@" ) # Command line args list
+FINETUNE=False
 
 module purge
 module load cuda/8.0.44
