@@ -24,7 +24,10 @@ GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
 SPARSITY=( "$@" ) # Command line args list
-FINETUNE=True
+RETRAIN_MODEL=True
+FINETUNE=False 
+LAYERWISE=True
+FILTERWISE=False
 
 module purge
 module load cuda/8.0.44
@@ -38,7 +41,10 @@ python $SRCDIR/03_train_pruning.py \
     --validation-epoch-size 1024 \
     --validation-batch-size 64 \
     --checkpoint-interval 10 \
-    --retrain \
+    --retrain $RETRAIN_MODEL\
+    --finetune $FINETUNE \
+    --layerwise $LAYERWISE \
+    --filterwise $FILTERWISE \
     --sparsity ${SPARSITY[*]} \
     --gpus $NUM_GPUS \
     --learning-rate 0.00001 \
