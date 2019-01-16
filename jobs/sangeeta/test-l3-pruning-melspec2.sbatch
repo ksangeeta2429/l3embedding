@@ -24,7 +24,7 @@ GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
 SPARSITY=( "$@" ) # Command line args list
-FINETUNE=False
+FINETUNE=True
 
 module purge
 module load cuda/8.0.44
