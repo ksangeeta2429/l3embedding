@@ -465,7 +465,6 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
         'include_layers': include_layers,
         'num_filters': num_filters,
         'sparsity': sparsity,
-        'pruning': pruning,
         'finetune': finetune,
         'layerwise': layerwise,
         'filterwise': filterwise,
@@ -489,6 +488,12 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
         'gsheet_id': gsheet_id,
         'google_dev_app_name': google_dev_app_name
     }
+
+    if filterwise and not layerwise:
+        param_dict['pruning'] = 'filterwise'
+    elif layerwise and not filterwise:
+        param_dict['pruning'] = 'layerwise'
+        
     LOGGER.info('Training with the following arguments: {}'.format(param_dict))
 
     # Make sure the directories we need exist
