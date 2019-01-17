@@ -697,6 +697,7 @@ def gpu_wrapper_4gpus(model_f):
 @gpu_wrapper_4gpus
 def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=None, output=None):
     if is_L3:
+        print(masked_model.get_layer('audio_model').shape)
         masked_model.set_weights(sparse_model.get_weights())    
         
     else:

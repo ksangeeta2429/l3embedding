@@ -8,8 +8,8 @@
 #SBATCH --time=7-0
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=sangeeta.osu@gmail.com
-#SBATCH --output="l3-pruning-layers-melspec2-finetune-%j.out"
-#SBATCH --err="l3-pruning-layers-melspec2-finetune-%j.err"
+#SBATCH --output="l3-pruning-melspec2-kd-layerwise-%j.out"
+#SBATCH --err="l3-pruning-melspec2-kd-layerwise-%j.err"
 
 source ~/.bashrc
 source activate l3embedding-new-cpu
@@ -23,7 +23,7 @@ OUTPUT_DIR=/scratch/sk7898/l3pruning
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
-SPARSITY=( "$@" ) # Command line args list
+SPARSITY=(0 50. 50. 50. 50. 50. 50. 50.) # Command line args list
 RETRAIN_MODEL=True
 FINETUNE=False 
 LAYERWISE=True
@@ -34,6 +34,10 @@ module load cuda/8.0.44
 module load cudnn/8.0v6.0
 
 python $SRCDIR/03_train_pruning.py \
+    $WEIGHT_PATH \
+    $TRAIN_DATA_DIR \
+    $VAL_DATA_DIR \
+    $OUTPUT_DIR \
     --num-epochs 300 \
     --train-epoch-size 4096 \
     --train-batch-size 64 \
@@ -51,8 +55,4 @@ python $SRCDIR/03_train_pruning.py \
     --random-state 20180216 \
     --gsheet-id $GSHEET_ID \
     --google-dev-app-name $GOOGLE_DEV_APP_NAME \
-    --verbose \
-    $WEIGHT_PATH \
-    $TRAIN_DATA_DIR \
-    $VAL_DATA_DIR \
-    $OUTPUT_DIR
+    --verbose

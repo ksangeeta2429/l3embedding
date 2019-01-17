@@ -146,28 +146,25 @@ def parse_arguments():
     parser.add_argument('-ret',
                         '--retrain',
                         dest='retrain_model',
-                        action='store_true',
                         default=True,
                         help='Retrain model? (Default is yes: fine tune)')
 
     parser.add_argument('-finetune',
                         '--finetune',
                         dest='finetune',
-                        action='store_true',
                         default=True,
                         help='Finetune model? (Default is yes. If set to no, Knowledge distillation is chosen)')
 
     parser.add_argument('-filterwise',
                         '--filterwise',
                         dest='filterwise',
-                        action='store_false',
+                        action='store',
                         default=False,
                         help='Drop filters?')
 
     parser.add_argument('-layerwise',
                         '--layerwise',
                         dest='layerwise',
-                        action='store_true',
                         default=True,
                         help='Layerwise pruning?')
 
