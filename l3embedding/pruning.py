@@ -908,10 +908,10 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     if retrain_model:
         if isReduced:
             train(train_data_dir, validation_data_dir, new_l3=model, old_l3=old_model, sparsity=sparsity, \
-                  finetune=finetune, layerwise=layerwise, filterwise=filterwise, **kwargs)
+                  finetune=finetune, layerwise=layerwise, filterwise=filterwise, output_dir=output_dir, **kwargs)
         else:
             train(train_data_dir, validation_data_dir, new_l3=model, sparsity=sparsity, thresholds=thresholds,\
-                  finetune=finetune, layerwise=layerwise, filterwise=filterwise, **kwargs)
+                  finetune=finetune, layerwise=layerwise, filterwise=filterwise, output_dir=output_dir, **kwargs)
 
 def main():
     is_pruning = True
