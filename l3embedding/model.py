@@ -35,7 +35,7 @@ def L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, model_name
     return m, [x_i, x_a], y
 
 
-def convert_num_gpus(model, inputs, outputs, model_type, src_num_gpus, tgt_num_gpus, thresholds=None):
+def convert_num_gpus(model, inputs, outputs, model_type, src_num_gpus, tgt_num_gpus):
     """
     Converts a multi-GPU model to a model that uses a different number of GPUs
 
@@ -73,10 +73,7 @@ def convert_num_gpus(model, inputs, outputs, model_type, src_num_gpus, tgt_num_g
     if src_num_gpus <= 1 and tgt_num_gpus <= 1:
         return model, inputs, outputs
 
-    if thresholds is not None:
-        m_new, inputs_new, output_new = PRUNING_MODELS[model_type](thresholds)
-    else:    
-        m_new, inputs_new, output_new = MODELS[model_type]()
+    m_new, inputs_new, output_new = MODELS[model_type]()
     m_new.set_weights(model.layers[-2].get_weights())
 
     if tgt_num_gpus > 1:
@@ -85,7 +82,117 @@ def convert_num_gpus(model, inputs, outputs, model_type, src_num_gpus, tgt_num_g
     return m_new, inputs_new, output_new
 
 
-def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, thresholds=None, return_io=False):
+def convert_num_gpus_new(model, inputs, outputs, model_type, src_num_gpus, tgt_num_gpus, thresholds=None, old_model=None):
+    """
+    Converts a multi-GPU model to a model that uses a different number of GPUs
+
+    If the model is single-GPU/CPU, the given model is returned
+
+    Args:
+        model:  Keras model
+                (Type: keras.models.Model)
+
+        inputs: Input Tensor.
+                (Type: keras.layers.Input)
+
+        outputs: Embedding output Tensor/Layer.
+                 (Type: keras.layers.Layer)
+
+        model_type: Name of model type
+                    (Type: str)
+
+        src_num_gpus: Number of GPUs the source model uses
+                      (Type: int)
+
+        tgt_num_gpus: Number of GPUs the converted model will use
+                      (Type: int)
+        
+        thresholds:  Threshold list for the pruned model mask creation
+                    (Type: float list)
+        old_model:  If the new model is reduced, the old model architecture is loaded from old_model
+
+    Returns:
+        model_cvt:  Embedding model object
+                    (Type: keras.engine.training.Model)
+
+        inputs_cvt: Input Tensor. Not returned if return_io is False.
+                    (Type: keras.layers.Input)
+
+        ouputs_cvt: Embedding output Tensor/Layer. Not returned if return_io is False.
+                    (Type: keras.layers.Layer)
+    """
+    if src_num_gpus <= 1 and tgt_num_gpus <= 1:
+        return model, inputs, outputs
+
+    if thresholds is None:
+        m_new, inputs_new, output_new = PRUNED_MODELS[model_type](thresholds)
+    else:
+        m_new, inputs_new, output_new = old_model, inputs, outputs
+    m_new.set_weights(model.layers[-2].get_weights())
+
+    if tgt_num_gpus > 1:
+        m_new = multi_gpu_model(m_new, gpus=tgt_num_gpus)
+
+    return m_new, inputs_new, output_new
+
+
+def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, thresholds=None, return_io=False, inputs=None, outputs=None):
+    """
+    Loads an audio-visual correspondence model
+
+    Args:
+        weights_path:  Path to Keras weights file
+                       (Type: str)
+        model_type:    Name of model type if thresholds
+                       (Type: str)
+                       Model id thresholds=None
+                       (Type: Model)
+
+    Keyword Args:
+        src_num_gpus:   Number of GPUs the saved model uses
+                        (Type: int)
+
+        tgt_num_gpus:   Number of GPUs the loaded model will use
+                        (Type: int)
+
+        return_io:  If True, return input and output tensors
+                    (Type: bool)
+    
+        inputs, output:     Is passed if model_type is of type Model
+
+    Returns:
+        model:  Loaded model object
+                (Type: keras.engine.training.Model)
+        x_i:    Input Tensor. Not returned if return_io is False.
+                (Type: keras.layers.Input)
+        y_i:    Embedding output Tensor/Layer. Not returned if return_io is False.
+                (Type: keras.layers.Layer)
+    """
+    if thresholds is not None and model_type not in PRUNING_MODELS:
+        raise ValueError('Invalid model type: "{}"'.format(model_type))
+
+    if thresholds is not None:
+        m, inputs, output = PRUNING_MODELS[model_type](thresholds)
+    else:
+        m, inputs, output = model_type, inputs, outputs
+    
+    old_m = m
+
+    if src_num_gpus > 1:
+        m = multi_gpu_model(m, gpus=src_num_gpus)
+    m.load_weights(weights_path)
+
+    if tgt_num_gpus is not None and src_num_gpus != tgt_num_gpus:
+        m, inputs, output = convert_num_gpus_new(m, inputs, output, model_type,
+                                                 src_num_gpus, tgt_num_gpus, thresholds=thresholds, old_model=old_m)
+
+    if return_io:
+        return m, inputs, output
+    else:
+        return m
+
+
+def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, return_io=False):
     """
     Loads an audio-visual correspondence model
 
@@ -113,18 +220,10 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, thre
         y_i:    Embedding output Tensor/Layer. Not returned if return_io is False.
                 (Type: keras.layers.Layer)
     """
-    if thresholds is not None:
-        if model_type not in PRUNING_MODELS:
-            raise ValueError('Invalid model type: "{}"'.format(model_type))
-        
-    else:
-        if model_type not in MODELS:
-            raise ValueError('Invalid model type: "{}"'.format(model_type))
+    if model_type not in MODELS:
+        raise ValueError('Invalid model type: "{}"'.format(model_type))
 
-    if thresholds is not None:
-        m, inputs, output = PRUNING_MODELS[model_type](thresholds)
-    else:
-        m, inputs, output = MODELS[model_type]()
+    m, inputs, output = MODELS[model_type]()
     
     if src_num_gpus > 1:
         m = multi_gpu_model(m, gpus=src_num_gpus)
@@ -132,8 +231,7 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, thre
 
     if tgt_num_gpus is not None and src_num_gpus != tgt_num_gpus:
         m, inputs, output = convert_num_gpus(m, inputs, output, model_type,
-                                             src_num_gpus, tgt_num_gpus, thresholds)
-
+                                             src_num_gpus, tgt_num_gpus)
     if return_io:
         return m, inputs, output
     else:

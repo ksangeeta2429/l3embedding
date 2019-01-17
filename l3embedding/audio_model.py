@@ -869,7 +869,7 @@ def load_student_audio_model_withFFT(include_layers, num_filters = [64, 64, 128,
     y_a = Flatten()(y_a)
 
     m = Model(inputs=x_a, outputs=y_a)
-    m.name = 'student_model'
+    m.name = 'audio_model'
 
     return m, x_a, y_a
 

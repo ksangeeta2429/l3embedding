@@ -148,14 +148,14 @@ def parse_arguments():
                         dest='retrain_model',
                         action = 'store_true',
                         default=False,
-                        help='Retrain model? (Default is yes: fine tune)')
+                        help='Retrain model?')
 
     parser.add_argument('-finetune',
                         '--finetune',
                         dest='finetune',
                         action='store_true',
                         default=False,
-                        help='Finetune model? (Default is yes. If set to no, Knowledge distillation is chosen)')
+                        help='Finetune model?')
 
     parser.add_argument('-filterwise',
                         '--filterwise',
@@ -179,7 +179,7 @@ def parse_arguments():
                         help='Test model?')
 
     parser.add_argument('-sav',
-                        '--save-model',
+                        '--save_model',
                         dest='save_model',
                         action='store_true',
                         default=False,
