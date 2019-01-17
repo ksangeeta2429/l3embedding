@@ -783,9 +783,10 @@ def get_sparsity_filters(conv_layers, conv_filters, sparsity_filters):
 
 
 def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model',\
-            blockwise=False, layerwise=True, per_layer=False, filterwise=False, sparsity=[],
+            blockwise=False, layerwise=True, per_layer=False, filterwise=False, sparsity=[],\
             test_model=False, save_model=False, retrain_model=False, finetune = True, **kwargs):
     
+    print(finetune)
     conv_blocks = 4
     
     sparsity_values = [70., 80., 85., 90., 95.]
@@ -793,12 +794,14 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     if per_layer:
         sparsity_layers = [0, 0, 0, 0, 0, 0, 0, 0]
     elif not per_layer and not filterwise:
+        LOGGER.info("Layerwise Pruning")
         if sparsity==[]:
-            sparsity_layers =   [[0, 60., 60., 70., 50., 70., 70., 80.]]
+            sparsity_layers = [[0, 60., 60., 70., 50., 70., 70., 80.]]
         else:
             sparsity_layers = [sparsity]
-
+    '''        
     elif filterwise:
+        LOGGER.info("Filter Dropping")
         #Use values like 0.5, 0.625, 0.75, 0.875, 0.9375
         sparsity_filters = [0, 50., 50., 50., 50., 50., 50., 50.]
         filter_sparsity = {}
@@ -810,7 +813,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
         new_model, x_a, y_a = load_student_audio_model_withFFT(include_layers = [1, 1, 1, 1, 1, 1, 1, 1],\
                                                      num_filters = num_filters)
         reduced_model = drop_filters(audio_model, new_model, filter_sparsity)
-
+    '''
     if(blockwise and zero_check(sparsity_blks)):
         LOGGER.info("Block-wise Pruning")
         LOGGER.info("*********************************************************************")
