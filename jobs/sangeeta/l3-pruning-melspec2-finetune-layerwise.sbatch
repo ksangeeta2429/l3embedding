@@ -26,8 +26,12 @@ NUM_GPUS=4
 SPARSITY=(0 50. 50. 50. 50. 50. 50. 50.) # Command line args list
 
 module purge
-module load cuda/8.0.44
-module load cudnn/8.0v6.0
+if [ $USER == "sk7898" ]; then
+  module load cuda/8.0.44
+  module load cudnn/8.0v6.0
+else
+  module load cudnn/9.0v7.3.0.29
+fi
 
 python $SRCDIR/03_train_pruning.py \
     $WEIGHT_PATH \
