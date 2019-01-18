@@ -4,9 +4,9 @@
 #SBATCH --job-name=l3-pruning-layers-melspec2-finetune
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=64GB
+#SBATCH --mem=32GB
 #SBATCH --time=7-0
-#SBATCH --mail-type=FAIL
+#SBATCH --mail-type=ALL
 #SBATCH --output="l3-pruning-melspec2-finetune-filterwise-%j.out"
 #SBATCH --err="l3-pruning-melspec2-finetune-fiterwise-%j.err"
 
@@ -22,8 +22,8 @@ OUTPUT_DIR=$SCRATCH/l3pruning
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
-#SPARSITY=(0 50. 50. 50. 50. 50. 50. 50.) # Command line args list
-SPARSITY=( "$@" ) # Command line args list
+NUM_FILTERS=( "$@" ) # Command line args list
+#NUM_FILTERS=( 64 48 64 64 128 128 256 256 ) # Command line args list
 
 module purge
 if [ $USER == "sk7898" ]; then
@@ -48,7 +48,7 @@ python $SRCDIR/03_train_pruning.py \
     --retrain \
     --finetune \
     --filterwise \
-    --sparsity ${SPARSITY[*]} \
+    --num_filters ${NUM_FILTERS[*]} \
     --gpus $NUM_GPUS \
     --learning-rate 0.00001 \
     --random-state 20180216 \

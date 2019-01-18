@@ -757,12 +757,14 @@ def printDict(pDict):
         printStr += str(key)+ ": "+ str(pDict[key])+ ", "
     print(printStr)
 
-def drop_filters(model, new_model, sparsity_dict):
+def drop_filters(model, new_model, new_filters_dict, old_filters_dict):
     weights_dict = {}
     for i, layer in enumerate(model.layers):
-        if layer.name in sparsity_dict:
-            if sparsity_dict[layer.name]:
+        if layer.name in new_filters_dict:
+            if new_filters_dict[layer.name] != old_filters_dict[layer.name]:
                 filters_mag = []
+                sorted_idx = []
+                num_filters_drop = old_filters_dict[layer.name] - new_filters_dict[layer.name]
                 new_weights = np.empty_like(new_model.get_layer(layer.name).get_weights())
 
                 if layer.name in weights_dict:
@@ -775,18 +777,16 @@ def drop_filters(model, new_model, sparsity_dict):
                 for channel in range(weights.shape[3]):
                     filters_mag.append(np.sum(np.abs(weights[:, :, :, channel]))) 
             
-                threshold, np_thresh = calculate_threshold(filters_mag, sparsity_dict[layer.name])
-                mask      = K.cast(K.greater(filters_mag, threshold), dtypes.float32)
+                sorted_idx = np.argsort(np.array(filters_mag))
+                sorted_idx = sorted_idx[num_filters_drop:]
             
-                non_dropped_ch = K.eval(tf.where(mask > 0))
-            
-                new_weights[0] = K.eval(tf.gather(weights, [y for x in non_dropped_ch for y in x], axis = -1))
-                new_weights[1] = K.eval(tf.gather(biases, [y for x in non_dropped_ch for y in x], axis = 0))
+                new_weights[0] = K.eval(tf.gather(weights, sorted_idx, axis = -1))
+                new_weights[1] = K.eval(tf.gather(biases, sorted_idx, axis = 0))
 
                 next_conv = 'conv_'+ str(int(layer.name[5])+1)
                 if not 'conv_8' in layer.name: 
                     weights_dict[next_conv] = K.eval(tf.gather(model.get_layer(next_conv).get_weights()[0], \
-                                                               [y for x in non_dropped_ch for y in x], axis = 2))
+                                                               sorted_idx, axis = 2))
                 
                 new_model.get_layer(layer.name).set_weights(new_weights)
             
@@ -796,23 +796,18 @@ def drop_filters(model, new_model, sparsity_dict):
     return new_model
             
 
-def get_sparsity_filters(conv_layers, conv_filters, sparsity_filters):
-    sparsity_dict = {}
-    new_num_filters = []
+def get_filters(conv_layers, conv_filters, num_filters):
+    new_filters = {}
+    old_filters = {}
     for i, layer in enumerate(conv_layers):
-        if sparsity_filters[i]:
-            new_num_filters.append(int((100. - sparsity_filters[i])/100 * conv_filters[i]))
-        else:
-            new_num_filters.append(conv_filters[i])
+        old_filters[layer] = conv_filters[i]
+        new_filters[layer] = num_filters[i]
 
-        sparsity_dict[layer] = sparsity_filters[i]
-
-    return sparsity_dict, new_num_filters
-
+    return new_filters, old_filters
 
 
 def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model',\
-            blockwise=False, layerwise=True, per_layer=False, filterwise=False, sparsity=[],\
+            blockwise=False, layerwise=True, per_layer=False, filterwise=False, sparsity=[], num_filters=[],\
             test_model=False, save_model=False, retrain_model=False, finetune = True, **kwargs):
     
     conv_blocks = 4
@@ -821,10 +816,16 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     if sparsity==[]:
         if per_layer:
             sparsity_list = [0, 0, 0, 0, 0, 0, 0, 0]
+        elif filterwise:
+            sparsity_list = None
         else:
             sparsity_list = [[0, 60., 60., 70., 50., 70., 70., 80.]]
     else:
         sparsity_list = [sparsity]
+        
+    if filterwise and num_filters==[]:
+        LOGGER.info("ERROR: Please give a list of filters to run filterwise pruning experiment")
+        exit(0)
                         
     if blockwise:
         LOGGER.info("Block-wise Pruning")
@@ -882,25 +883,24 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     if filterwise:
         LOGGER.info("Filter Dropping")
         LOGGER.info("**********************************************************************")
-        #Use sparsity values like 0.25, 0.5, 0.625, 0.75, 0.875, 0.9375
         
         isReduced = True
         conv_layers = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6', 'conv_7', 'conv_8']
         conv_filters = [64, 64, 128, 128, 256, 256, 512, 512]
  
-        for sparsity in sparsity_list:
-           LOGGER.info('Sparsity: {0}'.format(sparsity))
-           filter_sparsity = {}
-           old_model, audio_model = load_audio_model_for_pruning(weight_path)
-           filter_sparsity, num_filters = get_sparsity_filters(conv_layers, conv_filters, sparsity)
+        LOGGER.info('For filterwise, Sparsity: None')
+        new_filters_dict = {}
+        old_filters_dict = {}
+        old_model, audio_model = load_audio_model_for_pruning(weight_path)
+        new_filters_dict, old_filters_dict = get_filters(conv_layers, conv_filters, num_filters)
         
-           new_model_arch, x_a, y_a = load_student_audio_model_withFFT(include_layers = [1, 1, 1, 1, 1, 1, 1, 1],\
+        new_model_arch, x_a, y_a = load_student_audio_model_withFFT(include_layers = [1, 1, 1, 1, 1, 1, 1, 1],\
                                                                        num_filters = num_filters)
-           new_audio_model = drop_filters(audio_model, new_model_arch, filter_sparsity)
+        new_audio_model = drop_filters(audio_model, new_model_arch, new_filters_dict, old_filters_dict)
 
-           vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
-           model, inputs, outputs = L3_merge_audio_vision_models(vision_model, x_i, new_audio_model, x_a, 'cnn_L3_dropped_filter')
-           LOGGER.info("New L3 Model created with dropped filters")
+        vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
+        model, inputs, outputs = L3_merge_audio_vision_models(vision_model, x_i, new_audio_model, x_a, 'cnn_L3_dropped_filter')
+        LOGGER.info("New L3 Model created with dropped filters")
 
     if save_model:
         pruned_model_name = 'pruned_audio_'+str(score[1])+'.h5'

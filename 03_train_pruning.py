@@ -141,7 +141,17 @@ def parse_arguments():
                         default=[],
                         type=float,
                         nargs='+',
-                        help='<Required> Set flag')
+                        help='Set the sparsity list for layerwise pruning')
+
+    parser.add_argument('-filters',
+                        '--num_filters',
+                        dest='num_filters',
+                        action='store',
+                        default=[],
+                        type=int,
+                        nargs='+',
+                        help='Set the new number of filters for filterwise pruning')
+
 
     parser.add_argument('-ret',
                         '--retrain',
