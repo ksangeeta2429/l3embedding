@@ -7,7 +7,6 @@
 #SBATCH --mem=64GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=FAIL
-#SBATCH --mail-user=sangeeta.osu@gmail.com
 #SBATCH --output="l3-pruning-melspec2-finetune-layerwise-%j.out"
 #SBATCH --err="l3-pruning-melspec2-finetune-layerwise-%j.err"
 
