@@ -111,8 +111,9 @@ class GSheetLogger(keras.callbacks.Callback):
     Keras callback to update Google Sheets Spreadsheet
     """
 
-    def __init__(self, google_dev_app_name, spreadsheet_id, param_dict):
+    def __init__(self, google_dev_app_name, spreadsheet_id, param_dict, is_kd):
         super(GSheetLogger).__init__()
+        self.is_kd = is_kd
         self.google_dev_app_name = google_dev_app_name
         self.spreadsheet_id = spreadsheet_id
         self.credentials = get_credentials(google_dev_app_name)
@@ -145,10 +146,11 @@ class GSheetLogger(keras.callbacks.Callback):
             self.best_train_loss = latest_train_loss
         if latest_valid_loss < self.best_valid_loss:
             self.best_valid_loss = latest_valid_loss
-        if latest_train_acc > self.best_train_acc:
-            self.best_train_acc = latest_train_acc
-        if latest_valid_acc > self.best_valid_acc:
-            self.best_valid_acc = latest_valid_acc
+        if not self.is_kd:
+            if latest_train_acc > self.best_train_acc:
+                self.best_train_acc = latest_train_acc
+            if latest_valid_acc > self.best_valid_acc:
+                self.best_valid_acc = latest_valid_acc
 
         values = [
             latest_epoch, latest_train_loss, latest_valid_loss,
@@ -625,7 +627,7 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
     cb.append(reduceLR)
 
     if gsheet_id:
-        cb.append(GSheetLogger(google_dev_app_name, gsheet_id, param_dict))
+        cb.append(GSheetLogger(google_dev_app_name, gsheet_id, param_dict, kd_flag))
 
     LOGGER.info('Setting up train data generator...')
     if continue_model_dir is not None:
