@@ -22,8 +22,8 @@ OUTPUT_DIR=$SCRATCH/l3pruning
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
-SPARSITY=(0 50. 50. 50. 50. 50. 50. 50.) # Command line args list
-
+#SPARSITY=(0 50. 50. 50. 50. 50. 50. 50.) # Command line args list
+SPARSITY=( "$@" ) # Command line args list
 module purge
 
 if [ $USER == "sk7898" ]; then

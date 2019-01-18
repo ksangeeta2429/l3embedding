@@ -14,15 +14,16 @@ source ~/.bashrc
 cd `git rev-parse --show-toplevel`
 source activate l3embedding-new-cpu
 
-SRCDIR=$HOME/l3embedding
+SRCDIR=. #$HOME/l3embedding
 WEIGHT_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
 TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples/music_train
 VAL_DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
-OUTPUT_DIR=/scratch/sk7898/l3pruning
+OUTPUT_DIR=$SCRATCH/l3pruning
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
-SPARSITY=(0 50. 50. 50. 50. 50. 50. 50.) # Command line args list
+#SPARSITY=(0 50. 50. 50. 50. 50. 50. 50.) # Command line args list
+SPARSITY=( "$@" ) # Command line args list
 
 module purge
 if [ $USER == "sk7898" ]; then
