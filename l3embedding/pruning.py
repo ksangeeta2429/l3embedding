@@ -420,7 +420,7 @@ def get_restart_info(history_path):
 
 
 def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, include_layers = [1, 1, 1, 1, 1, 1, 1, 1],\
-          num_filters = [64, 128, 256, 512], pruning=True, finetune=False, layerwise=False, filterwise=False, output_dir = None, \
+          num_filters = [64, 64, 128, 128, 256, 256, 512, 512], pruning=True, finetune=False, layerwise=False, filterwise=False, output_dir = None, \
           num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
           model_type = 'cnn_L3_melspec2', log_path=None, disable_logging=False, random_state=20180216,\
           learning_rate=0.001, verbose=True, checkpoint_interval=10, gpus=1, sparsity=[], continue_model_dir=None,\
@@ -900,7 +900,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
            filter_sparsity, num_filters = get_sparsity_filters(conv_layers, conv_filters, sparsity)
         
            new_model_arch, x_a, y_a = load_student_audio_model_withFFT(include_layers = [1, 1, 1, 1, 1, 1, 1, 1],\
-                                                                   num_filters = num_filters)
+                                                                       num_filters = num_filters)
            new_audio_model = drop_filters(audio_model, new_model_arch, filter_sparsity)
 
            vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
@@ -915,7 +915,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     if retrain_model:
         if isReduced:
             train(train_data_dir, validation_data_dir, new_l3=model, old_l3=old_model, sparsity=sparsity, \
-                  finetune=finetune, layerwise=layerwise, filterwise=filterwise, output_dir=output_dir, **kwargs)
+                  finetune=finetune, layerwise=layerwise, filterwise=filterwise, output_dir=output_dir, num_filters=num_filters, **kwargs)
         else:
             train(train_data_dir, validation_data_dir, new_l3=model, sparsity=sparsity, thresholds=thresholds,\
                   finetune=finetune, layerwise=layerwise, filterwise=filterwise, output_dir=output_dir, **kwargs)
