@@ -439,17 +439,14 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
     kd_flag = False
 
     if pruning and finetune:
-        if output_dir is None:
-            output_dir = '/scratch/sk7898/pruning_finetune_output'
-        model_attribute = 'pruning_finetune'
+        if filterwise:
+            model_attribute = 'pruning_finetune_filterwise'
+        else:
+            model_attribute = 'pruning_finetune_layerwise'
     elif pruning and not finetune:
-        if output_dir is None:
-            output_dir = '/scratch/sk7898/pruning_kd_output'
         kd_flag = True
         model_attribute = 'pruning_kd'
     else:
-        if output_dir is None:
-            output_dir = '/scratch/sk7898/reduced_kd_output'
         kd_flag = True
         model_attribute = 'reduced_kd'
 
@@ -468,8 +465,6 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
         'num_filters': num_filters,
         'sparsity': sparsity,
         'finetune': finetune,
-        'layerwise': layerwise,
-        'filterwise': filterwise,
         'knowledge_distilled': kd_flag,
         'num_epochs': num_epochs,
         'train_epoch_size': train_epoch_size,
