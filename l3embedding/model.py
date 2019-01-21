@@ -2,7 +2,7 @@ from keras.layers import concatenate, Dense
 from .vision_model import *
 from .audio_model import *
 from .training_utils import multi_gpu_model
-
+from .sparsify import *
 
 def L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, model_name, layer_size=128):
     """
@@ -124,8 +124,8 @@ def convert_num_gpus_new(model, inputs, outputs, model_type, src_num_gpus, tgt_n
     if src_num_gpus <= 1 and tgt_num_gpus <= 1:
         return model, inputs, outputs
 
-    if thresholds is None:
-        m_new, inputs_new, output_new = PRUNED_MODELS[model_type](thresholds)
+    if thresholds is not None:
+        m_new, inputs_new, output_new = PRUNING_MODELS[model_type](thresholds)
     else:
         m_new, inputs_new, output_new = old_model, inputs, outputs
     m_new.set_weights(model.layers[-2].get_weights())
@@ -291,9 +291,17 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
                 # print (layer.name)
         return audio_model
 
-    m, inputs, output = load_model(weights_path, model_type, src_num_gpus=src_num_gpus,
+    if 'masked' in model_type:
+        model, audio_model = load_audio_model_for_pruning(weight_path)
+        sparsity_vals = get_sparsity_layers(None, None, sparsity)
+        sparsified_model, masks, thresholds = sparsify_layer(audio_model, sparsity_vals)
+
+        m, inputs, output = load_new_model(weights_path, model_type, src_num_gpus=src_num_gpus,
+                                       tgt_num_gpus=tgt_num_gpus, thresholds=thresholds, return_io=True)
+    else:
+        m, inputs, output = load_model(weights_path, model_type, src_num_gpus=src_num_gpus,
                                    tgt_num_gpus=tgt_num_gpus, return_io=True)
-    if 'audioonly' in model_type:
+    if 'audio' in model_type:
         x_a = inputs
     else:
         x_i, x_a = inputs
@@ -302,7 +310,7 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
         m_embed, x_embed, y_embed = VISION_EMBEDDING_MODELS[model_type](m_embed_model, x_i)
 
     elif embedding_type == 'audio':
-        if not 'audioonly' in model_type:
+        if not 'audio' in model_type:
             m_embed_model = m.get_layer('audio_model')
         else:
             m_embed_model = m

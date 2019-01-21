@@ -549,7 +549,7 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
     if pruning and finetune:
         if filterwise:
             model_attribute = 'pruning_finetune_filterwise'
-        elif:
+        elif layerwise:
             model_attribute = 'pruning_finetune_layerwise'
         else:
             model_attribute = 'pruning_finetune_reduced'
@@ -617,7 +617,7 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
     if continue_model_dir:
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
         if old_l3 is not None:
-            model, inputs, outputs  = load_new_model(latest_model_path, new_l3, return_io=True, src_num_gpus=gpus, inputs=inputs, outputs=outputs)
+            model, inputs, outputs  = load_new_model(latest_model_path, new_l3, return_io=True, src_num_gpus=gpus)
         else:
             model, inputs, outputs  = load_new_model(latest_model_path, model_type, return_io=True, src_num_gpus=gpus, thresholds=thresholds)
     else:

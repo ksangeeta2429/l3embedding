@@ -984,7 +984,7 @@ def construct_cnn_L3_melspec2_audio_model():
     return m, x_a, y_a
 
 
-def convert_audio_model_to_embedding(audio_model, x_a, model_type, pooling_type='original', kd_model=False):
+def convert_audio_model_to_embedding(audio_model, x_a, model_type, pooling_type='original', unpruned_kd_model=False):
     """
     Given and audio subnetwork, return a model that produces the learned
     embedding
@@ -1028,7 +1028,7 @@ def convert_audio_model_to_embedding(audio_model, x_a, model_type, pooling_type=
     }
     
     
-    if kd_model:
+    if unpruned_kd_model:
         pool_size = pooling[model_type]['short']
         embedding_pool = pooling[model_type][pooling_type]
     else:
@@ -1037,7 +1037,7 @@ def convert_audio_model_to_embedding(audio_model, x_a, model_type, pooling_type=
     embed_layer = audio_model.get_layer('audio_embedding_layer')
     y_a = MaxPooling2D(pool_size=pool_size, padding='same')(embed_layer.output)
     
-    if kd_model:
+    if unpruned_kd_model:
         y_a = Reshape((y_a.shape[3], 1))(y_a)
         y_a = MaxPooling1D(pool_size=embedding_pool, border_mode='valid')(y_a)
         
