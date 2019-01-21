@@ -843,7 +843,7 @@ def load_student_audio_model_withFFT(include_layers, num_filters = [64, 64, 128,
                      kernel_regularizer=regularizers.l2(weight_decay))(y_a)
         y_a = BatchNormalization()(y_a)
         y_a = Activation('relu')(y_a)
-        y_a = MaxPooling2D(pool_size=pool_size_a_3, strides=2)(y_a)
+    y_a = MaxPooling2D(pool_size=pool_size_a_3, strides=2)(y_a)
 
     # CONV BLOCK 4
     filt_size_a_4 = (3, 3)
@@ -864,7 +864,7 @@ def load_student_audio_model_withFFT(include_layers, num_filters = [64, 64, 128,
     
         y_a = BatchNormalization()(y_a)
         y_a = Activation('relu')(y_a)
-        y_a = MaxPooling2D(pool_size=pool_size_a_4)(y_a)
+    y_a = MaxPooling2D(pool_size=pool_size_a_4)(y_a)
 
     y_a = Flatten()(y_a)
 

@@ -152,6 +152,14 @@ def parse_arguments():
                         nargs='+',
                         help='Set the new number of filters for filterwise pruning')
 
+    parser.add_argument('-layers',
+                        '--include_layers',
+                        dest='include_layers',
+                        action='store',
+                        default=[],
+                        type=int,
+                        nargs='+',
+                        help='Select the layers to be included in the new audio model')
 
     parser.add_argument('-ret',
                         '--retrain',

@@ -419,6 +419,114 @@ def get_restart_info(history_path):
     return int(last['epoch']), float(last['val_acc']), float(last['val_loss'])
 
 
+def gpu_wrapper_4gpus(model_f):
+    """
+    Decorator for creating multi-gpu models
+    """
+    def wrapped(*args, **kwargs):
+        m, inp, out = model_f(*args, **kwargs)
+        num_gpus = 4
+        if num_gpus > 1:
+            m = multi_gpu_model(m, gpus=num_gpus)
+
+        return m, inp, out
+
+    return wrapped
+
+
+@gpu_wrapper_4gpus
+def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=None, output=None):
+    embedding_length_original = sparse_model.get_layer('audio_model').output_shape
+    if is_L3:
+        embedding_length_new = masked_model.get_layer('audio_model').output_shape
+        if embedding_length_new != embedding_length_original:
+            LOGGER.info("New embedding Length: {0}".format(embedding_length_new))
+            new_video_model = masked_model.get_layer('vision_model')
+            old_video_model = sparse_model.get_layer('vision_model')
+            new_audio_model = masked_model.get_layer('audio_model')
+            old_audio_model = sparse_model.get_layer('audio_model')
+
+            new_video_model.set_weights(old_video_model.get_weights())
+            new_audio_model.get_layer('conv_1').set_weights(old_audio_model.get_layer('conv_1').get_weights())
+        else:
+            masked_model.set_weights(sparse_model.get_weights())    
+        
+        for layer in masked_model.get_layer('vision_model').layers:
+            layer.trainable = False
+    else:
+        masked_model.set_weights(sparse_model.get_layer('audio_model').get_weights())
+        
+    return masked_model, input, output
+
+
+def zero_check(sparsity_list):
+    for val in sparsity_list:
+        if val:
+            return False
+    return True
+
+
+def printList(plist):
+    printStr = "List Values: "
+    for val in plist:
+        printStr += str(val) + ", "
+    print(printStr)
+
+def printDict(pDict):
+    printStr = "Dictionary Key and Values: "
+    for key in pDict:
+        printStr += str(key)+ ": "+ str(pDict[key])+ ", "
+    print(printStr)
+
+def drop_filters(model, new_model, new_filters_dict, old_filters_dict):
+    weights_dict = {}
+    for i, layer in enumerate(model.layers):
+        if layer.name in new_filters_dict:
+            if new_filters_dict[layer.name] != old_filters_dict[layer.name]:
+                filters_mag = []
+                sorted_idx = []
+                num_filters_drop = old_filters_dict[layer.name] - new_filters_dict[layer.name]
+                new_weights = np.empty_like(new_model.get_layer(layer.name).get_weights())
+
+                if layer.name in weights_dict:
+                    weights = weights_dict[layer.name]
+                else:
+                    weights = layer.get_weights()[0]
+            
+                biases = layer.get_weights()[1]
+            
+                for channel in range(weights.shape[3]):
+                    filters_mag.append(np.sum(np.abs(weights[:, :, :, channel]))) 
+            
+                sorted_idx = np.argsort(np.array(filters_mag))
+                sorted_idx = sorted_idx[num_filters_drop:]
+            
+                new_weights[0] = K.eval(tf.gather(weights, sorted_idx, axis = -1))
+                new_weights[1] = K.eval(tf.gather(biases, sorted_idx, axis = 0))
+
+                next_conv = 'conv_'+ str(int(layer.name[5])+1)
+                if not 'conv_8' in layer.name: 
+                    weights_dict[next_conv] = K.eval(tf.gather(model.get_layer(next_conv).get_weights()[0], \
+                                                               sorted_idx, axis = 2))
+                
+                new_model.get_layer(layer.name).set_weights(new_weights)
+            
+            else:
+                new_model.get_layer(layer.name).set_weights(layer.get_weights())
+
+    return new_model
+            
+
+def get_filters(conv_layers, conv_filters, num_filters):
+    new_filters = {}
+    old_filters = {}
+    for i, layer in enumerate(conv_layers):
+        old_filters[layer] = conv_filters[i]
+        new_filters[layer] = num_filters[i]
+
+    return new_filters, old_filters
+
+
 def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, include_layers = [1, 1, 1, 1, 1, 1, 1, 1],\
           num_filters = [64, 64, 128, 128, 256, 256, 512, 512], pruning=True, finetune=False, layerwise=False, filterwise=False, output_dir = None, \
           num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
@@ -490,6 +598,8 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
         param_dict['pruning'] = 'filterwise'
     elif layerwise and not filterwise:
         param_dict['pruning'] = 'layerwise'
+    elif not filterwise and not layerwise and old_l3 is not None:
+        param_dict['pruning'] = 'reduced'
         
     LOGGER.info('Training with the following arguments: {}'.format(param_dict))
 
@@ -505,18 +615,15 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
     if continue_model_dir:
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
         if old_l3 is not None:
-            reduced_audio_model, x_a, y_a = load_student_audio_model_withFFT(include_layers = [1, 1, 1, 1, 1, 1, 1, 1],\
-                                                                            num_filters = num_filters)
-            vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
-            new_model, inputs, outputs = L3_merge_audio_vision_models(vision_model, x_i, new_audio_model, x_a, 'cnn_L3_dropped_filter')
-            model, inputs, outputs  = load_new_model(latest_model_path, model, return_io=True, src_num_gpus=gpus, inputs=inputs, outputs=outputs)
+            model, inputs, outputs  = load_new_model(latest_model_path, new_l3, return_io=True, src_num_gpus=gpus, inputs=inputs, outputs=outputs)
         else:
             model, inputs, outputs  = load_new_model(latest_model_path, model_type, return_io=True, src_num_gpus=gpus, thresholds=thresholds)
     else:
         if pruning:
             if finetune:
                 if old_l3 is not None:
-                    model, inputs, outputs = initialize_weights(masked_model=new_l3, sparse_model=old_l3, is_L3=True, input=old_l3.inputs, output=old_l3.outputs)
+                    model, inputs, outputs = initialize_weights(masked_model=new_l3, sparse_model=old_l3, is_L3=True,\
+                                                                input=old_l3.inputs, output=old_l3.outputs)
                 else:
                     l3_model_kd, x , y  = construct_cnn_L3_melspec2_masked(thresholds=thresholds)
                     model, inputs, outputs = initialize_weights(masked_model=l3_model_kd, sparse_model=new_l3, is_L3=True, input=x , output=y)
@@ -557,14 +664,6 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
         'best_train_acc': '-',
         'best_validation_acc': '-',
     })
-
-    # Save the model
-    '''
-    model_json_path = os.path.join(model_dir, 'model.json')
-    model_json = model.to_json()
-    with open(model_json_path, 'w') as fd:
-        json.dump(model_json, fd, indent=2)
-    '''
 
     latest_weight_path = os.path.join(model_dir, 'model_latest.h5')
     best_valid_acc_weight_path = os.path.join(model_dir, 'model_best_valid_accuracy.h5')
@@ -696,118 +795,10 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
         pickle.dump(history.history, fd)
 
     LOGGER.info('Done!')
-    return history
-
-def gpu_wrapper_4gpus(model_f):
-    """
-    Decorator for creating multi-gpu models
-    """
-    def wrapped(*args, **kwargs):
-        m, inp, out = model_f(*args, **kwargs)
-        num_gpus = 4
-        if num_gpus > 1:
-            m = multi_gpu_model(m, gpus=num_gpus)
-
-        return m, inp, out
-
-    return wrapped
-
-
-@gpu_wrapper_4gpus
-def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=None, output=None):
-    embedding_length_original = sparse_model.get_layer('audio_model').output_shape
-    if is_L3:
-        embedding_length_new = masked_model.get_layer('audio_model').output_shape
-        if embedding_length_new != embedding_length_original:
-            LOGGER.info("New embedding Length: {0}".format(embedding_length_new))
-            new_video_model = masked_model.get_layer('vision_model')
-            old_video_model = sparse_model.get_layer('vision_model')
-            new_audio_model = masked_model.get_layer('audio_model')
-            old_audio_model = sparse_model.get_layer('audio_model')
-
-            new_video_model.set_weights(old_video_model.get_weights())
-            new_audio_model.get_layer('conv_1').set_weights(old_audio_model.get_layer('conv_1').get_weights())
-        else:
-            masked_model.set_weights(sparse_model.get_weights())    
-        
-        for layer in masked_model.get_layer('vision_model').layers:
-            layer.trainable = False
-    else:
-        masked_model.set_weights(sparse_model.get_layer('audio_model').get_weights())
-        
-    return masked_model, input, output
-
-
-def zero_check(sparsity_list):
-    for val in sparsity_list:
-        if val:
-            return False
-    return True
-
-
-def printList(plist):
-    printStr = "List Values: "
-    for val in plist:
-        printStr += str(val) + ", "
-    print(printStr)
-
-def printDict(pDict):
-    printStr = "Dictionary Key and Values: "
-    for key in pDict:
-        printStr += str(key)+ ": "+ str(pDict[key])+ ", "
-    print(printStr)
-
-def drop_filters(model, new_model, new_filters_dict, old_filters_dict):
-    weights_dict = {}
-    for i, layer in enumerate(model.layers):
-        if layer.name in new_filters_dict:
-            if new_filters_dict[layer.name] != old_filters_dict[layer.name]:
-                filters_mag = []
-                sorted_idx = []
-                num_filters_drop = old_filters_dict[layer.name] - new_filters_dict[layer.name]
-                new_weights = np.empty_like(new_model.get_layer(layer.name).get_weights())
-
-                if layer.name in weights_dict:
-                    weights = weights_dict[layer.name]
-                else:
-                    weights = layer.get_weights()[0]
-            
-                biases = layer.get_weights()[1]
-            
-                for channel in range(weights.shape[3]):
-                    filters_mag.append(np.sum(np.abs(weights[:, :, :, channel]))) 
-            
-                sorted_idx = np.argsort(np.array(filters_mag))
-                sorted_idx = sorted_idx[num_filters_drop:]
-            
-                new_weights[0] = K.eval(tf.gather(weights, sorted_idx, axis = -1))
-                new_weights[1] = K.eval(tf.gather(biases, sorted_idx, axis = 0))
-
-                next_conv = 'conv_'+ str(int(layer.name[5])+1)
-                if not 'conv_8' in layer.name: 
-                    weights_dict[next_conv] = K.eval(tf.gather(model.get_layer(next_conv).get_weights()[0], \
-                                                               sorted_idx, axis = 2))
-                
-                new_model.get_layer(layer.name).set_weights(new_weights)
-            
-            else:
-                new_model.get_layer(layer.name).set_weights(layer.get_weights())
-
-    return new_model
-            
-
-def get_filters(conv_layers, conv_filters, num_filters):
-    new_filters = {}
-    old_filters = {}
-    for i, layer in enumerate(conv_layers):
-        old_filters[layer] = conv_filters[i]
-        new_filters[layer] = num_filters[i]
-
-    return new_filters, old_filters
 
 
 def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model',\
-            blockwise=False, layerwise=True, per_layer=False, filterwise=False, sparsity=[], num_filters=[],\
+            blockwise=False, layerwise=True, per_layer=False, filterwise=False, sparsity=[], include_layers=[], num_filters=[],\
             test_model=False, save_model=False, retrain_model=False, finetune = True, **kwargs):
     
     conv_blocks = 4
@@ -827,6 +818,9 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
         LOGGER.info("ERROR: Please give a list of filters to run filterwise pruning experiment")
         exit(0)
                         
+    if len(include_layers) > 0 or len(num_filters) > 0:
+        isReduced = True
+
     if blockwise:
         LOGGER.info("Block-wise Pruning")
         LOGGER.info("*********************************************************************")
@@ -880,37 +874,39 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 LOGGER.info('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
                 LOGGER.info('----------------------------------------------------------------')
         
-    if filterwise:
-        LOGGER.info("Filter Dropping")
-        LOGGER.info("**********************************************************************")
-        
-        isReduced = True
-        conv_layers = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6', 'conv_7', 'conv_8']
-        conv_filters = [64, 64, 128, 128, 256, 256, 512, 512]
- 
-        LOGGER.info('For filterwise, Sparsity: None')
-        new_filters_dict = {}
-        old_filters_dict = {}
+    if isReduced:
         old_model, audio_model = load_audio_model_for_pruning(weight_path)
-        new_filters_dict, old_filters_dict = get_filters(conv_layers, conv_filters, num_filters)
+        new_audio_model, x_a, y_a = load_student_audio_model_withFFT(include_layers = include_layers,\
+                                                                    num_filters = num_filters)
+
+        if filterwise:
+            LOGGER.info("Filter Dropping")
+            LOGGER.info("**********************************************************************")
         
-        new_model_arch, x_a, y_a = load_student_audio_model_withFFT(include_layers = [1, 1, 1, 1, 1, 1, 1, 1],\
-                                                                       num_filters = num_filters)
-        new_audio_model = drop_filters(audio_model, new_model_arch, new_filters_dict, old_filters_dict)
+            conv_layers = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6', 'conv_7', 'conv_8']
+            conv_filters = [64, 64, 128, 128, 256, 256, 512, 512]
+ 
+            LOGGER.info('For filterwise, Sparsity: None')
+            new_filters_dict = {}
+            old_filters_dict = {}
+            new_filters_dict, old_filters_dict = get_filters(conv_layers, conv_filters, num_filters)
+            new_audio_model = drop_filters(audio_model, new_audio_model, new_filters_dict, old_filters_dict)
 
         vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
-        model, inputs, outputs = L3_merge_audio_vision_models(vision_model, x_i, new_audio_model, x_a, 'cnn_L3_dropped_filter')
-        LOGGER.info("New L3 Model created with dropped filters")
+        model, inputs, outputs = L3_merge_audio_vision_models(vision_model, x_i, new_audio_model, x_a, 'cnn_L3_reduced')
 
     if save_model:
-        pruned_model_name = 'pruned_audio_'+str(score[1])+'.h5'
-        pruned_model_path = os.path.join(output_dir, pruned_model_name)
-        model.save(pruned_model_path)
+        if isReduced:
+            new_l3_name = 'reduced_l3.h5'
+        else:
+            new_l3_name = 'pruned_l3_'+str(score[1])+'.h5'
+        new_model_path = os.path.join(output_dir, new_l3_name)
+        model.save(new_model_path)
 
     if retrain_model:
         if isReduced:
-            train(train_data_dir, validation_data_dir, new_l3=model, old_l3=old_model, sparsity=sparsity, \
-                  finetune=finetune, layerwise=layerwise, filterwise=filterwise, output_dir=output_dir, num_filters=num_filters, **kwargs)
+            train(train_data_dir, validation_data_dir, new_l3=model, old_l3=old_model, sparsity=sparsity, finetune=finetune,\
+                  layerwise=layerwise, filterwise=filterwise, output_dir=output_dir, include_layers=include_layers, num_filters=num_filters, **kwargs)
         else:
             train(train_data_dir, validation_data_dir, new_l3=model, sparsity=sparsity, thresholds=thresholds,\
                   finetune=finetune, layerwise=layerwise, filterwise=filterwise, output_dir=output_dir, **kwargs)
@@ -925,7 +921,7 @@ def main():
                 test_model=False, filterwise=False, retrain_model=True, finetune=True)
     else:
         include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
-        num_filters = [64, 64, 128, 128, 256, 256]
+        num_filters = [64, 64, 128, 128, 256, 256, 512, 512]
         train(train_data_dir, validation_data_dir, include_layers = include_layers,
               num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
 
