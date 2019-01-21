@@ -2,7 +2,6 @@ from keras.layers import concatenate, Dense
 from .vision_model import *
 from .audio_model import *
 from .training_utils import multi_gpu_model
-from .sparsify import *
 
 def L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, model_name, layer_size=128):
     """
@@ -239,7 +238,7 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, retu
 
 
 def load_embedding(weights_path, model_type, embedding_type, pooling_type,
-                   kd_model=False, src_num_gpus=0, tgt_num_gpus=None, return_io=False,
+                   kd_model=False, src_num_gpus=0, tgt_num_gpus=None, thresholds=None, return_io=False,
                    from_convlayer=8):
     """
     Loads an embedding model
@@ -292,10 +291,6 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
         return audio_model
 
     if 'masked' in model_type:
-        model, audio_model = load_audio_model_for_pruning(weight_path)
-        sparsity_vals = get_sparsity_layers(None, None, sparsity)
-        sparsified_model, masks, thresholds = sparsify_layer(audio_model, sparsity_vals)
-
         m, inputs, output = load_new_model(weights_path, model_type, src_num_gpus=src_num_gpus,
                                        tgt_num_gpus=tgt_num_gpus, thresholds=thresholds, return_io=True)
     else:
