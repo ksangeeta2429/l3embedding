@@ -16,7 +16,7 @@ source activate l3embedding-cpu
 
 #SRCDIR=$HOME/dev/l3embedding
 SRCDIR=.
-L3_MODEL_PATH=pruned_model/${filename}
+L3_MODEL_PATH=${filename}
 L3_MODEL_TYPE='cnn_L3_melspec2_audioonly'
 L3_POOLING_TYPE='short' #'original'
 US8K_PATH=/beegfs/jtc440/UrbanSound8K
