@@ -549,8 +549,10 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
     if pruning and finetune:
         if filterwise:
             model_attribute = 'pruning_finetune_filterwise'
-        else:
+        elif:
             model_attribute = 'pruning_finetune_layerwise'
+        else:
+            model_attribute = 'pruning_finetune_reduced'
     elif pruning and not finetune:
         kd_flag = True
         model_attribute = 'pruning_kd'
