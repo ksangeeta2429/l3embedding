@@ -176,8 +176,8 @@ def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, 
     if thresholds is not None:
         global global_thresholds
         global_thresholds = thresholds
-        #m, inputs, output = PRUNING_MODELS[model_type]()
-        m, inputs, output = construct_cnn_L3_melspec2_masked(thresholds)
+        m, inputs, output = PRUNING_MODELS[model_type](thresholds)
+        #m, inputs, output = construct_cnn_L3_melspec2_masked(thresholds)
         print("Loaded new model")
     else:
         m, inputs, output = model_type, inputs, outputs
