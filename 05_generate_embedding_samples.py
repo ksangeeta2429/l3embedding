@@ -53,6 +53,16 @@ def parse_arguments():
                         type=str,
                         help='Path to L3 embedding model weights file')
 
+
+    parser.add_argument('-olmp',
+                        '--orig-l3embedding-model-path',
+                        dest='orig_l3embedding_model_path',
+                        action='store',
+                        type=str,
+			default=None,
+                        help='Path to original L3 embedding model weights file')
+
+
     parser.add_argument('-lpt',
                         '--l3embedding-pooling-type',
                         dest='l3embedding_pooling_type',
@@ -98,6 +108,13 @@ def parse_arguments():
                         type=int,
                         default=0,
                         help='Number of gpus used for running the embedding model.')
+
+    parser.add_argument('-grp',
+                        '--group-name',
+                        dest='group_name',
+                        type=str,
+                        default=None,
+                        help='Parent group of the layers of audio_model.')
 
     parser.add_argument('--fold',
                         dest='fold',
@@ -154,6 +171,8 @@ if __name__ == '__main__':
     random_state = args['random_state']
     num_random_samples = args['num_random_samples']
     model_path = args['l3embedding_model_path']
+    orig_model_path = args['orig_l3embedding_model_path']
+    grp = args['group_name']
     num_gpus = args['gpus']
     output_dir = args['output_dir']
     dataset_name = args['dataset_name']
@@ -188,7 +207,8 @@ if __name__ == '__main__':
         l3embedding_model = load_embedding(model_path,
                                            model_type,
                                            'audio', pooling_type,
-                                           tgt_num_gpus=num_gpus, thresholds=thresholds, from_convlayer=from_conv_layer)
+                                           old_weights_path = orig_model_path,
+                                           tgt_num_gpus=num_gpus, thresholds=thresholds, from_convlayer=from_conv_layer, group_name=grp)
     elif is_l3_feature:
         # Get output dir
         model_desc_start_idx = model_path.rindex('embedding')+10

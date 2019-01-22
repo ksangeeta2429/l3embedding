@@ -541,11 +541,13 @@ def construct_cnn_L3_melspec2_masked_audio_model(thresholds):
     pool_size_a_1 = (2, 2)
     y_a = MaskedConv2D(thresholds['conv_1'], 2, n_filter_a_1, filt_size_a_1, padding='same',
                        kernel_initializer='he_normal',
+                       name='masked_conv2d_1',
                        kernel_regularizer=regularizers.l2(weight_decay))(y_a)
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
     y_a = MaskedConv2D(thresholds['conv_2'], 2, n_filter_a_1, filt_size_a_1, padding='same',
                        kernel_initializer='he_normal',
+                       name='masked_conv2d_2',
                        kernel_regularizer=regularizers.l2(weight_decay))(y_a)
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
@@ -557,11 +559,13 @@ def construct_cnn_L3_melspec2_masked_audio_model(thresholds):
     pool_size_a_2 = (2, 2)
     y_a = MaskedConv2D(thresholds['conv_3'],2, n_filter_a_2, filt_size_a_2, padding='same',
                        kernel_initializer='he_normal',
+                       name='masked_conv2d_3',
                        kernel_regularizer=regularizers.l2(weight_decay))(y_a)
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
     y_a = MaskedConv2D(thresholds['conv_4'], 2, n_filter_a_2, filt_size_a_2, padding='same',
                        kernel_initializer='he_normal',
+                       name='masked_conv2d_4',
                        kernel_regularizer=regularizers.l2(weight_decay))(y_a)
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
@@ -573,11 +577,13 @@ def construct_cnn_L3_melspec2_masked_audio_model(thresholds):
     pool_size_a_3 = (2, 2)
     y_a = MaskedConv2D(thresholds['conv_5'], 2, n_filter_a_3, filt_size_a_3, padding='same',
                        kernel_initializer='he_normal',
+                       name='masked_conv2d_5',
                        kernel_regularizer=regularizers.l2(weight_decay))(y_a)
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
     y_a = MaskedConv2D(thresholds['conv_6'], 2, n_filter_a_3, filt_size_a_3, padding='same',
                        kernel_initializer='he_normal',
+                       name='masked_conv2d_6',
                        kernel_regularizer=regularizers.l2(weight_decay))(y_a)
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
@@ -589,6 +595,7 @@ def construct_cnn_L3_melspec2_masked_audio_model(thresholds):
     pool_size_a_4 = (32, 24)
     y_a = MaskedConv2D(thresholds['conv_7'], 2, n_filter_a_4, filt_size_a_4, padding='same',
                        kernel_initializer='he_normal',
+                       name='masked_conv2d_7',
                        kernel_regularizer=regularizers.l2(weight_decay))(y_a)
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)

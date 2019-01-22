@@ -1,10 +1,61 @@
 import h5py
+import numpy as np
 from keras.layers import concatenate, Dense
 from .vision_model import *
 from .audio_model import *
 from .training_utils import multi_gpu_model, conv_keyval_lists_to_dict
 
 global_thresholds = None
+
+
+def isGroup(obj):
+    if isinstance(obj, h5py.Group):
+        return True
+    return False
+
+
+def isDataset(obj):
+    if isinstance(obj, h5py.Dataset):
+        return True
+    return False
+
+
+def getDatasetsFromGroup(datasets, obj):
+    if isGroup(obj):
+        for key in obj:
+            x = obj[key]
+            getDatasetsFromGroup(datasets, x)
+
+    else:
+        datasets.append(obj)
+
+def getEmbeddingGroup(f):
+    for key in f:
+        if 'audio_embedding' in key:
+            return key
+    
+
+def getWeightsForLayer(layer_name, weight_file, group_name=None):
+    weights = []
+
+    with h5py.File(weight_file, 'r') as f:
+        if group_name is not None:
+            f = f[group_name]
+
+        if 'audio_embedding' in layer_name:
+            layer_name = getEmbeddingGroup(f)
+ 
+        if layer_name in f:
+            obj = f[layer_name]
+            datasets = []
+            getDatasetsFromGroup(datasets, obj)
+            
+            for dataset in datasets:
+                w = np.array(dataset)
+                weights.append(w)
+
+    return weights
+
 
 def L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, model_name, layer_size=128):
     """
@@ -138,7 +189,8 @@ def convert_num_gpus_new(model, inputs, outputs, model_type, src_num_gpus, tgt_n
     return m_new, inputs_new, output_new
 
 
-def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, thresholds=None, return_io=False, inputs=None, outputs=None):
+def load_new_model(weights_path, model_type, old_weights_path, src_num_gpus=0, tgt_num_gpus=None, \
+                   thresholds=None, return_io=False, inputs=None, outputs=None, group_name=None):
     """
     Loads an audio-visual correspondence model
 
@@ -176,9 +228,7 @@ def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, 
     if thresholds is not None:
         global global_thresholds
         global_thresholds = thresholds
-        #m, inputs, output = PRUNING_MODELS[model_type]()
-        m, inputs, output = construct_cnn_L3_melspec2_masked(thresholds)
-        print("Loaded new model")
+        m, inputs, output = PRUNING_MODELS[model_type]()
     else:
         m, inputs, output = model_type, inputs, outputs
     
@@ -187,9 +237,23 @@ def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, 
     if src_num_gpus > 1:
         m = multi_gpu_model(m, gpus=4)
 
-    print(m.summary())
-    m.load_weights(weights_path)
+    m.load_weights(old_weights_path)
+
+    for layer in m.get_layer('audio_model').layers:
+        if 'masked_conv2d' in layer.name or 'audio_embedding' in layer.name:
+            print(layer.name +': Changing weights')
+            target_weights = np.empty_like(layer.get_weights())
+            if group_name is None:
+                weights = getWeightsForLayer(layer.name, weights_path)
+            else:
+                weights = getWeightsForLayer(layer.name, weights_path, group_name=group_name)
+            
+            target_weights[0] = weights[1]
+            target_weights[1] = weights[0]
+            m.get_layer('audio_model').get_layer(layer.name).set_weights(target_weights)
+
     print("Loaded weights")
+    exit(0)
 
     if tgt_num_gpus is not None and src_num_gpus != tgt_num_gpus:
         m, inputs, output = convert_num_gpus_new(m, inputs, output, model_type,
@@ -247,9 +311,9 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, retu
         return m
 
 
-def load_embedding(weights_path, model_type, embedding_type, pooling_type,
+def load_embedding(weights_path, model_type, embedding_type, pooling_type, old_weights_path=None,
                    kd_model=False, src_num_gpus=0, tgt_num_gpus=None, thresholds=None, return_io=False,
-                   from_convlayer=8):
+                   from_convlayer=8, group_name=None):
     """
     Loads an embedding model
 
@@ -282,10 +346,6 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
         y_i:    Embedding output Tensor/Layer. Not returned if return_io is False.
                 (Type: keras.layers.Layer)
     """
-    '''
-    def print_attrs(name, obj):
-        print(name)
-    '''
 
     def relabel_embedding_layer(audio_model, embedding_layer_num):
         count = 1
@@ -309,18 +369,8 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
         conv_layers = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6', 'conv_7', 'conv_8']
         thresholds = conv_keyval_lists_to_dict(conv_layers, thresholds)
         
-        f = h5py.File(weights_path, 'r')
-        #f = f['cnn_L3_masked']
-        #f.visititems(print_attrs)
-        
-        #for layer in model:
-        #    print(layer)
-
-        #print(list(f['cnn_L3_masked'].keys()))
-        #exit(0)
-        
-        m, inputs, output = load_new_model(weights_path, model_type, src_num_gpus=src_num_gpus,
-                                           tgt_num_gpus=tgt_num_gpus, thresholds=thresholds, return_io=True)
+        m, inputs, output = load_new_model(weights_path, model_type, old_weights_path, src_num_gpus=src_num_gpus,
+                                           tgt_num_gpus=tgt_num_gpus, thresholds=thresholds, return_io=True, group_name=group_name)
     else:
         m, inputs, output = load_model(weights_path, model_type, src_num_gpus=src_num_gpus,
                                        tgt_num_gpus=tgt_num_gpus, return_io=True)
@@ -328,6 +378,7 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
         x_a = inputs
     else:
         x_i, x_a = inputs
+
     if embedding_type == 'vision':
         m_embed_model = m.get_layer('vision_model')
         m_embed, x_embed, y_embed = VISION_EMBEDDING_MODELS[model_type](m_embed_model, x_i)
@@ -357,11 +408,11 @@ def gpu_wrapper(model_f):
     """
     Decorator for creating multi-gpu models
     """
-    def wrapped(num_gpus=0, *arwargs):
+    def wrapped(num_gpus=0, *args, **kwargs):
         if global_thresholds is None:
             m, inp, out = model_f(*args, **kwargs)
         else:
-            m, inp, out = model_f(global_thresholds)
+            m, inp, out = model_f(global_thresholds, *args, **kwargs)
         if num_gpus > 1:
             m = multi_gpu_model(m, gpus=num_gpus)
 

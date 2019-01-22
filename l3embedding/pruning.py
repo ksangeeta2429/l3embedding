@@ -439,7 +439,6 @@ def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=N
     embedding_length_original = sparse_model.get_layer('audio_model').output_shape
     if is_L3:
         embedding_length_new = masked_model.get_layer('audio_model').output_shape
-        print(masked_model.get_layer('audio_model').summary())
 
         if embedding_length_new != embedding_length_original:
             LOGGER.info("New embedding Length: {0}".format(embedding_length_new))
@@ -451,7 +450,9 @@ def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=N
             new_video_model.set_weights(old_video_model.get_weights())
             new_audio_model.get_layer('conv_1').set_weights(old_audio_model.get_layer('conv_1').get_weights())
         else:
-            masked_model.set_weights(sparse_model.get_weights())    
+            masked_model.set_weights(sparse_model.get_weights())
+            print(masked_model.summary())
+            exit(0)
         
         for layer in masked_model.get_layer('vision_model').layers:
             layer.trainable = False
