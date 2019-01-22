@@ -9,6 +9,18 @@ from keras.layers.merge import concatenate
 import tensorflow as tf
 
 
+def conv_keyval_lists_to_dict(keys, values):
+    return dict(zip(keys, values))
+
+
+def conv_dict_to_val_list(dict):
+    dictlist=[]
+    for key, value in dict.items():
+        #temp = [key, value]
+        dictlist.append(value)
+    return dictlist
+
+
 def _get_available_devices():
     return [x.name for x in K.get_session().list_devices()]
 

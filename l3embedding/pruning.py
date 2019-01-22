@@ -17,7 +17,7 @@ from keras.layers import *
 from .audio import pcm2float
 import h5py
 from keras.models import Model
-from .training_utils import multi_gpu_model
+from .training_utils import conv_dict_to_val_list, multi_gpu_model
 from .model import *
 from keras.optimizers import Adam
 import pescador
@@ -868,7 +868,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
             model, audio_model = load_audio_model_for_pruning(weight_path)
             sparsity_vals = get_sparsity_layers(None, None, sparsity)
             sparsified_model, masks, thresholds = sparsify_layer(audio_model, sparsity_vals)
-            
+            print('Thresholds:', conv_dict_to_val_list(thresholds))
             model.get_layer('audio_model').set_weights(sparsified_model.get_weights())
             if test_model:
                 score = test(model, validation_data_dir)
