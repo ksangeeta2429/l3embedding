@@ -4,6 +4,7 @@ from .vision_model import *
 from .audio_model import *
 from .training_utils import multi_gpu_model, conv_keyval_lists_to_dict
 
+global_thresholds = None
 
 def L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, model_name, layer_size=128):
     """
@@ -173,18 +174,22 @@ def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, 
         raise ValueError('Invalid model type: "{}"'.format(model_type))
 
     if thresholds is not None:
-        m, inputs, output = PRUNING_MODELS[model_type](thresholds)
-        print("After loading new model")
+        global global_thresholds
+        global_thresholds = thresholds
+        #m, inputs, output = PRUNING_MODELS[model_type]()
+        m, inputs, output = construct_cnn_L3_melspec2_masked(thresholds)
+        print("Loaded new model")
     else:
         m, inputs, output = model_type, inputs, outputs
     
     old_m = m
 
     if src_num_gpus > 1:
-        m = multi_gpu_model(m, gpus=src_num_gpus)
+        m = multi_gpu_model(m, gpus=4)
 
-
+    print(m.summary())
     m.load_weights(weights_path)
+    print("Loaded weights")
 
     if tgt_num_gpus is not None and src_num_gpus != tgt_num_gpus:
         m, inputs, output = convert_num_gpus_new(m, inputs, output, model_type,
@@ -277,6 +282,10 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
         y_i:    Embedding output Tensor/Layer. Not returned if return_io is False.
                 (Type: keras.layers.Layer)
     """
+    '''
+    def print_attrs(name, obj):
+        print(name)
+    '''
 
     def relabel_embedding_layer(audio_model, embedding_layer_num):
         count = 1
@@ -300,11 +309,16 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
         conv_layers = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6', 'conv_7', 'conv_8']
         thresholds = conv_keyval_lists_to_dict(conv_layers, thresholds)
         
-        w_file = h5py.File(weights_path, 'r')
-        print(list(w_file['cnn_L3_masked'].keys()))
+        f = h5py.File(weights_path, 'r')
+        #f = f['cnn_L3_masked']
+        #f.visititems(print_attrs)
+        
+        #for layer in model:
+        #    print(layer)
+
+        #print(list(f['cnn_L3_masked'].keys()))
         #exit(0)
         
-        print(list(thresholds.keys()))
         m, inputs, output = load_new_model(weights_path, model_type, src_num_gpus=src_num_gpus,
                                            tgt_num_gpus=tgt_num_gpus, thresholds=thresholds, return_io=True)
     else:
@@ -343,8 +357,11 @@ def gpu_wrapper(model_f):
     """
     Decorator for creating multi-gpu models
     """
-    def wrapped(num_gpus=0, *args, **kwargs):
-        m, inp, out = model_f(*args, **kwargs)
+    def wrapped(num_gpus=0, *arwargs):
+        if global_thresholds is None:
+            m, inp, out = model_f(*args, **kwargs)
+        else:
+            m, inp, out = model_f(global_thresholds)
         if num_gpus > 1:
             m = multi_gpu_model(m, gpus=num_gpus)
 
@@ -441,6 +458,7 @@ def construct_cnn_L3_melspec2():
     m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_kapredbinputbn')
     return m
 
+
 @gpu_wrapper
 def construct_cnn_L3_melspec2_masked(thresholds):
     """
@@ -453,6 +471,7 @@ def construct_cnn_L3_melspec2_masked(thresholds):
     outputs: Model outputs
             (Type: keras.layers.Layer)
     """
+        
     vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
     audio_model, x_a, y_a = construct_cnn_L3_melspec2_masked_audio_model(thresholds)
 
