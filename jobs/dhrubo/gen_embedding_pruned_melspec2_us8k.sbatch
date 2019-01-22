@@ -12,18 +12,26 @@
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
-source activate l3embedding-cpu
+
+if [ $USER == "sk7898" ]; then
+    source activate l3embedding-new-cpu
+else
+    source activate l3embedding-cpu
+fi
 
 #SRCDIR=$HOME/dev/l3embedding
 SRCDIR=.
-L3_MODEL_PATH=${filename}
-L3_MODEL_TYPE='cnn_L3_melspec2_audioonly'
+#L3_MODEL_PATH=${filename}
+L3_MODEL_PATH=$SRCDIR/models/pruning_finetune_layerwise/model_latest.h5
+L3_MODEL_TYPE='cnn_L3_melspec2_masked'
 L3_POOLING_TYPE='short' #'original'
 US8K_PATH=/beegfs/jtc440/UrbanSound8K
 METADATA_PATH=$US8K_PATH/metadata/UrbanSound8K.csv
 DATA_DIR=$US8K_PATH/audio
 OUTPUT_DIR=/scratch/dr2915/embeddings
 DATASET='us8k'
+THRESHOLD=(0.0 0.017678589 0.012369654 0.010109939 0.004976296 0.006389169 0.005634685 0.0067510903) # Command line args list
+#THRESHOLD=( "$@" )
 
 module purge
 #module load cuda/8.0.44
@@ -37,6 +45,7 @@ python $SRCDIR/05_generate_embedding_samples.py \
     --l3embedding-model-path $L3_MODEL_PATH \
     --l3embedding-model-type $L3_MODEL_TYPE \
     --l3embedding-pooling-type $L3_POOLING_TYPE \
+    --thresholds ${THRESHOLD[*]} \
     --hop-size 0.1 \
     --gpus 0 \
     --us8k-metadata-path $METADATA_PATH \

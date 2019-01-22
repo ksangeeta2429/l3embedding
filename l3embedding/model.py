@@ -1,7 +1,9 @@
+import h5py
 from keras.layers import concatenate, Dense
 from .vision_model import *
 from .audio_model import *
 from .training_utils import multi_gpu_model, conv_keyval_lists_to_dict
+
 
 def L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, model_name, layer_size=128):
     """
@@ -172,6 +174,7 @@ def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, 
 
     if thresholds is not None:
         m, inputs, output = PRUNING_MODELS[model_type](thresholds)
+        print("After loading new model")
     else:
         m, inputs, output = model_type, inputs, outputs
     
@@ -296,12 +299,17 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
         # Convert thresholds list to dictionary
         conv_layers = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6', 'conv_7', 'conv_8']
         thresholds = conv_keyval_lists_to_dict(conv_layers, thresholds)
-
+        
+        w_file = h5py.File(weights_path, 'r')
+        print(list(w_file['cnn_L3_masked'].keys()))
+        #exit(0)
+        
+        print(list(thresholds.keys()))
         m, inputs, output = load_new_model(weights_path, model_type, src_num_gpus=src_num_gpus,
-                                       tgt_num_gpus=tgt_num_gpus, thresholds=thresholds, return_io=True)
+                                           tgt_num_gpus=tgt_num_gpus, thresholds=thresholds, return_io=True)
     else:
         m, inputs, output = load_model(weights_path, model_type, src_num_gpus=src_num_gpus,
-                                   tgt_num_gpus=tgt_num_gpus, return_io=True)
+                                       tgt_num_gpus=tgt_num_gpus, return_io=True)
     if 'audio' in model_type:
         x_a = inputs
     else:

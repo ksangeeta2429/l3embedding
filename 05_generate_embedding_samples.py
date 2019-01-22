@@ -159,7 +159,7 @@ if __name__ == '__main__':
     dataset_name = args['dataset_name']
     fold_num = args['fold']
     from_conv_layer = args['from_conv_layer']
-    threshlolds = args['thresholds']
+    thresholds = args['thresholds']
 
     LOGGER.info('Configuration: {}'.format(str(args)))
 
@@ -181,14 +181,14 @@ if __name__ == '__main__':
                                           features, pooling_type, embedding_desc_str)
 
         if 'masked' in model_type:
-            assert threshlolds is not None
+            assert thresholds is not None
 
         # Load L3 embedding model if using L3 features
         LOGGER.info('Loading embedding model...')
         l3embedding_model = load_embedding(model_path,
                                            model_type,
                                            'audio', pooling_type,
-                                           tgt_num_gpus=num_gpus, thresholds=threshlolds, from_convlayer=from_conv_layer)
+                                           tgt_num_gpus=num_gpus, thresholds=thresholds, from_convlayer=from_conv_layer)
     elif is_l3_feature:
         # Get output dir
         model_desc_start_idx = model_path.rindex('embedding')+10
