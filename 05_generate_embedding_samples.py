@@ -104,6 +104,15 @@ def parse_arguments():
                         type=int,
                         help='Fold number to generate. If unused, generate all folds')
 
+    parser.add_argument('-th',
+                        '--thresholds',
+                        dest='thresholds',
+                        action='store',
+                        default=None,
+                        type=float,
+                        nargs='+',
+                        help='Set the sparsity list for layerwise pruning')
+
     parser.add_argument('-ump',
                         '--us8k-metadata-path',
                         dest='us8k_metadata_path',
@@ -136,6 +145,7 @@ if __name__ == '__main__':
     LOGGER.debug('Initialized logging.')
 
     # Unpack CL args
+    model_type = args['l3embedding_model_type']
     pooling_type = args['l3embedding_pooling_type']
     metadata_path = args['us8k_metadata_path']
     data_dir = args['data_dir']
@@ -149,6 +159,7 @@ if __name__ == '__main__':
     dataset_name = args['dataset_name']
     fold_num = args['fold']
     from_conv_layer = args['from_conv_layer']
+    threshlolds = args['thresholds']
 
     LOGGER.info('Configuration: {}'.format(str(args)))
 
@@ -156,6 +167,7 @@ if __name__ == '__main__':
     is_l3_comp = features == 'l3comp'
     if is_l3_feature or is_l3_comp and not model_path:
         raise ValueError('Must provide model path is L3 embedding features are used')
+
 
     if is_l3_comp:
         # If using an L3 model, make model arch. type and pooling type to path
@@ -168,13 +180,15 @@ if __name__ == '__main__':
         dataset_output_dir = os.path.join(output_dir, 'features', dataset_name,
                                           features, pooling_type, embedding_desc_str)
 
-        model_type = args['l3embedding_model_type']
+        if 'masked' in model_type:
+            assert threshlolds is not None
+
         # Load L3 embedding model if using L3 features
         LOGGER.info('Loading embedding model...')
         l3embedding_model = load_embedding(model_path,
                                            model_type,
                                            'audio', pooling_type,
-                                           tgt_num_gpus=num_gpus, from_convlayer=from_conv_layer)
+                                           tgt_num_gpus=num_gpus, thresholds=threshlolds, from_convlayer=from_conv_layer)
     elif is_l3_feature:
         # Get output dir
         model_desc_start_idx = model_path.rindex('embedding')+10

@@ -179,6 +179,8 @@ def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, 
 
     if src_num_gpus > 1:
         m = multi_gpu_model(m, gpus=src_num_gpus)
+
+
     m.load_weights(weights_path)
 
     if tgt_num_gpus is not None and src_num_gpus != tgt_num_gpus:
