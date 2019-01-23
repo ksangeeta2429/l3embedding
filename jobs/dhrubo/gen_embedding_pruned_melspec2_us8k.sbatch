@@ -23,7 +23,7 @@ fi
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
 L3_MODEL_PATH=$SRCDIR/models/pruning_kd/model_latest.h5
-ORIG_L3_MODEL_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
+#ORIG_L3_MODEL_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
 L3_MODEL_TYPE='cnn_L3_melspec2_masked'
 L3_POOLING_TYPE='short' #'original'
 US8K_PATH=/beegfs/jtc440/UrbanSound8K
@@ -33,7 +33,7 @@ OUTPUT_DIR=/scratch/dr2915/embeddings
 DATASET='us8k'
 THRESHOLD=(0.0 0.017678589 0.012369654 0.010109939 0.004976296 0.006389169 0.005634685 0.0067510903) # Command line args list
 #THRESHOLD=( "$@" )
-GRP='audio_model'
+#GRP='audio_model'
 
 module purge
 #module load cuda/8.0.44
@@ -46,13 +46,11 @@ python $SRCDIR/05_generate_embedding_samples.py \
     --features 'l3comp' \
     --l3embedding-model-path $L3_MODEL_PATH \
     --l3embedding-model-type $L3_MODEL_TYPE \
-    --orig-l3embedding-model-path $ORIG_L3_MODEL_PATH \
     --l3embedding-pooling-type $L3_POOLING_TYPE \
     --thresholds ${THRESHOLD[*]} \
     --hop-size 0.1 \
     --gpus 0 \
     --us8k-metadata-path $METADATA_PATH \
-    --group-name $GRP \
     $DATASET \
     $DATA_DIR \
     $OUTPUT_DIR

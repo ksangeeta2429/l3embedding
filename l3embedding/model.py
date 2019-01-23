@@ -189,8 +189,8 @@ def convert_num_gpus_new(model, inputs, outputs, model_type, src_num_gpus, tgt_n
     return m_new, inputs_new, output_new
 
 
-def load_new_model(weights_path, model_type, old_weights_path, src_num_gpus=0, tgt_num_gpus=None, \
-                   thresholds=None, return_io=False, inputs=None, outputs=None, group_name=None):
+def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, \
+                   thresholds=None, return_io=False, inputs=None, outputs=None):
     """
     Loads an audio-visual correspondence model
 
@@ -237,8 +237,9 @@ def load_new_model(weights_path, model_type, old_weights_path, src_num_gpus=0, t
     if src_num_gpus > 1:
         m = multi_gpu_model(m, gpus=4)
 
-    m.load_weights(old_weights_path)
+    m.load_weights(weights_path)
 
+    '''
     for layer in m.get_layer('audio_model').layers:
         if 'masked_conv2d' in layer.name or 'audio_embedding' in layer.name:
             print(layer.name +': Changing weights')
@@ -252,6 +253,7 @@ def load_new_model(weights_path, model_type, old_weights_path, src_num_gpus=0, t
             target_weights[1] = weights[0]
             m.get_layer('audio_model').get_layer(layer.name).set_weights(target_weights)
 
+    '''
     print("Loaded weights")
     exit(0)
 
@@ -311,9 +313,9 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, retu
         return m
 
 
-def load_embedding(weights_path, model_type, embedding_type, pooling_type, old_weights_path=None,
+def load_embedding(weights_path, model_type, embedding_type, pooling_type,
                    kd_model=False, src_num_gpus=0, tgt_num_gpus=None, thresholds=None, return_io=False,
-                   from_convlayer=8, group_name=None):
+                   from_convlayer=8):
     """
     Loads an embedding model
 
@@ -361,7 +363,6 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type, old_w
                     layer.name = 'conv_' + str(count)
 
                 count += 1
-                # print (layer.name)
         return audio_model
 
     if 'masked' in model_type:
