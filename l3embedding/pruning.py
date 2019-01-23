@@ -452,7 +452,6 @@ def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=N
         else:
             masked_model.set_weights(sparse_model.get_weights())
             print(masked_model.summary())
-            exit(0)
         
         for layer in masked_model.get_layer('vision_model').layers:
             layer.trainable = False

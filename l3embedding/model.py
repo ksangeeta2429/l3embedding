@@ -258,7 +258,6 @@ def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, 
 
     '''
     print("Loaded weights")
-    exit(0)
 
     if tgt_num_gpus is not None and src_num_gpus != tgt_num_gpus:
         m, inputs, output = convert_num_gpus_new(m, inputs, output, model_type,
