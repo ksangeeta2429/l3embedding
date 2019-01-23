@@ -237,6 +237,7 @@ def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, 
     if src_num_gpus > 1:
         m = multi_gpu_model(m, gpus=4)
 
+    print(m.summary())
     m.load_weights(weights_path)
 
     '''
@@ -370,8 +371,12 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
         conv_layers = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6', 'conv_7', 'conv_8']
         thresholds = conv_keyval_lists_to_dict(conv_layers, thresholds)
         
-        m, inputs, output = load_new_model(weights_path, model_type, old_weights_path, src_num_gpus=src_num_gpus,
-                                           tgt_num_gpus=tgt_num_gpus, thresholds=thresholds, return_io=True, group_name=group_name)
+        f = h5py.File(weights_path, 'r')
+        for keys in f['audio_model']:
+            print(keys)
+
+        m, inputs, output = load_new_model(weights_path, model_type, src_num_gpus=src_num_gpus,
+                                           tgt_num_gpus=tgt_num_gpus, thresholds=thresholds, return_io=True)
     else:
         m, inputs, output = load_model(weights_path, model_type, src_num_gpus=src_num_gpus,
                                        tgt_num_gpus=tgt_num_gpus, return_io=True)
