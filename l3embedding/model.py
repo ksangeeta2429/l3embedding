@@ -238,6 +238,8 @@ def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, 
         m = multi_gpu_model(m, gpus=4)
 
     print(m.summary())
+    #f = h5py.File(weights_path, 'r')
+    #m.get_layer('audio_model').load_weights_from_hdf5_group(f['audio_model'])
     m.load_weights(weights_path)
 
     '''
