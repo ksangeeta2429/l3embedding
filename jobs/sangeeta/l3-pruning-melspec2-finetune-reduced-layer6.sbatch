@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:4
-#SBATCH --job-name=l3-pruning-layers-melspec2-finetune
+#SBATCH --job-name=l3-pruning-layers-melspec2-finetune-reduced-6
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=ALL
-#SBATCH --output="l3-pruning-melspec2-finetune-filterwise-%j.out"
-#SBATCH --err="l3-pruning-melspec2-finetune-fiterwise-%j.err"
+#SBATCH --output="l3-pruning-melspec2-finetune-reduced-6-%j.out"
+#SBATCH --err="l3-pruning-melspec2-finetune-reduced-6-%j.err"
 
 source ~/.bashrc
 source activate l3embedding-new-cpu

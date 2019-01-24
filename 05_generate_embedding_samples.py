@@ -118,6 +118,24 @@ def parse_arguments():
                         help='Parent group of the layers of audio_model.')
     '''
 
+    parser.add_argument('-filters',
+                        '--num_filters',
+                        dest='num_filters',
+                        action='store',
+                        default=None,
+                        type=int,
+                        nargs='+',
+                        help='Set the new number of filters for filterwise pruning')
+
+    parser.add_argument('-layers',
+                        '--include_layers',
+                        dest='include_layers',
+                        action='store',
+                        default=None,
+                        type=int,
+                        nargs='+',
+                        help='Select the layers to be included in the new audio model')
+
     parser.add_argument('--fold',
                         dest='fold',
                         type=int,
@@ -179,6 +197,8 @@ if __name__ == '__main__':
     fold_num = args['fold']
     from_conv_layer = args['from_conv_layer']
     thresholds = args['thresholds']
+    layers = args['include_layers']
+    filters = args['num_filters']
     '''
     orig_model_path = args['orig_l3embedding_model_path']
     grp = args['group_name']
@@ -197,7 +217,8 @@ if __name__ == '__main__':
         if from_conv_layer==8:
             embedding_desc_str = model_path.replace('.h5', '')
         else:
-            embedding_desc_str = os.path.join(os.path.dirname(model_path), 'from_convlayer_' + str(from_conv_layer), os.path.basename(model_path).replace('.h5', ''))
+            embedding_desc_str = os.path.join(os.path.dirname(model_path), 'from_convlayer_' + str(from_conv_layer),\
+                                              os.path.basename(model_path).replace('.h5', ''))
 
         # Get output dir
         dataset_output_dir = os.path.join(output_dir, 'features', dataset_name,
@@ -206,12 +227,15 @@ if __name__ == '__main__':
         if 'masked' in model_type:
             assert thresholds is not None
 
+        if 'reduced' in model_type:
+            assert layers is not None or filters is not None
+
         # Load L3 embedding model if using L3 features
         LOGGER.info('Loading embedding model...')
-        l3embedding_model = load_embedding(model_path,
-                                           model_type,
-                                           'audio', pooling_type,
-                                           tgt_num_gpus=num_gpus, thresholds=thresholds, from_convlayer=from_conv_layer)
+        l3embedding_model = load_embedding(model_path, model_type, 'audio', pooling_type,
+                                           tgt_num_gpus=num_gpus, thresholds=thresholds, \
+                                           include_layers=layers, num_filters=filters, from_convlayer=from_conv_layer)
+
     elif is_l3_feature:
         # Get output dir
         model_desc_start_idx = model_path.rindex('embedding')+10

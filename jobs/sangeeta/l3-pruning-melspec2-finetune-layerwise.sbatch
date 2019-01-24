@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:4
-#SBATCH --job-name=l3-pruning-layers-melspec2-finetune
+#SBATCH --job-name=l3-pruning-layers-melspec2-finetune-layerwise
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64GB
@@ -22,8 +22,8 @@ OUTPUT_DIR=$SCRATCH/l3pruning
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
-SPARSITY=(0 50. 50. 50. 50. 50. 50. 50.) # Command line args list
-#SPARSITY=( "$@" ) # Command line args list
+#SPARSITY=(0 50. 50. 50. 50. 50. 50. 50.) # Command line args list
+SPARSITY=( "$@" ) # Command line args list
 
 module purge
 if [ $USER == "sk7898" ]; then

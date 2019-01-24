@@ -6,7 +6,8 @@ from .audio_model import *
 from .training_utils import multi_gpu_model, conv_keyval_lists_to_dict
 
 global_thresholds = None
-
+global_include_layers = None
+global_num_filters = None
 
 def isGroup(obj):
     if isinstance(obj, h5py.Group):
@@ -189,8 +190,8 @@ def convert_num_gpus_new(model, inputs, outputs, model_type, src_num_gpus, tgt_n
     return m_new, inputs_new, output_new
 
 
-def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, \
-                   thresholds=None, return_io=False, inputs=None, outputs=None):
+def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, thresholds=None, \
+                   include_layers=None, num_filters=None, return_io=False, inputs=None, outputs=None):
     """
     Loads an audio-visual correspondence model
 
@@ -199,8 +200,6 @@ def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, 
                        (Type: str)
         model_type:    Name of model type if thresholds
                        (Type: str)
-                       Model id thresholds=None
-                       (Type: Model)
 
     Keyword Args:
         src_num_gpus:   Number of GPUs the saved model uses
@@ -222,24 +221,40 @@ def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, 
         y_i:    Embedding output Tensor/Layer. Not returned if return_io is False.
                 (Type: keras.layers.Layer)
     """
-    if thresholds is not None and model_type not in PRUNING_MODELS:
+    global global_thresholds
+    global global_include_layers
+    global global_num_filters
+
+    if ((thresholds is not None or num_filters is not None or include_layers is not None) and model_type not in PRUNING_MODELS):
         raise ValueError('Invalid model type: "{}"'.format(model_type))
 
     if thresholds is not None:
-        global global_thresholds
         global_thresholds = thresholds
         m, inputs, output = PRUNING_MODELS[model_type]()
+
+    elif include_layers is None and num_filters is not None:
+        global_include_layers = [1, 1, 1, 1, 1, 1, 1, 1] 
+        global_num_filters = num_filters
+        m, inputs, output = PRUNING_MODELS[model_type]()
+
+    elif include_layers is not None and num_filters is None:
+        global_include_layers = include_layers 
+        global_num_filters = [64, 64, 128, 128, 256, 256, 512, 512]
+        m, inputs, output = PRUNING_MODELS[model_type]()
+
+    elif include_layers is not None and num_filters is not None:
+        global_include_layers = include_layers 
+        global_num_filters = num_filters
+        m, inputs, output = PRUNING_MODELS[model_type]()
+
     else:
-        m, inputs, output = model_type, inputs, outputs
-    
+        print("One of the three variables should be set: thresholds, include_layers, num_filters") 
+
     old_m = m
 
     if src_num_gpus > 1:
         m = multi_gpu_model(m, gpus=4)
 
-    print(m.summary())
-    #f = h5py.File(weights_path, 'r')
-    #m.get_layer('audio_model').load_weights_from_hdf5_group(f['audio_model'])
     m.load_weights(weights_path)
 
     '''
@@ -315,8 +330,8 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, retu
         return m
 
 
-def load_embedding(weights_path, model_type, embedding_type, pooling_type,
-                   kd_model=False, src_num_gpus=0, tgt_num_gpus=None, thresholds=None, return_io=False,
+def load_embedding(weights_path, model_type, embedding_type, pooling_type, kd_model=False, src_num_gpus=0,\
+                   tgt_num_gpus=None, thresholds=None, include_layers=None, num_filters=None, return_io=False,
                    from_convlayer=8):
     """
     Loads an embedding model
@@ -378,9 +393,17 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type,
 
         m, inputs, output = load_new_model(weights_path, model_type, src_num_gpus=src_num_gpus,
                                            tgt_num_gpus=tgt_num_gpus, thresholds=thresholds, return_io=True)
+    elif 'reduced' in model_type:
+        f = h5py.File(weights_path, 'r')
+        for keys in f['audio_model']:
+            print(keys)
+
+        m, inputs, output = load_new_model(weights_path, model_type, src_num_gpus=src_num_gpus,
+                                           tgt_num_gpus=tgt_num_gpus, include_layers=include_layers, num_filters=num_filters, return_io=True)
     else:
         m, inputs, output = load_model(weights_path, model_type, src_num_gpus=src_num_gpus,
                                        tgt_num_gpus=tgt_num_gpus, return_io=True)
+
     if 'audio' in model_type:
         x_a = inputs
     else:
@@ -416,10 +439,13 @@ def gpu_wrapper(model_f):
     Decorator for creating multi-gpu models
     """
     def wrapped(num_gpus=0, *args, **kwargs):
-        if global_thresholds is None:
-            m, inp, out = model_f(*args, **kwargs)
-        else:
+        if global_include_layers is not None:
+            m, inp, out = model_f(include_layers=global_include_layers, num_filters=global_num_filters, *args, **kwargs)
+        elif global_thresholds is not None:
             m, inp, out = model_f(global_thresholds, *args, **kwargs)
+        else:
+            m, inp, out = model_f(*args, **kwargs)
+
         if num_gpus > 1:
             m = multi_gpu_model(m, gpus=num_gpus)
 
@@ -538,7 +564,7 @@ def construct_cnn_L3_melspec2_masked(thresholds):
 
 
 @gpu_wrapper
-def construct_cnn_L3_melspec2_kd(masks):
+def construct_cnn_L3_melspec2_reduced(include_layers = None, num_filters = None):
     """
     Returns
     -------
@@ -550,9 +576,11 @@ def construct_cnn_L3_melspec2_kd(masks):
             (Type: keras.layers.Layer)
     """
     vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
-    audio_model, x_a, y_a = construct_cnn_L3_melspec2_kd_audio_model(masks)
 
-    m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_kapredbinputbn_kd')
+    audio_model, x_a, y_a = load_student_audio_model_withFFT(include_layers = include_layers,\
+                                                             num_filters = num_filters)
+
+    m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_reduced')
     return m
 
 
@@ -588,6 +616,7 @@ MODELS = {
 
 PRUNING_MODELS = {
     'cnn_L3_melspec2_masked': construct_cnn_L3_melspec2_masked,
+    'cnn_L3_melspec2_reduced': construct_cnn_L3_melspec2_reduced,
     'cnn_L3_melspec2_masked_audio': construct_cnn_L3_melspec2_masked_audio_model
 }
 

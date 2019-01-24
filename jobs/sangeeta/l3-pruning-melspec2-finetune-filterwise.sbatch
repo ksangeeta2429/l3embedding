@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:4
-#SBATCH --job-name=l3-pruning-layers-melspec2-finetune
+#SBATCH --job-name=l3-pruning-layers-melspec2-finetune-filterwise
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32GB
