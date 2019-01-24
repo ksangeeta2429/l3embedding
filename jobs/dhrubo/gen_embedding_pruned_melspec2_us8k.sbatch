@@ -22,7 +22,7 @@ fi
 #SRCDIR=$HOME/dev/l3embedding
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
-L3_MODEL_PATH=$SRCDIR/models/pruning_kd/latest_model.h5
+L3_MODEL_PATH=$SRCDIR/model_best_valid_loss_20190121105950.h5
 #ORIG_L3_MODEL_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
 L3_MODEL_TYPE='cnn_L3_melspec2_masked'
 L3_POOLING_TYPE='short' #'original'
