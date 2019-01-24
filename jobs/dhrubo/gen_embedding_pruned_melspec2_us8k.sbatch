@@ -9,7 +9,6 @@
 #SBATCH --output="gen-embedding-pruned-melspec2-us8k-%A-%a.out"
 #SBATCH --err="gen-embedding-pruned-melspec2-us8k-%A-%a.err"
 
-
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
 
@@ -18,6 +17,10 @@ if [ $USER == "sk7898" ]; then
 else
     source activate l3embedding-cpu
 fi
+
+# Process args
+filename=$1
+shift;
 
 #SRCDIR=$HOME/dev/l3embedding
 SRCDIR=.
