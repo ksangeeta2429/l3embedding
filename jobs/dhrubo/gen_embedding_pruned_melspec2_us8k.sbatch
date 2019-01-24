@@ -21,8 +21,8 @@ fi
 
 #SRCDIR=$HOME/dev/l3embedding
 SRCDIR=.
-#L3_MODEL_PATH=${filename}
-L3_MODEL_PATH=$SRCDIR/model_best_valid_loss_20190121105950.h5
+L3_MODEL_PATH=${filename}
+#L3_MODEL_PATH=$SRCDIR/model_best_valid_loss_20190121105950.h5
 #ORIG_L3_MODEL_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
 L3_MODEL_TYPE='cnn_L3_melspec2_masked'
 L3_POOLING_TYPE='short' #'original'
@@ -31,8 +31,8 @@ METADATA_PATH=$US8K_PATH/metadata/UrbanSound8K.csv
 DATA_DIR=$US8K_PATH/audio
 OUTPUT_DIR=/scratch/dr2915/embeddings
 DATASET='us8k'
-THRESHOLD=(0.0 0.017678589 0.012369654 0.010109939 0.004976296 0.006389169 0.005634685 0.0067510903) # Command line args list
-#THRESHOLD=( "$@" )
+#THRESHOLD=(0.0 0.017678589 0.012369654 0.010109939 0.004976296 0.006389169 0.005634685 0.0067510903) # Command line args list
+THRESHOLD=( "$@" )
 #GRP='audio_model'
 
 module purge
