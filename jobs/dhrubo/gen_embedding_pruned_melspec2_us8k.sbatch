@@ -20,7 +20,7 @@ fi
 
 # Process args
 filename=$1
-shift;
+shift
 
 #SRCDIR=$HOME/dev/l3embedding
 SRCDIR=.
@@ -37,6 +37,9 @@ DATASET='us8k'
 #THRESHOLD=(0.0 0.017678589 0.012369654 0.010109939 0.004976296 0.006389169 0.005634685 0.0067510903) # Command line args list
 THRESHOLD=( "$@" )
 #GRP='audio_model'
+
+echo Model path: $L3_MODEL_PATH
+echo Thresholds: ${THRESHOLD[@]}
 
 module purge
 #module load cuda/8.0.44
