@@ -22,7 +22,7 @@ fi
 #SRCDIR=$HOME/dev/l3embedding
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
-L3_MODEL_PATH=$SRCDIR/model_best_valid_accuracy_20190118115452.h5
+L3_MODEL_PATH=$SRCDIR/model_best_valid_accuracy_20190118115538.h5
 #ORIG_L3_MODEL_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
 L3_MODEL_TYPE='cnn_L3_melspec2_reduced'
 L3_POOLING_TYPE='short' #'original'
@@ -31,8 +31,8 @@ METADATA_PATH=$US8K_PATH/metadata/UrbanSound8K.csv
 DATA_DIR=$US8K_PATH/audio
 OUTPUT_DIR=/scratch/dr2915/embeddings
 DATASET='us8k'
-FILTERS=( 64 48 64 64 128 128 128 128 )
-#NUM_FILTERS=( "$@" )
+FILTERS=( 64 48 64 64 64 64 128 128 )
+#FILTERS=( "$@" )
 
 module purge
 #module load cuda/8.0.44
