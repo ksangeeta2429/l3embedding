@@ -197,7 +197,7 @@ def parse_arguments():
                         help='Test model?')
 
     parser.add_argument('-sav',
-                        '--save_model',
+                        '--save-model',
                         dest='save_model',
                         action='store_true',
                         default=False,
