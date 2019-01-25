@@ -213,12 +213,18 @@ if __name__ == '__main__':
 
 
     if is_l3_comp:
+        if 'fixed' in model_path:
+        # Only get model name and enclosing directory
+            short_model_path = model_path[model_path.rindex('fixed'):]
+        else:
+            short_model_path = model_path
+
         # If using an L3 model, make model arch. type and pooling type to path
         if from_conv_layer==8:
-            embedding_desc_str = model_path.replace('.h5', '')
+            embedding_desc_str = short_model_path.replace('.h5', '')
         else:
-            embedding_desc_str = os.path.join(os.path.dirname(model_path), 'from_convlayer_' + str(from_conv_layer),\
-                                              os.path.basename(model_path).replace('.h5', ''))
+            embedding_desc_str = os.path.join(os.path.dirname(short_model_path), 'from_convlayer_' + str(from_conv_layer),\
+                                              os.path.basename(short_model_path).replace('.h5', ''))
 
         # Get output dir
         dataset_output_dir = os.path.join(output_dir, 'features', dataset_name,
