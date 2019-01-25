@@ -6,8 +6,8 @@
 #SBATCH --mem=64GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=FAIL
-#SBATCH --output="gen-embedding-pruned-melspec2-us8k-%A-%a.out"
-#SBATCH --err="gen-embedding-pruned-melspec2-us8k-%A-%a.err"
+#SBATCH --output="gen-embedding-reduced-melspec2-us8k-%A-%a.out"
+#SBATCH --err="gen-embedding-reduced-melspec2-us8k-%A-%a.err"
 
 
 source ~/.bashrc
@@ -22,7 +22,7 @@ fi
 #SRCDIR=$HOME/dev/l3embedding
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
-L3_MODEL_PATH=$SRCDIR/model_best_valid_accuracy_20190118115538.h5
+L3_MODEL_PATH=/scratch/dr2915/l3pruning/embedding/fixed/model_best_valid_accuracy_20190118115452.h5 #$SRCDIR/model_best_valid_accuracy_20190118115452.h5
 #ORIG_L3_MODEL_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
 L3_MODEL_TYPE='cnn_L3_melspec2_reduced'
 L3_POOLING_TYPE='short' #'original'
