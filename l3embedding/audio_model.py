@@ -866,7 +866,7 @@ def load_student_audio_model_withFFT(include_layers, num_filters = [64, 64, 128,
     if include_layers[7]:
         y_a = Conv2D(num_filters[7], filt_size_a_4,
                      kernel_initializer='he_normal',
-                     name='conv_8', padding='same',
+                     name='audio_emebedding_layer', padding='same',
                      kernel_regularizer=regularizers.l2(weight_decay))(y_a)
     
         y_a = BatchNormalization()(y_a)

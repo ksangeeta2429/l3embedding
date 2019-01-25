@@ -30,11 +30,11 @@ def getDatasetsFromGroup(datasets, obj):
     else:
         datasets.append(obj)
 
-def getEmbeddingGroup(f):
+def getGroupName(f, name):
     for key in f:
-        if 'audio_embedding' in key:
-            return key
-    
+        if name in key:
+            return key    
+
 
 def getWeightsForLayer(layer_name, weight_file, group_name=None):
     weights = []
@@ -44,8 +44,11 @@ def getWeightsForLayer(layer_name, weight_file, group_name=None):
             f = f[group_name]
 
         if 'audio_embedding' in layer_name:
-            layer_name = getEmbeddingGroup(f)
+            layer_name = getGroupName(f, 'audio_embedding')
  
+        if 'melspectrogram' in layer_name:
+            layer_name = getGroupName(f, 'melspectrogram')
+
         if layer_name in f:
             obj = f[layer_name]
             datasets = []
@@ -56,6 +59,37 @@ def getWeightsForLayer(layer_name, weight_file, group_name=None):
                 weights.append(w)
 
     return weights
+
+
+def getWeightsH5(m, weights_path):
+    for layer in m.get_layer('audio_model').layers:
+        #weight_values = K.batch_get_value(layer.weights)
+        #print(weight_values)
+        
+        print(layer.name)
+        group_name = 'audio_model'
+        target_weights = np.empty_like(layer.get_weights())
+
+        if 'conv' in layer.name or 'audio_embedding' in layer.name:    
+            weights = getWeightsForLayer(layer.name, weights_path, group_name=group_name)
+            
+            target_weights[0] = weights[1]
+            target_weights[1] = weights[0]
+
+        elif 'batch_normalization' in layer.name:
+            weights = getWeightsForLayer(layer.name, weights_path, group_name=group_name)
+            target_weights = weights
+        
+        elif 'melspectrogram' in layer.name:
+            weights = getWeightsForLayer(layer.name, weights_path, group_name=group_name)
+            
+            target_weights[0] = weights[1]
+            target_weights[1] = weights[2]
+            target_weights[2] = weights[0]
+
+        m.get_layer('audio_model').get_layer(layer.name).set_weights(target_weights)
+
+    return m
 
 
 def L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, model_name, layer_size=128):
@@ -256,22 +290,6 @@ def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, 
         m = multi_gpu_model(m, gpus=4)
 
     m.load_weights(weights_path)
-
-    '''
-    for layer in m.get_layer('audio_model').layers:
-        if 'masked_conv2d' in layer.name or 'audio_embedding' in layer.name:
-            print(layer.name +': Changing weights')
-            target_weights = np.empty_like(layer.get_weights())
-            if group_name is None:
-                weights = getWeightsForLayer(layer.name, weights_path)
-            else:
-                weights = getWeightsForLayer(layer.name, weights_path, group_name=group_name)
-            
-            target_weights[0] = weights[1]
-            target_weights[1] = weights[0]
-            m.get_layer('audio_model').get_layer(layer.name).set_weights(target_weights)
-
-    '''
     print("Loaded weights")
 
     if tgt_num_gpus is not None and src_num_gpus != tgt_num_gpus:
