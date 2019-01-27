@@ -101,23 +101,6 @@ def parse_arguments():
                         help='Number of gpus used for running the embedding model.')
 
 
-    '''
-    parser.add_argument('-olmp',
-                        '--orig-l3embedding-model-path',
-                        dest='orig_l3embedding_model_path',
-                        action='store',
-                        type=str,
-			default=None,
-                        help='Path to original L3 embedding model weights file')
-
-    parser.add_argument('-grp',
-                        '--group-name',
-                        dest='group_name',
-                        type=str,
-                        default=None,
-                        help='Parent group of the layers of audio_model.')
-    '''
-
     parser.add_argument('-filters',
                         '--num_filters',
                         dest='num_filters',
@@ -199,10 +182,6 @@ if __name__ == '__main__':
     thresholds = args['thresholds']
     layers = args['include_layers']
     filters = args['num_filters']
-    '''
-    orig_model_path = args['orig_l3embedding_model_path']
-    grp = args['group_name']
-    '''
 
     LOGGER.info('Configuration: {}'.format(str(args)))
 
@@ -285,40 +264,40 @@ if __name__ == '__main__':
         if fold_num is not None:
             # Generate a single fold if a fold was specified
             generate_us8k_fold_data(metadata_path, data_dir, fold_num-1, dataset_output_dir,
-                l3embedding_model=l3embedding_model,
-                features=features, random_state=random_state,
-                hop_size=hop_size, num_random_samples=num_random_samples)
+                                    l3embedding_model=l3embedding_model,
+                                    features=features, random_state=random_state,
+                                    hop_size=hop_size, num_random_samples=num_random_samples)
 
         else:
             # Otherwise, generate all the folds
             generate_us8k_folds(metadata_path, data_dir, dataset_output_dir,
-                l3embedding_model=l3embedding_model,
-                features=features, random_state=random_state,
-                hop_size=hop_size, num_random_samples=num_random_samples)
+                                l3embedding_model=l3embedding_model,
+                                features=features, random_state=random_state,
+                                hop_size=hop_size, num_random_samples=num_random_samples)
 
     elif dataset_name == 'esc50':
         if fold_num is not None:
             generate_esc50_fold_data(data_dir, fold_num-1, dataset_output_dir,
-                l3embedding_model=l3embedding_model,
-                features=features, random_state=random_state,
-                hop_size=hop_size, num_random_samples=num_random_samples)
+                                     l3embedding_model=l3embedding_model,
+                                     features=features, random_state=random_state,
+                                     hop_size=hop_size, num_random_samples=num_random_samples)
         else:
             generate_esc50_folds(data_dir, dataset_output_dir,
-                l3embedding_model=l3embedding_model,
-                features=features, random_state=random_state,
-                hop_size=hop_size, num_random_samples=num_random_samples)
+                                 l3embedding_model=l3embedding_model,
+                                 features=features, random_state=random_state,
+                                 hop_size=hop_size, num_random_samples=num_random_samples)
 
     elif dataset_name == 'dcase2013':
         if fold_num is not None:
             generate_dcase2013_fold_data(data_dir, fold_num-1, dataset_output_dir,
-                l3embedding_model=l3embedding_model,
-                features=features, random_state=random_state,
-                hop_size=hop_size, num_random_samples=num_random_samples)
+                                         l3embedding_model=l3embedding_model,
+                                         features=features, random_state=random_state,
+                                         hop_size=hop_size, num_random_samples=num_random_samples)
         else:
             generate_dcase2013_folds(data_dir, dataset_output_dir,
-                l3embedding_model=l3embedding_model,
-                features=features, random_state=random_state,
-                hop_size=hop_size, num_random_samples=num_random_samples)
+                                     l3embedding_model=l3embedding_model,
+                                     features=features, random_state=random_state,
+                                     hop_size=hop_size, num_random_samples=num_random_samples)
 
     else:
         LOGGER.error('Invalid dataset name: {}'.format(dataset_name))
