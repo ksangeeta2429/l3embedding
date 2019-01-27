@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64GB
 #SBATCH --time=7-0
-#SBATCH --mail-type=FAIL
+#SBATCH --mail-type=ALL
 #SBATCH --output="l3-pruning-melspec2-finetune-layerwise-%j.out"
 #SBATCH --err="l3-pruning-melspec2-finetune-layerwise-%j.err"
 
