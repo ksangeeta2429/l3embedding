@@ -192,7 +192,7 @@ def parse_arguments():
     parser.add_argument('-tst',
                         '--test-model',
                         dest='test_model',
-                        action='store_false',
+                        action='store_true',
                         default=False,
                         help='Test model?')
 
