@@ -878,7 +878,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
             if test_model:
                 score = test(model, validation_data_dir)
                 printList(sparsity)
-                LOGGER.info('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
+                LOGGER.info('TEST Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
                 LOGGER.info('----------------------------------------------------------------')
         
     if isReduced:
