@@ -870,6 +870,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
             model, audio_model = load_audio_model_for_pruning(weight_path)
             sparsity_vals = get_sparsity_layers(None, None, sparsity)
             sparsified_model, masks, thresholds = sparsify_layer(audio_model, sparsity_vals)
+            print('Sparsity: ', sparsity)
             print('Thresholds:', conv_dict_to_val_list(thresholds))
             
 
