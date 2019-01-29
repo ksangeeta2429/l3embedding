@@ -807,7 +807,6 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     
     conv_blocks = 4
     isReduced = False
-    test_score = -1
 
     if sparsity==[]:
         if per_layer:
@@ -860,7 +859,6 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
 
                 score = test(model, validation_data_dir)
                 LOGGER.info('Conv Layer Pruned: {0} Sparsity Value: {1}'.format(layerid+1, sparsity))
-                test_score = score[1]
                 LOGGER.info('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
                 LOGGER.info('----------------------------------------------------------------')
     
@@ -882,7 +880,6 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 printList(sparsity)
                 LOGGER.info('TEST Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
                 LOGGER.info('----------------------------------------------------------------')
-                test_score = score[1]
         
     if isReduced:
         old_model, audio_model = load_audio_model_for_pruning(weight_path)
@@ -908,8 +905,8 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     if save_model:
         if isReduced:
             new_l3_name = 'reduced_l3.h5'
-        elif test_model:
-            new_l3_name = 'pruned_l3_'+str(test_score)+'.h5'
+        else:
+            new_l3_name = 'pruned_l3_'+str(score[1])+'.h5'
         new_model_path = os.path.join(output_dir, new_l3_name)
         model.save(new_model_path)
 
