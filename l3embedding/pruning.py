@@ -808,6 +808,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
     conv_blocks = 4
     isReduced = False
     test_score = -1
+    model = None
 
     if sparsity==[]:
         if per_layer:
