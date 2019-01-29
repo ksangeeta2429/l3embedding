@@ -32,6 +32,7 @@ python $SRCDIR/03_train_pruning.py \
     --checkpoint-interval 10 \
     --sparsity ${SPARSITY[*]} \
     --gpus $NUM_GPUS \
+    --layerwise \
     --test-model \
     --save-model \
     --random-state 20180216 \
