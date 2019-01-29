@@ -442,7 +442,7 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type, kd_mo
             m_embed, x_embed, y_embed = convert_audio_model_to_embedding(m_embed_model, x_a, model_type, pooling_type, kd_model)
         else:
             m_embed, x_embed, y_embed = convert_audio_model_to_embedding(relabel_embedding_layer(m_embed_model, from_convlayer),\
-                                                                        x_a, model_type, pooling_type)
+                                                                         x_a, model_type, pooling_type)
     else:
         raise ValueError('Invalid embedding type: "{}"'.format(embedding_type))
 

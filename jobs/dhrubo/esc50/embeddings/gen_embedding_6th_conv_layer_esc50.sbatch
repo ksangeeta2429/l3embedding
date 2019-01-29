@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64GB
-#SBATCH --time=7-0
+#SBATCH --time=1-0
 #SBATCH --mail-type=FAIL
 #SBATCH --output="gen-embedding-6th-conv-layer-us8k-%A-%a.out"
 #SBATCH --err="gen-embedding-6th-conv-layer-us8k-%A-%a.err"
@@ -30,11 +30,9 @@ L3_MODEL_PATH=$SCRATCH/l3pruning/embedding/fixed/${filename}
 L3_MODEL_TYPE='cnn_L3_melspec2'
 L3_POOLING_TYPE='short' #'original'
 FROM_CONV_LAYER=6
-US8K_PATH=/beegfs/jtc440/UrbanSound8K
-METADATA_PATH=$US8K_PATH/metadata/UrbanSound8K.csv
-DATA_DIR=$US8K_PATH/audio
+DATA_DIR=$SCRATCH/data/esc50/audio
 OUTPUT_DIR=$SCRATCH/embeddings
-DATASET='us8k'
+DATASET='esc50'
 
 module purge
 #module load cuda/8.0.44
@@ -51,7 +49,6 @@ python $SRCDIR/05_generate_embedding_samples.py \
     --l3embedding-pooling-type $L3_POOLING_TYPE \
     --hop-size 0.1 \
     --gpus 0 \
-    --us8k-metadata-path $METADATA_PATH \
     $DATASET \
     $DATA_DIR \
     $OUTPUT_DIR
