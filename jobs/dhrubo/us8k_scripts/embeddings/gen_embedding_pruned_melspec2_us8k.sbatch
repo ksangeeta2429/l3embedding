@@ -17,6 +17,8 @@ if [ $USER == "sk7898" ]; then
     source activate l3embedding-new-cpu
 else
     source activate l3embedding-new-cpu
+    module purge
+    module load cudnn/9.0v7.3.0.29
 fi
 
 # Process args
