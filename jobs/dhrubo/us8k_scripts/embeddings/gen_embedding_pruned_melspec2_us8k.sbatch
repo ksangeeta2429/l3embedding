@@ -16,7 +16,7 @@ cd `git rev-parse --show-toplevel`
 if [ $USER == "sk7898" ]; then
     source activate l3embedding-new-cpu
 else
-    source activate l3embedding-cpu
+    source activate l3embedding-new-cpu
 fi
 
 # Process args
