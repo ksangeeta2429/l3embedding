@@ -19,7 +19,7 @@ source activate l3embedding-new-cpu
 SRCDIR=.
 #FEATURES_DIR=/scratch/dr2915/embeddings/features/us8k/l3comp/short/models/cnn_l3_melspec2_recent/model_best_valid_accuracy/
 FEATURES_DIR=$1
-OUTPUT_DIR=/scratch/sk7898/embeddings
+OUTPUT_DIR=$SCRATCH/embeddings
 MODEL_TYPE='mlp'
 FEATURE_MODE='framewise'
 GOOGLE_DEV_APP_NAME='l3compression'
