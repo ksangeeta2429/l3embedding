@@ -348,6 +348,21 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, retu
         return m
 
 
+def get_non_zero_filters(model):
+    audio_model = model.get_layer('audio_model')
+    for layer in audio_model.layers:
+        if 'masked_conv' in layer.name or 'audio_embedding' in layer.name:
+            nz_filter = 0
+            weights = layer.get_weights()[0]
+            print(weights.shape)
+            
+            for channel in range(weights.shape[3]):
+                mag = np.sum(np.abs(weights_in[:, :, :, channel]))
+                #print(mag)
+                if mag > 0:
+                    nz_filter += 1
+            print("Layer: ",layer.name, " Non-zero Filters: ", nz_filter)
+
 def load_embedding(weights_path, model_type, embedding_type, pooling_type, kd_model=False, src_num_gpus=0,\
                    tgt_num_gpus=None, thresholds=None, include_layers=None, num_filters=None, return_io=False,
                    from_convlayer=8):
@@ -411,6 +426,8 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type, kd_mo
 
         m, inputs, output = load_new_model(weights_path, model_type, src_num_gpus=src_num_gpus,
                                            tgt_num_gpus=tgt_num_gpus, thresholds=thresholds, return_io=True)
+
+
     elif 'reduced' in model_type:
         f = h5py.File(weights_path, 'r')
         for keys in f['audio_model']:
