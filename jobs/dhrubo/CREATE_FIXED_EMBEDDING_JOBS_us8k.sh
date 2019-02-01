@@ -1,4 +1,4 @@
-features=( `find /scratch/dr2915/embeddings/features/us8k/l3comp/short/fixed -maxdepth 1 -mindepth 1 -type d` )
+features=( `find /scratch/sk7898/embeddings/features/us8k/l3comp/short/fixed -maxdepth 1 -mindepth 1 -type d` )
 
 for f in ${features[@]}; do
 	filename=`basename $f`
