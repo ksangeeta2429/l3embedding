@@ -440,7 +440,7 @@ def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=N
     if is_L3:
         embedding_length_new = masked_model.get_layer('audio_model').output_shape
 
-        if embedding_length_new != embedding_length_original:
+        if embedding_length_new != embedding_length_original or 'conv_8' not in sparse_model.get_layer('audio_model').layers:
             LOGGER.info("New embedding Length: {0}".format(embedding_length_new))
             new_video_model = masked_model.get_layer('vision_model')
             old_video_model = sparse_model.get_layer('vision_model')
@@ -883,15 +883,19 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                 LOGGER.info('----------------------------------------------------------------')
         
     if isReduced:
+        if len(include_layers) == 0:
+            include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
+
         old_model, audio_model = load_audio_model_for_pruning(weight_path)
         new_audio_model, x_a, y_a = load_student_audio_model_withFFT(include_layers = include_layers,\
                                                                     num_filters = num_filters)
 
         if filterwise:
+            filter_model_save_str = str(num_filters[4])+"_"+str(num_filters[5])+"_"+str(num_filters[6])+"_"+str(num_filters[7])
             LOGGER.info("Filter Dropping")
             LOGGER.info("**********************************************************************")
         
-            conv_layers = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6', 'conv_7', 'conv_8']
+            conv_layers = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6', 'conv_7', 'audio_embedding_layer']
             conv_filters = [64, 64, 128, 128, 256, 256, 512, 512]
  
             LOGGER.info('For filterwise, Sparsity: None')
@@ -903,10 +907,11 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
 
         vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
         model, inputs, outputs = L3_merge_audio_vision_models(vision_model, x_i, new_audio_model, x_a, 'cnn_L3_reduced')
+        
 
     if save_model:
         if isReduced:
-            new_l3_name = 'reduced_l3.h5'
+            new_l3_name = 'reduced_audio_'+filter_model_save_str+'.h5'
         else:
             new_l3_name = 'pruned_audio_'+str(score[1])+'.h5'
         new_model_path = os.path.join(output_dir, new_l3_name)
