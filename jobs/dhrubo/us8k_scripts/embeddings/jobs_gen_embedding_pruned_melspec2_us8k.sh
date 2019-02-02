@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 ### Old (no finetuning/KD) ###
+### TODO: These need updating in accordance with new script structutres (see below)
 sbatch --export=filename=pruned_model/pruned_audio_0.71586.h5 gen_embedding_pruned_melspec2_us8k.sbatch
 sleep 1
 sbatch --export=filename=pruned_model/pruned_audio_0.75373.h5 gen_embedding_pruned_melspec2_us8k.sbatch
@@ -18,6 +19,13 @@ sleep 1
 sbatch --export=filename=pruned_model/pruned_audio_0.49981689453125.h5 gen_embedding_pruned_melspec2_us8k.sbatch
 sleep 1
 sbatch --export=filename=pruned_model/pruned_audio_0.4983367919921875.h5 gen_embedding_pruned_melspec2_us8k.sbatch
+
+### New (no FT/KD) ###
+sbatch gen_embedding_untuned_pruned_melspec2_us8k.sbatch pruned_audio_0.4974517822265625.h5
+sleep 1
+sbatch gen_embedding_untuned_pruned_melspec2_us8k.sbatch pruned_audio_0.4986114501953125.h5
+sleep 1
+sbatch gen_embedding_untuned_pruned_melspec2_us8k.sbatch pruned_audio_0.4989776611328125.h5
 
 ### New (with finetuning and KD) ###
 sbatch gen_embedding_pruned_melspec2_us8k.sbatch /scratch/dr2915/l3pruning/embedding/fixed/model_best_valid_accuracy_20190117222133.h5 0.0 0.034713585 0.02258205 0.014317851 0.0086109005 0.012467595 0.013169089 0.0132640535
