@@ -16,8 +16,11 @@ cd `git rev-parse --show-toplevel`
 if [ $USER == "sk7898" ]; then
     source activate l3embedding-new-cpu
 else
-    source activate l3embedding-cpu
+    source activate l3embedding-new-cpu
 fi
+
+module purge
+module load cudnn/9.0v7.3.0.29
 
 # Process args
 filename=$1
@@ -42,10 +45,10 @@ THRESHOLD=( "$@" )
 echo Model path: $L3_MODEL_PATH
 echo Thresholds: ${THRESHOLD[@]}
 
-module purge
+#module purge
 #module load cuda/8.0.44
 #module load cudnn/8.0v6.0
-module load ffmpeg/intel/3.2.2
+#module load ffmpeg/intel/3.2.2
 
 python $SRCDIR/05_generate_embedding_samples.py \
     --random-state 20180302 \
