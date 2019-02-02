@@ -872,8 +872,8 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
             sparsified_model, masks, thresholds = sparsify_layer(audio_model, sparsity_vals)
             print('Thresholds:\n', conv_dict_to_val_list(thresholds))
             
-
             model.get_layer('audio_model').set_weights(sparsified_model.get_weights())
+            
             if test_model:
                 score = test(model, validation_data_dir)
                 print('Sparsity:')
@@ -899,6 +899,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
             old_filters_dict = {}
             new_filters_dict, old_filters_dict = get_filters(conv_layers, conv_filters, num_filters)
             new_audio_model = drop_filters(audio_model, new_audio_model, new_filters_dict, old_filters_dict)
+            sparsified_model = new_audio_model 
 
         vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
         model, inputs, outputs = L3_merge_audio_vision_models(vision_model, x_i, new_audio_model, x_a, 'cnn_L3_reduced')
@@ -907,9 +908,9 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
         if isReduced:
             new_l3_name = 'reduced_l3.h5'
         else:
-            new_l3_name = 'pruned_l3_'+str(score[1])+'.h5'
+            new_l3_name = 'pruned_audio_'+str(score[1])+'.h5'
         new_model_path = os.path.join(output_dir, new_l3_name)
-        model.save(new_model_path)
+        sparsified_model.save(new_model_path)
 
     if retrain_model:
         if isReduced:
