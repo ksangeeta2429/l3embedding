@@ -419,20 +419,13 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type, kd_mo
         # Convert thresholds list to dictionary
         conv_layers = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5', 'conv_6', 'conv_7', 'conv_8']
         thresholds = conv_keyval_lists_to_dict(conv_layers, thresholds)
-        
-        f = h5py.File(weights_path, 'r')
-        for keys in f['audio_model']:
-            print(keys)
 
         m, inputs, output = load_new_model(weights_path, model_type, src_num_gpus=src_num_gpus,
                                            tgt_num_gpus=tgt_num_gpus, thresholds=thresholds, return_io=True)
 
 
     elif 'reduced' in model_type:
-        f = h5py.File(weights_path, 'r')
-        for keys in f['audio_model']:
-            print(keys)
-
+        #f = h5py.File(weights_path, 'r')
         m, inputs, output = load_new_model(weights_path, model_type, src_num_gpus=src_num_gpus,
                                            tgt_num_gpus=tgt_num_gpus, include_layers=include_layers, num_filters=num_filters, return_io=True)
     else:
@@ -620,6 +613,14 @@ def construct_cnn_L3_melspec2_reduced(include_layers = None, num_filters = None)
 
 
 @gpu_wrapper
+def construct_cnn_L3_melspec2_reduced_audio_model(include_layers = None, num_filters = None):
+    audio_model, x_a, y_a = load_student_audio_model_withFFT(include_layers = include_layers,\
+                                                             num_filters = num_filters)
+
+    return audio_model, x_a, y_a
+
+
+@gpu_wrapper
 def construct_tiny_L3():
     """
     Constructs a model that implements a small L3 model for validation purposes
@@ -652,7 +653,8 @@ MODELS = {
 PRUNING_MODELS = {
     'cnn_L3_melspec2_masked': construct_cnn_L3_melspec2_masked,
     'cnn_L3_melspec2_reduced': construct_cnn_L3_melspec2_reduced,
-    'cnn_L3_melspec2_masked_audio': construct_cnn_L3_melspec2_masked_audio_model
+    'cnn_L3_melspec2_masked_audio': construct_cnn_L3_melspec2_masked_audio_model,
+    'cnn_L3_melspec2_reduced_audioonly':construct_cnn_L3_melspec2_reduced_audio_model
 }
 
 

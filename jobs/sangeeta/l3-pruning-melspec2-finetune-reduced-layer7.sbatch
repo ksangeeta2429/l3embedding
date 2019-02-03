@@ -4,7 +4,7 @@
 #SBATCH --job-name=l3-pruning-layers-melspec2-finetune-reduced-7
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=32GB
+#SBATCH --mem=64GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=ALL
 #SBATCH --output="l3-pruning-melspec2-finetune-reduced-7-%j.out"
