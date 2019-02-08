@@ -1,29 +1,38 @@
 #!/usr/bin/env bash
 
+#SBATCH --gres=gpu:1
 #SBATCH --job-name=gen-embedding-7th-conv-layer-us8k
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64GB
-#SBATCH --time=7-0
+#SBATCH --time=1-0
 #SBATCH --mail-type=FAIL
 #SBATCH --output="gen-embedding-7th-conv-layer-us8k-%A-%a.out"
 #SBATCH --err="gen-embedding-7th-conv-layer-us8k-%A-%a.err"
 
-
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
-source activate l3embedding-cpu
+
+if [ $USER == "sk7898" ]; then
+    source activate l3embedding-new-cpu
+else
+    source activate l3embedding-cpu
+fi
+
+# Process args
+filename=$1
+shift
 
 #SRCDIR=$HOME/dev/l3embedding
 SRCDIR=.
-L3_MODEL_PATH='models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
+L3_MODEL_PATH=$SCRATCH/l3pruning/embedding/fixed/${filename}
 L3_MODEL_TYPE='cnn_L3_melspec2'
 L3_POOLING_TYPE='short' #'original'
 FROM_CONV_LAYER=7
 US8K_PATH=/beegfs/jtc440/UrbanSound8K
 METADATA_PATH=$US8K_PATH/metadata/UrbanSound8K.csv
 DATA_DIR=$US8K_PATH/audio
-OUTPUT_DIR=/scratch/dr2915/embeddings
+OUTPUT_DIR=$SCRATCH/embeddings
 DATASET='us8k'
 
 module purge

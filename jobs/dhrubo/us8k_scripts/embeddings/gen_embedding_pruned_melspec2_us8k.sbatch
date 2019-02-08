@@ -26,9 +26,8 @@ module load cudnn/9.0v7.3.0.29
 filename=$1
 shift
 
-#SRCDIR=$HOME/dev/l3embedding
+#SRCDIR=$HOME/l3embedding
 SRCDIR=.
-#L3_MODEL_PATH=${filename}
 L3_MODEL_PATH=$SCRATCH/l3pruning/embedding/fixed/${filename}
 #ORIG_L3_MODEL_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
 L3_MODEL_TYPE='cnn_L3_melspec2_masked'
@@ -40,7 +39,6 @@ OUTPUT_DIR=$SCRATCH/embeddings
 DATASET='us8k'
 #THRESHOLD=(0.0 0.017678589 0.012369654 0.010109939 0.004976296 0.006389169 0.005634685 0.0067510903) # Command line args list
 THRESHOLD=( "$@" )
-#GRP='audio_model'
 
 echo Model path: $L3_MODEL_PATH
 echo Thresholds: ${THRESHOLD[@]}
