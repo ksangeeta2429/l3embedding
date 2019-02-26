@@ -350,7 +350,7 @@ def convert_audio_model_to_embedding(audio_model, x_a, model_type, pooling_type=
     return m, x_a, y_a
 
 
-def load_model_pi(weights_path, model_type, return_io=False):
+def load_model(weights_path, model_type, return_io=False):
     """
     Loads an audio-visual correspondence model
 
@@ -466,7 +466,7 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type, kd_mo
         #m, inputs, output = load_new_model(weights_path, model_type, src_num_gpus=src_num_gpus,
         #                                   tgt_num_gpus=tgt_num_gpus, include_layers=include_layers, num_filters=num_filters, return_io=True)
     else:
-        m, inputs, output = load_model_pi(weights_path, model_type, return_io=True)
+        m, inputs, output = load_model(weights_path, model_type, return_io=True)
 
     if 'audio' in model_type:
         x_a = inputs
