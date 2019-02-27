@@ -2,7 +2,7 @@ from l3embedding.model import load_embedding
 from data.usc.us8k import generate_us8k_fold_data
 
 # Load embedding
-weights_path = 'cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
+weights_path = 'models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
 model_type = 'cnn_L3_melspec2'
 embedding_type = 'audio'
 pooling_type = 'short'
