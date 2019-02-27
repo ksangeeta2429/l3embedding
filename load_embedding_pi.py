@@ -7,6 +7,7 @@ model_type = 'cnn_L3_melspec2'
 embedding_type = 'audio'
 pooling_type = 'short'
 
+print('Loading embedding...')
 l3embedding_model = load_embedding(weights_path, model_type, embedding_type, pooling_type)
 
 # Featurization
@@ -17,6 +18,7 @@ data_dir = 'UrbanSound8K/audio'
 dataset_output_dir = 'embeddings'
 hop_size = 0.1
 
+print('Computing features...')
 for i in range(100):
     generate_us8k_fold_data(metadata_path, data_dir, fold_num-1, dataset_output_dir,
                                     l3embedding_model=l3embedding_model,
