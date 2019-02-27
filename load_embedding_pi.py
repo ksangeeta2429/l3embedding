@@ -39,14 +39,8 @@ dataset_output_dir = 'embeddings'
 random_state = ''
 hop_size = 0.1
 
-print('Starting to profile...')
-start = time.time()
-
-generate_us8k_fold_data(metadata_path, data_dir, fold_num-1, dataset_output_dir,
+for i in range(1000):
+    generate_us8k_fold_data(metadata_path, data_dir, fold_num-1, dataset_output_dir,
                                     l3embedding_model=l3embedding_model,
                                     features=features, hop_size=hop_size)
-
-done = time.time()
-elapsed = done - start
-print(elapsed)
 

@@ -3,6 +3,7 @@ import logging
 import os
 import glob
 import random
+import time
 import numpy as np
 
 import data.usc.features as cls_features
@@ -145,11 +146,15 @@ def generate_us8k_file_data(fname, example_metadata, audio_fold_dir,
     basename, _ = os.path.splitext(fname)
     output_path = os.path.join(output_fold_dir, basename + '.npz')
 
-    if os.path.exists(output_path):
-        LOGGER.info('File {} already exists'.format(output_path))
-        return
+    #if os.path.exists(output_path):
+    #    LOGGER.info('File {} already exists'.format(output_path))
+    #    return
 
+    start = time.time()
     X = cls_features.compute_file_features(audio_path, features, l3embedding_model=l3embedding_model, **feature_args)
+    done = time.time()
+    elapsed = done - start
+    print(elapsed)
 
     # If we were not able to compute the features, skip this file
     if X is None:
