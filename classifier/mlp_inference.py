@@ -38,13 +38,11 @@ def construct_mlp_model(input_shape, weight_decay=1e-5, num_classes=10):
 
     return m, inp, y
 
-def run_mlp(X, weights_file, weight_decay=1e-5, num_classes=10):
-    # Set up model
-    m, inp, out = construct_mlp_model(X.shape[1:],
-                                      weight_decay=weight_decay,
-                                      num_classes=num_classes)
+def run_mlp(X, model, weights_file):
+    model.load_weights(weights_file)
+    out_vec=model.predict(X)
 
-    m.load_weights(weights_file)
-    out_vec=m.predict(X)
-    print(out_vec)
+    #Predict class index
+    #pred =
+    return out_vec.argmax()
 
