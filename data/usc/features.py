@@ -7,9 +7,9 @@ import soundfile as sf
 import resampy
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from .vggish import vggish_input
-from .vggish import vggish_postprocess
-from .vggish import vggish_slim
+#from .vggish import vggish_input
+#from .vggish import vggish_postprocess
+#from .vggish import vggish_slim
 
 LOGGER = logging.getLogger('cls-data-generation')
 LOGGER.setLevel(logging.DEBUG)
@@ -163,7 +163,7 @@ def preprocess_features(data, min_max_scaler, stdizer,
     data['features'] = stdizer.transform(data['features'])
 
 
-def extract_vggish_embedding(audio_path, input_op_name='vggish/input_features',
+'''def extract_vggish_embedding(audio_path, input_op_name='vggish/input_features',
                              output_op_name='vggish/embedding',
                              resources_dir=None, **params):
     # TODO: Make more efficient so we're not loading model every time we extract features
@@ -237,7 +237,7 @@ def get_vggish_frames_uniform(audio_path, hop_size=0.1):
         features:  Array of embedding vectors
                    (Type: np.ndarray)
     """
-    return extract_vggish_embedding(audio_path, frame_hop_sec=hop_size)
+    return extract_vggish_embedding(audio_path, frame_hop_sec=hop_size)'''
 
 
 def compute_stats_features(embeddings):
@@ -314,11 +314,11 @@ def compute_file_features(path, feature_type, l3embedding_model=None, **feature_
         hop_size = feature_args.get('hop_size', 0.1)
         file_features = get_l3_frames_uniform(path, l3embedding_model,
                                               hop_size=hop_size)
-    elif feature_type == 'vggish':
-        hop_size = feature_args.get('hop_size', 0.1)
-        file_features = get_vggish_frames_uniform(path, hop_size=hop_size)
     else:
         raise ValueError('Invalid feature type: {}'.format(feature_type))
+    '''elif feature_type == 'vggish':
+        hop_size = feature_args.get('hop_size', 0.1)
+        file_features = get_vggish_frames_uniform(path, hop_size=hop_size)'''
 
     return file_features
 
