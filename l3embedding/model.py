@@ -4,7 +4,7 @@ from keras.layers import concatenate, Dense
 from .vision_model import *
 from .audio_model import *
 from .training_utils import multi_gpu_model, conv_keyval_lists_to_dict
-from memory_profiler import profile
+#from memory_profiler import profile
 
 global_thresholds = None
 global_include_layers = None
