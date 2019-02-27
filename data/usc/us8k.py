@@ -1,13 +1,8 @@
 import csv
 import logging
 import os
-import glob
-import random
-import time
-import numpy as np
 
 import data.usc.features as cls_features
-from log import LogTimer
 
 LOGGER = logging.getLogger('cls-data-generation')
 LOGGER.setLevel(logging.DEBUG)
@@ -50,11 +45,7 @@ def generate_us8k_file_data(fname, example_metadata, audio_fold_dir, features,
     #    LOGGER.info('File {} already exists'.format(output_path))
     #    return
 
-    start = time.time()
     X = cls_features.compute_file_features(audio_path, features, l3embedding_model=l3embedding_model, **feature_args)
-    done = time.time()
-    elapsed = done - start
-    print(elapsed)
 
     # If we were not able to compute the features, skip this file
     if X is None:

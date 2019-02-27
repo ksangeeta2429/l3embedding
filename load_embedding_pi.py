@@ -1,9 +1,11 @@
 from l3embedding.model import load_embedding
 from data.usc.us8k import generate_us8k_file_data, load_us8k_metadata
+from classifier.mlp_inference import run_mlp, construct_mlp_model
 import random
 import numpy as np
 import os
 import glob
+import time
 
 # Load embedding
 weights_path = 'models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
@@ -14,14 +16,16 @@ pooling_type = 'short'
 print('Loading embedding...')
 l3embedding_model = load_embedding(weights_path, model_type, embedding_type, pooling_type)
 
-# Featurization
+# Featurizer and classifier params
 fold_idx = 5
 features = 'l3'
 metadata_path = 'UrbanSound8K/metadata/UrbanSound8K.csv'
 data_dir = 'UrbanSound8K/audio'
 dataset_output_dir = 'embeddings'
 hop_size = 0.1
+classifier_weights_path = 'models/classifier_us8k_fold5/model.h5'
 
+# Start
 metadata = load_us8k_metadata(metadata_path)
 
 # 0-indexed fold id
@@ -47,6 +51,11 @@ for idx, (fname, example_metadata) in enumerate(metadata[fold_idx].items()):
         print('Computing features...')
         # Keep iterating
         for i in range(100):
+            start = time.time()
             X, y = generate_us8k_file_data(var_fname, example_metadata, audio_dir, features=features,
                                 l3embedding_model=l3embedding_model, hop_size=hop_size)
+            out_vec = run_mlp(X, classifier_weights_path)
+            done = time.time()
+            elapsed = done - start
+            print(elapsed)
 
