@@ -364,7 +364,7 @@ def get_non_zero_filters(model):
                     nz_filter += 1
             print("Layer: ",layer.name, " Non-zero Filters: ", nz_filter)
 
-@profile
+#@profile
 def load_embedding(weights_path, model_type, embedding_type, pooling_type, kd_model=False, src_num_gpus=0,\
                    tgt_num_gpus=None, thresholds=None, include_layers=None, num_filters=None, return_io=False,
                    from_convlayer=8):
