@@ -68,7 +68,7 @@ for idx, (fname, example_metadata) in enumerate(metadata[fold_idx].items()):
 
         print('Profiling featurization + classification...\n')
         # Keep iterating
-        for i in range(100):
+        for i in range(10):
             start = time.time()
             X, y = generate_us8k_file_data(var_fname, example_metadata, audio_dir, features=features,
                                 l3embedding_model=l3embedding_model, hop_size=hop_size)
