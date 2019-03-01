@@ -6,6 +6,7 @@ import numpy as np
 import os
 import glob
 import time
+from sklearn.externals import joblib
 
 US8K_CLASSES = {
     0: 'air_conditioner',
@@ -45,6 +46,10 @@ classifier_weights_path = 'models/us8k-music-melspec2-512emb-model/model.h5'
 # Start
 metadata = load_us8k_metadata(metadata_path)
 
+# Load standardizer
+with open('models/us8k-music-melspec2-512emb-model/stdizer.pkl', 'rb') as f:
+    stdizer = joblib.load(f)
+
 # 0-indexed fold id
 fold_idx = fold_idx - 1
 
@@ -72,6 +77,7 @@ for idx, (fname, example_metadata) in enumerate(metadata[fold_idx].items()):
             start = time.time()
             X, y = generate_us8k_file_data(var_fname, example_metadata, audio_dir, features=features,
                                 l3embedding_model=l3embedding_model, hop_size=hop_size)
+            X = stdizer.transform(X)
             y_hat = run_mlp(X, m_class, classifier_weights_path)
             done = time.time()
             elapsed = done - start
