@@ -72,7 +72,7 @@ EMBEDDING_FIELD_NAMES = [
     'best_validation_acc'
 ]
 
-REDUCED_EMBEDDING_FIELD_NAMES = [
+NEW_EMBEDDING_FIELD_NAMES = [
     'username',
     'model_id',
     'model_dir',
@@ -179,13 +179,11 @@ def get_credentials(application_name, client_secret_file=None, flags=None):
 
 def append_row(service, spreadsheet_id, param_dict, sheet_name):
     if sheet_name == 'embedding':
-        field_names = EMBEDDING_FIELD_NAMES
+        field_names = NEW_EMBEDDING_FIELD_NAMES
     elif sheet_name == 'classifier':
         field_names = CLASSIFIER_FIELD_NAMES
     elif sheet_name == 'prunedembedding':
         field_names = PRUNED_EMBEDDING_FIELD_NAMES
-    elif sheet_name == 'reducedembedding':
-        field_names = REDUCED_EMBEDDING_FIELD_NAMES
     else:
         raise ValueError('Unknown spreadsheet sheet name: {}'.format(sheet_name))
 
