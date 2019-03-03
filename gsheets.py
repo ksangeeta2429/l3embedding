@@ -72,6 +72,39 @@ EMBEDDING_FIELD_NAMES = [
     'best_validation_acc'
 ]
 
+REDUCED_EMBEDDING_FIELD_NAMES = [
+    'username',
+    'model_id',
+    'model_dir',
+    'git_commit',
+    'train_data_dir',
+    'validation_data_dir',
+    'continue_model_dir',
+    'model_type',
+    'samp_rate',
+    'num_mels',
+    'num_hops',
+    'num_dft',
+    'num_epochs',
+    'train_epoch_size',
+    'validation_epoch_size',
+    'train_batch_size',
+    'validation_batch_size',
+    'random_state',
+    'learning_rate',
+    'gpus',
+    'checkpoint_interval',
+    'latest_epoch',
+    'latest_train_loss',
+    'latest_validation_loss',
+    'latest_train_acc',
+    'latest_validation_acc',
+    'best_train_loss',
+    'best_validation_loss',
+    'best_train_acc',
+    'best_validation_acc'
+]
+
 CLASSIFIER_FIELD_NAMES = [
     'username',
     'model_id',
@@ -151,6 +184,8 @@ def append_row(service, spreadsheet_id, param_dict, sheet_name):
         field_names = CLASSIFIER_FIELD_NAMES
     elif sheet_name == 'prunedembedding':
         field_names = PRUNED_EMBEDDING_FIELD_NAMES
+    elif sheet_name == 'reducedembedding':
+        field_names = REDUCED_EMBEDDING_FIELD_NAMES
     else:
         raise ValueError('Unknown spreadsheet sheet name: {}'.format(sheet_name))
 
