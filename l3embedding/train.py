@@ -218,7 +218,7 @@ def get_restart_info(history_path):
 def train(train_data_dir, validation_data_dir, output_dir,
           num_epochs=150, train_epoch_size=512, validation_epoch_size=1024,
           train_batch_size=64, validation_batch_size=64,
-          model_type='cnn_L3_orig', random_state=20180123,
+          model_type='cnn_L3_melspec2', random_state=20180123,
           learning_rate=1e-4, verbose=False, checkpoint_interval=10, n_mels=256, n_hop=242, n_dft=2048,
           log_path=None, disable_logging=False, gpus=1, continue_model_dir=None,
           gsheet_id=None, google_dev_app_name=None):

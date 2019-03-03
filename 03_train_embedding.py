@@ -68,7 +68,7 @@ def parse_arguments():
                         dest='model_type',
                         action='store',
                         type=str,
-                        default='cnn_L3_orig',
+                        default='cnn_L3_melspec2',
                         help='Name of model type to train')
 
     parser.add_argument('-ci',
