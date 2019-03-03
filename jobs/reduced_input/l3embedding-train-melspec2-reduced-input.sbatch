@@ -22,8 +22,8 @@ OUTPUT_DIR=$SCRATCH/l3pruning/reduced_input
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
-NUM_MELS = $1
-HOP_LEN = $2
+NUM_MELS=$1
+HOP_LEN=$2
 
 module purge
 if [ $USER == "sk7898" ]; then
@@ -42,6 +42,8 @@ python $SRCDIR/03_train_embedding.py \
     --validation-batch-size 64 \
     --checkpoint-interval 10 \
     --gpus $NUM_GPUS \
+    --num-mels $NUM_MELS \
+    --hop-length $HOP_LEN \
     --learning-rate 0.00001 \
     --random-state 20180216 \
     --gsheet-id $GSHEET_ID \
