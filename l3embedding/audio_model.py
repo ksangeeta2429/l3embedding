@@ -881,7 +881,7 @@ def load_student_audio_model_withFFT(include_layers, num_filters = [64, 64, 128,
     return m, x_a, y_a
 
 
-def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, asr = 48000, audio_window_dur = 1):
+def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048, asr = 48000, audio_window_dur = 1):
     """
     Constructs a model that replicates the audio subnetwork  used in Look,
     Listen and Learn
@@ -901,7 +901,6 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, asr = 48000, 
     ####
     # Audio subnetwork
     ####
-    #n_dft = 2048
     #n_win = 480
     #n_hop = n_win//2
     #n_mels = 256
@@ -969,7 +968,7 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, asr = 48000, 
     # CONV BLOCK 4
     n_filter_a_4 = 512
     filt_size_a_4 = (3, 3)
-    pool_size_a_4 = (32, 24)
+    #pool_size_a_4 = (32, 24)
     y_a = Conv2D(n_filter_a_4, filt_size_a_4, padding='same',
                  kernel_initializer='he_normal',
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
@@ -981,6 +980,8 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, asr = 48000, 
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
     y_a = BatchNormalization()(y_a)
     y_a = Activation('relu')(y_a)
+
+    pool_size_a_4 = tuple(y_a.get_shape().as_list()[1:3]) #(32, 24)
     y_a = MaxPooling2D(pool_size=pool_size_a_4)(y_a)
 
     y_a = Flatten()(y_a)
