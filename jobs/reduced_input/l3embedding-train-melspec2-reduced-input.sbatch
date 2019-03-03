@@ -25,6 +25,9 @@ NUM_GPUS=4
 NUM_MELS=$1
 HOP_LEN=$2
 
+echo "NUM MELS=$NUM_MELS"
+echo "HOP LENGTH=$HOP_LEN"
+
 module purge
 if [ $USER == "sk7898" ]; then
   module load cuda/8.0.44
