@@ -149,6 +149,30 @@ def parse_arguments():
                         type=str,
                         help='Path to directory where output files will be stored')
 
+    parser.add_argument('-nmels',
+                        '--num-mels',
+                        dest='n_mels',
+                        action='store',
+                        type=int,
+                        default=256,
+                        help='Number of mel filters')
+
+    parser.add_argument('-lhop',
+                        '--hop-length',
+                        dest='n_hop',
+                        action='store',
+                        type=int,
+                        default=242,
+                        help='Hop length in samples')
+
+    parser.add_argument('-ndft',
+                        '--num-dft',
+                        dest='n_dft',
+                        action='store',
+                        type=int,
+                        default=2048,
+                        help='DFT size')
+
 
     return vars(parser.parse_args())
 
