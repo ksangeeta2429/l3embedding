@@ -4,7 +4,7 @@
 #SBATCH --job-name=l3embedding-train-melspec2-reduced-input
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=32GB
+#SBATCH --mem=64GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=ALL
 #SBATCH --output="l3embedding-train-melspec2-reduced-input-%j.out"
