@@ -13,4 +13,4 @@ GitPython==2.1.8
 google-api-python-client==1.6.5
 oauth2client==4.1.2
 tensorflow-gpu==1.12.0
-https://github.com/scikit-image/scikit-image.git@e2a609415f17230549b845c38511315659f29f1e#egg=scikit_image
+-e git+https://github.com/scikit-image/scikit-image.git@e2a609415f17230549b845c38511315659f29f1e#egg=scikit_image
