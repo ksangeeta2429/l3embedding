@@ -149,6 +149,14 @@ def parse_arguments():
                         type=str,
                         help='Path to directory where output files will be stored')
 
+    parser.add_argument('-srate',
+                        '--samp-rate',
+                        dest='samp_rate',
+                        action='store',
+                        type=int,
+                        default=48000,
+                        help='Sampling rate')
+
     parser.add_argument('-nmels',
                         '--num-mels',
                         dest='n_mels',
