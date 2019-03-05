@@ -19,7 +19,7 @@ from .audio import pcm2float
 from log import *
 import h5py
 import copy
-from librosa import resample
+from resampy import resample
 
 from googleapiclient import discovery
 
@@ -190,9 +190,9 @@ def data_generator(data_dir, batch_size=512, random_state=20180123, samp_rate=48
                     if(samp_rate==48000):
                         batch['audio'] = pcm2float(batch['audio'], dtype='float32')
                     else:
-                        batch['audio'] = resample(pcm2float(batch['audio'], dtype='float32'), orig_sr=48000,
-                                                  target_sr=samp_rate)
-                    print('Shape of audio batch:', np.shape(batch['audio']))
+                        batch['audio'] = resample(pcm2float(batch['audio'], dtype='float32'), sr_orig=48000,
+                                                  sr_new=samp_rate)
+                    #print('Shape of audio batch:', np.shape(batch['audio']))
                     yield batch
 
                 batch_idx += 1
