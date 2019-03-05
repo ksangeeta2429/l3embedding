@@ -12,3 +12,5 @@ conda create -q -n l3embedding-new-cpu python=3.6.2
 source activate l3embedding-new-cpu
 pip install -r requirements_cpu.txt
 pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
+python gsheets.py l3compression ~/credentials.json --noauth_local_webserver
+source deactivate
