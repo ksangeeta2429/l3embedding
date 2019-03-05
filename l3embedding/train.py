@@ -19,6 +19,7 @@ from .audio import pcm2float
 from log import *
 import h5py
 import copy
+from librosa import resample
 
 from googleapiclient import discovery
 
@@ -139,7 +140,7 @@ def cycle_shuffle(iterable, shuffle=True):
             random.shuffle(lst)
 
 
-def data_generator(data_dir, batch_size=512, random_state=20180123,
+def data_generator(data_dir, batch_size=512, random_state=20180123, samp_rate=48000,
                    start_batch_idx=None, keys=None):
     random.seed(random_state)
 
@@ -186,8 +187,12 @@ def data_generator(data_dir, batch_size=512, random_state=20180123,
                     batch['video'] = 2 * img_as_float(batch['video']).astype('float32') - 1
 
                     # Convert audio to float
-                    batch['audio'] = pcm2float(batch['audio'], dtype='float32')
-
+                    if(samp_rate==48000):
+                        batch['audio'] = pcm2float(batch['audio'], dtype='float32')
+                    else:
+                        batch['audio'] = resample(pcm2float(batch['audio'], dtype='float32'), orig_sr=48000,
+                                                  target_sr=samp_rate)
+                    print('Shape of audio batch:', np.shape(batch['audio']))
                     yield batch
 
                 batch_idx += 1
@@ -268,7 +273,7 @@ def train(train_data_dir, validation_data_dir, output_dir,
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
         m, inputs, outputs = load_model(latest_model_path, model_type, return_io=True, src_num_gpus=gpus)
     else:
-        m, inputs, outputs = MODELS[model_type](n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, num_gpus=gpus)
+        m, inputs, outputs = MODELS[model_type](n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate, num_gpus=gpus)
 
     # NOTE: this results in twice the loss as in categorical crossentropy!
     loss = 'categorical_crossentropy'
@@ -381,7 +386,8 @@ def train(train_data_dir, validation_data_dir, output_dir,
         train_data_dir,
         batch_size=train_batch_size,
         random_state=random_state,
-        start_batch_idx=train_start_batch_idx)
+        start_batch_idx=train_start_batch_idx,
+        samp_rate=samp_rate)
 
     train_gen = pescador.maps.keras_tuples(train_gen,
                                            ['video', 'audio'],
@@ -392,7 +398,8 @@ def train(train_data_dir, validation_data_dir, output_dir,
         validation_data_dir,
         validation_epoch_size,
         batch_size=validation_batch_size,
-        random_state=random_state)
+        random_state=random_state,
+        samp_rate=samp_rate)
 
     val_gen = pescador.maps.keras_tuples(val_gen,
                                          ['video', 'audio'],
