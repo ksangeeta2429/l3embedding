@@ -253,7 +253,26 @@ def compute_stats_features(embeddings):
     return np.concatenate((minimum, maximum, median, mean, var, skewness, kurtosis))
 
 
-def get_l3_frames_uniform(audio, l3embedding_model, hop_size=0.1, sr=48000):
+def amplitude_to_db(S, amin=1e-10, dynamic_range=80.0):
+    magnitude = np.abs(S)
+    power = np.square(magnitude, out=magnitude)
+    ref_value = power.max()
+
+    log_spec = 10.0 * np.log10(np.maximum(amin, magnitude))
+    log_spec -= log_spec.max()
+
+    log_spec = np.maximum(log_spec, -dynamic_range)
+
+    return log_spec
+
+
+def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256, mel_hop_length=242, hop_size=0.1, sr=48000):
+    print('***************************')
+    print(n_mels)
+    print(n_fft)
+    print(mel_hop_length)
+    print(sr)
+    print('***************************')
     """
     Get L3 embedding for each frame in the given audio file
 
@@ -295,13 +314,26 @@ def get_l3_frames_uniform(audio, l3embedding_model, hop_size=0.1, sr=48000):
         audio = np.pad(audio, (left_pad, right_pad), mode='constant')
 
     # Divide into overlapping 1 second frames
-    x = librosa.util.utils.frame(audio, frame_length=frame_length, hop_length=hop_length).T
+    #x = librosa.util.utils.frame(audio, frame_length=frame_length, hop_length=hop_length).T
+    frames = librosa.util.utils.frame(audio, frame_length=frame_length, hop_length=hop_length).T
+
+    X = []
+    for frame in frames:
+        S = np.abs(librosa.core.stft(frame, n_fft=n_fft, hop_length=mel_hop_length,
+                                     window='hann', center=True,
+                                     pad_mode='constant'))
+        S = librosa.feature.melspectrogram(sr=sr, S=S, n_mels=n_mels,
+                                           power=1.0, htk=True)
+        S = amplitude_to_db(np.array(S))
+        X.append(S)
+
 
     # Add a channel dimension
-    x = x.reshape((x.shape[0], 1, x.shape[-1]))
+    #x = x.reshape((x.shape[0], 1, x.shape[-1]))
+    X = np.array(X)[:, :, :, np.newaxis]
 
     # Get the L3 embedding for each frame
-    l3embedding = l3embedding_model.predict(x)
+    l3embedding = l3embedding_model.predict(X)
 
     return l3embedding
 
@@ -311,15 +343,15 @@ def compute_file_features(path, feature_type, l3embedding_model=None, **feature_
         if not l3embedding_model:
             err_msg = 'Must provide L3 embedding model to use {} features'
             raise ValueError(err_msg.format(feature_type))
-        hop_size = feature_args.get('hop_size', 0.1)
-        samp_rate = feature_args.get('samp_rate', 48000)
-        file_features = get_l3_frames_uniform(path, l3embedding_model,
-                                              hop_size=hop_size, sr=samp_rate)
-    elif feature_type == 'vggish':
-        hop_size = feature_args.get('hop_size', 0.1)
-        file_features = get_vggish_frames_uniform(path, hop_size=hop_size)
+        #hop_size = feature_args.get('hop_size', 0.1)
+        #samp_rate = feature_args.get('samp_rate', 48000)
+        file_features = get_l3_frames_uniform(path, l3embedding_model, **feature_args)
     else:
         raise ValueError('Invalid feature type: {}'.format(feature_type))
+        #hop_size=hop_size, sr=samp_rate)
+    #elif feature_type == 'vggish':
+    #    hop_size = feature_args.get('hop_size', 0.1)
+    #    file_features = get_vggish_frames_uniform(path, hop_size=hop_size)
 
     return file_features
 

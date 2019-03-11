@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import keras
 import json
 from l3embedding.model import load_embedding
 from data.usc.dcase2013 import generate_dcase2013_folds, generate_dcase2013_fold_data
@@ -270,11 +271,31 @@ if __name__ == '__main__':
         # Load L3 embedding model if using L3 features
         LOGGER.info('Loading embedding model...')
         #model_type = embedding_desc_str.split('/')[-1]
-        l3embedding_model = load_embedding(model_path,
+        """l3embedding_model = load_embedding(model_path,
                                            model_type,
                                            'audio', pooling_type,
                                            tgt_num_gpus=num_gpus,
-                                           n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)
+                                           n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)"""
+        model = keras.models.load_model(model_path)
+        POOLINGS = {
+            'cnn_L3_kapredbinputbn': {
+                'original': (8, 8),
+                'short': (32, 24),
+            },
+            'cnn_L3_melspec1': {
+                'original': (4, 8),
+                'short': (16, 24),
+            },
+            'cnn_L3_melspec2': {
+                'original': (8, 8),
+                'short': (32, 24),
+                '16k_64_50': (8, 6),
+            }
+        }
+        pool_size = POOLINGS[model_type][pooling_type]
+        y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(model.output)
+        y_a = keras.layers.Flatten()(y_a)
+        l3embedding_model = keras.models.Model(inputs=model.input, outputs=y_a)
     else:
         # Get output dir
         dataset_output_dir = os.path.join(output_dir, 'features', dataset_name, features)
@@ -304,14 +325,14 @@ if __name__ == '__main__':
             generate_us8k_fold_data(metadata_path, data_dir, fold_num-1, dataset_output_dir,
                                     l3embedding_model=l3embedding_model,
                                     features=features, random_state=random_state,
-                                    hop_size=hop_size, num_random_samples=num_random_samples, samp_rate=samp_rate)
+                                    hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, n_dft=n_dft, sr=samp_rate)
 
         else:
             # Otherwise, generate all the folds
             generate_us8k_folds(metadata_path, data_dir, dataset_output_dir,
                                 l3embedding_model=l3embedding_model,
                                 features=features, random_state=random_state,
-                                hop_size=hop_size, num_random_samples=num_random_samples, samp_rate=samp_rate)
+                                hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, n_dft=n_dft, sr=samp_rate)
 
     elif dataset_name == 'esc50':
         if fold_num is not None:

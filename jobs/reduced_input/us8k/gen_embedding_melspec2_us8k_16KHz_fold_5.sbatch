@@ -31,7 +31,7 @@ echo "HOP LENGTH=$HOP_LEN"
 
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
-L3_MODEL_PATH='/scratch/dr2915/l3pruning/reduced_input/embedding/music/cnn_L3_melspec2/20190306112819/model_best_valid_accuracy.h5'
+L3_MODEL_PATH='/scratch/dr2915/l3pruning/reduced_input/embedding/music/cnn_L3_melspec2/20190306112819/16k_model.h5'
 L3_MODEL_TYPE='cnn_L3_melspec2'
 L3_POOLING_TYPE='16k_64_50' #'original'
 US8K_PATH=/beegfs/jtc440/UrbanSound8K
