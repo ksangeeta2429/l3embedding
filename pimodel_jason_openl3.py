@@ -81,6 +81,9 @@ POOLINGS = {
     'mel256': {
         6144: (8, 8),
         512: (32, 24),
+    },
+    '16k_64_50': {
+        512: (8,6)
     }
 }
 
@@ -140,7 +143,7 @@ def amplitude_to_db(x, amin=1e-10, dynamic_range=80.0):
 #audio_dir = "UrbanSound8K/audio/fold1"
 #audio_path = os.path.join(audio_dir, random.choice(os.listdir(audio_dir)))
 audio_path = "UrbanSound8K/audio/fold5/100032-3-0-0.wav"
-model_path = "models/sonyc_el3_models/openl3_audio_mel256_music.h5"
+model_path = "models/16k_64_50/16k_model.h5" #"models/sonyc_el3_models/openl3_audio_mel256_music.h5"
 classifier_path = "models/us8k-music-melspec2-512emb-model/model.h5"
 
 
@@ -167,7 +170,8 @@ with open('models/us8k-music-melspec2-512emb-model/stdizer.pkl', 'rb') as f:
 
 
 model = keras.models.load_model(model_path)
-model_type = os.path.basename(model_path).split('_')[2]
+#model_type = os.path.basename(model_path).split('_')[2]
+model_type = '16k_64_50'
 embedding_size = 512
 
 pool_size = POOLINGS[model_type][embedding_size]
@@ -192,14 +196,14 @@ for i in range(10):
     audio_data = audio_data.flatten()
 
 
-    if sr != 48000:
-        audio_data = resampy.resample(audio_data, sr, 48000)
+    if sr != 16000:
+        audio_data = resampy.resample(audio_data, sr, 16000)
 
     # Frame length
-    frame_length = 48000
+    frame_length = 16000
 
     # Hop length
-    hop_length = 242
+    hop_length = 320
 
     # Padding logic
     audio_length = len(audio_data)
@@ -217,7 +221,7 @@ for i in range(10):
         right_pad= pad_length - left_pad
         audio_data = np.pad(audio_data, (left_pad, right_pad), mode='constant')
 
-    frames = minispec.util.frame(audio_data, frame_length=frame_length, hop_length=48000).T
+    frames = minispec.util.frame(audio_data, frame_length=frame_length, hop_length=frame_length).T
 
     frame_specs = []
 
@@ -237,6 +241,13 @@ for i in range(10):
             S = minispec.feature.melspectrogram(sr=48000, S=S,
                                                          n_mels=128, power=1.0,
                                                          htk=True)
+        elif model_type == '16k_64_50':
+            S = np.abs(minispec.core.stft(frame, n_fft=1024, hop_length=hop_length,
+                                          window='hann', center=True,
+                                          pad_mode='constant'))
+            S = minispec.feature.melspectrogram(sr=16000, S=S,
+                                                n_mels=64, power=1.0,
+                                                htk=True)
         else:
 
             S = np.abs(minispec.core.stft(frame, n_fft=512, hop_length=hop_length,
