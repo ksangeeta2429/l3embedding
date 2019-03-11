@@ -190,8 +190,6 @@ m_class.load_weights(classifier_path)
 # In[97]:
 
 for i in range(10):
-    start_ts = time.time()
-
     audio_data, sr = sf.read(audio_path)
     audio_data = audio_data.flatten()
 
@@ -223,6 +221,8 @@ for i in range(10):
 
     frames = minispec.util.frame(audio_data, frame_length=frame_length, hop_length=frame_length).T
 
+    start_ts = time.time()
+    
     frame_specs = []
 
     for frame in frames:
