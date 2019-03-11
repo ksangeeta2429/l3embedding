@@ -266,14 +266,15 @@ if __name__ == '__main__':
         # If using an L3 model, make model arch. type and pooling type to path
         dataset_output_dir = os.path.join(output_dir, 'features', dataset_name,
                                           features, pooling_type, embedding_desc_str)
-
+        print('Output directory:',dataset_output_dir)
         # Load L3 embedding model if using L3 features
         LOGGER.info('Loading embedding model...')
-        model_type = embedding_desc_str.split('/')[-1]
+        #model_type = embedding_desc_str.split('/')[-1]
         l3embedding_model = load_embedding(model_path,
                                            model_type,
                                            'audio', pooling_type,
-                                           tgt_num_gpus=num_gpus)
+                                           tgt_num_gpus=num_gpus,
+                                           n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)
     else:
         # Get output dir
         dataset_output_dir = os.path.join(output_dir, 'features', dataset_name, features)
