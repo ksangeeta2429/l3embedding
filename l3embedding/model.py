@@ -334,7 +334,7 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, retu
         raise ValueError('Invalid model type: "{}"'.format(model_type))
 
     m, inputs, output = MODELS[model_type](**kwargs)
-    
+    m.summary()
     if src_num_gpus > 1:
         m = multi_gpu_model(m, gpus=src_num_gpus)
     m.load_weights(weights_path)
