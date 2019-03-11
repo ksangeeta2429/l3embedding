@@ -193,7 +193,7 @@ for i in range(10):
 
 
     if sr != 48000:
-        resampy.resample(audio_data, sr, 48000)
+        audio_data = resampy.resample(audio_data, sr, 48000)
 
     # Frame length
     frame_length = 48000
