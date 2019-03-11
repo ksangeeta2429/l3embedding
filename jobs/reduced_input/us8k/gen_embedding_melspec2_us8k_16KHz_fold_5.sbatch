@@ -32,7 +32,7 @@ echo "HOP LENGTH=$HOP_LEN"
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
 L3_MODEL_PATH='/scratch/dr2915/l3pruning/reduced_input/embedding/music/cnn_L3_melspec2/20190306112819'
-L3_MODEL_TYPE='cnn_L3_melspec2_audioonly'
+L3_MODEL_TYPE='cnn_L3_melspec2'
 L3_POOLING_TYPE='16k_64_50' #'original'
 US8K_PATH=/beegfs/jtc440/UrbanSound8K
 METADATA_PATH=$US8K_PATH/metadata/UrbanSound8K.csv
@@ -44,6 +44,7 @@ python $SRCDIR/05_generate_embedding_samples.py \
     --random-state 20180302 \
     --verbose \
     --features 'l3' \
+    --l3embedding-model-type $L3_MODEL_TYPE \
     --l3embedding-model-path $L3_MODEL_PATH \
     --l3embedding-pooling-type $L3_POOLING_TYPE \
     --hop-size 0.1 \
