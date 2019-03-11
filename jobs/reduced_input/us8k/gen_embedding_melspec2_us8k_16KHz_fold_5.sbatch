@@ -53,7 +53,6 @@ python $SRCDIR/05_generate_embedding_samples.py \
     --num-mels $NUM_MELS \
     --hop-length $HOP_LEN \
     --num-dft 1024 \
-    --fold 5 \
     --us8k-metadata-path $METADATA_PATH \
     $DATASET \
     $DATA_DIR \
