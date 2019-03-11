@@ -104,7 +104,7 @@ if pad_length > 0:
     right_pad= pad_length - left_pad
     audio_data = np.pad(audio_data, (left_pad, right_pad), mode='constant')
 
-frames = minispec.util.frame(audio_data, frame_length=frame_length, hop_length=hop_length).T
+frames = minispec.util.frame(audio_data, frame_length=frame_length, hop_length=target_sr).T
 
 print("Starting melspec computation...")
 start_ts = time.time()
