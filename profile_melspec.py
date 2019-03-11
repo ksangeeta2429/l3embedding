@@ -106,6 +106,7 @@ if pad_length > 0:
 
 frames = minispec.util.frame(audio_data, frame_length=frame_length, hop_length=hop_length).T
 
+print("Starting melspec computation...")
 start_ts = time.time()
 
 frame_specs = []
