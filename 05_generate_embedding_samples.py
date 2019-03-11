@@ -295,6 +295,7 @@ if __name__ == '__main__':
         pool_size = POOLINGS[model_type][pooling_type]
         y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(model.output)
         y_a = keras.layers.Flatten()(y_a)
+        print('Embedding shape:', y_a.output_shape)
         l3embedding_model = keras.models.Model(inputs=model.input, outputs=y_a)
     else:
         # Get output dir
