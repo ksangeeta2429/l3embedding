@@ -222,7 +222,7 @@ for i in range(10):
     frames = minispec.util.frame(audio_data, frame_length=frame_length, hop_length=frame_length).T
 
     start_ts = time.time()
-    
+
     frame_specs = []
 
     for frame in frames:
