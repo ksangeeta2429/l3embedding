@@ -187,40 +187,39 @@ m_class, inp, out = construct_mlp_model((512,))
 m_class.load_weights(classifier_path)
 
 
-# In[97]:
+# Load and preprocess audio
+audio_data, sr = sf.read(audio_path)
+audio_data = audio_data.flatten()
+
+
+if sr != 16000:
+    audio_data = resampy.resample(audio_data, sr, 16000)
+
+# Frame length
+frame_length = 16000
+
+# Hop length
+hop_length = 320
+
+# Padding logic
+audio_length = len(audio_data)
+if audio_length < frame_length:
+    # Make sure we can have at least one frame of audio
+    pad_length = frame_length - audio_length
+else:
+    # Zero pad so we compute embedding on all samples
+    pad_length = int(np.ceil(audio_length - frame_length)/hop_length) * hop_length \
+                 - (audio_length - frame_length)
+
+if pad_length > 0:
+    # Use (roughly) symmetric padding
+    left_pad = pad_length // 2
+    right_pad= pad_length - left_pad
+    audio_data = np.pad(audio_data, (left_pad, right_pad), mode='constant')
+
+frames = minispec.util.frame(audio_data, frame_length=frame_length, hop_length=frame_length).T
 
 for i in range(10):
-    audio_data, sr = sf.read(audio_path)
-    audio_data = audio_data.flatten()
-
-
-    if sr != 16000:
-        audio_data = resampy.resample(audio_data, sr, 16000)
-
-    # Frame length
-    frame_length = 16000
-
-    # Hop length
-    hop_length = 320
-
-    # Padding logic
-    audio_length = len(audio_data)
-    if audio_length < frame_length:
-        # Make sure we can have at least one frame of audio
-        pad_length = frame_length - audio_length
-    else:
-        # Zero pad so we compute embedding on all samples
-        pad_length = int(np.ceil(audio_length - frame_length)/hop_length) * hop_length \
-                     - (audio_length - frame_length)
-
-    if pad_length > 0:
-        # Use (roughly) symmetric padding
-        left_pad = pad_length // 2
-        right_pad= pad_length - left_pad
-        audio_data = np.pad(audio_data, (left_pad, right_pad), mode='constant')
-
-    frames = minispec.util.frame(audio_data, frame_length=frame_length, hop_length=frame_length).T
-
     start_ts = time.time()
 
     frame_specs = []
