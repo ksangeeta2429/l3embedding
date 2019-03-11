@@ -223,7 +223,7 @@ if __name__ == '__main__':
 
     is_l3_feature = features == 'l3'
     is_l3_comp = features == 'l3comp'
-    if is_l3_feature or is_l3_comp and not model_path:
+    if (is_l3_feature or is_l3_comp) and not model_path:
         raise ValueError('Must provide model path is L3 embedding features are used')
 
 
