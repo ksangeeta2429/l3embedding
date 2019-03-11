@@ -278,24 +278,13 @@ if __name__ == '__main__':
                                            n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)"""
         model = keras.models.load_model(model_path)
         POOLINGS = {
-            'cnn_L3_kapredbinputbn': {
-                'original': (8, 8),
-                'short': (32, 24),
-            },
-            'cnn_L3_melspec1': {
-                'original': (4, 8),
-                'short': (16, 24),
-            },
             'cnn_L3_melspec2': {
-                'original': (8, 8),
-                'short': (32, 24),
                 '16k_64_50': (8, 6),
             }
         }
         pool_size = POOLINGS[model_type][pooling_type]
         y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(model.output)
         y_a = keras.layers.Flatten()(y_a)
-        print('Embedding shape:', y_a.output_shape)
         l3embedding_model = keras.models.Model(inputs=model.input, outputs=y_a)
     else:
         # Get output dir
