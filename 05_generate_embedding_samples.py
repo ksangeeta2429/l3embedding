@@ -325,14 +325,14 @@ if __name__ == '__main__':
             generate_us8k_fold_data(metadata_path, data_dir, fold_num-1, dataset_output_dir,
                                     l3embedding_model=l3embedding_model,
                                     features=features, random_state=random_state,
-                                    hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, n_dft=n_dft, sr=samp_rate)
+                                    hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, sr=samp_rate)
 
         else:
             # Otherwise, generate all the folds
             generate_us8k_folds(metadata_path, data_dir, dataset_output_dir,
                                 l3embedding_model=l3embedding_model,
                                 features=features, random_state=random_state,
-                                hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, n_dft=n_dft, sr=samp_rate)
+                                hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, sr=samp_rate)
 
     elif dataset_name == 'esc50':
         if fold_num is not None:
