@@ -86,6 +86,38 @@ def parse_arguments():
                         default=0.1,
                         help='Hop size in seconds')
 
+    parser.add_argument('-srate',
+                        '--samp-rate',
+                        dest='samp_rate',
+                        action='store',
+                        type=int,
+                        default=48000,
+                        help='Sampling rate')
+
+    parser.add_argument('-nmels',
+                        '--num-mels',
+                        dest='n_mels',
+                        action='store',
+                        type=int,
+                        default=256,
+                        help='Number of mel filters')
+
+    parser.add_argument('-lhop',
+                        '--hop-length',
+                        dest='n_hop',
+                        action='store',
+                        type=int,
+                        default=242,
+                        help='Melspec hop length in samples')
+
+    parser.add_argument('-ndft',
+                        '--num-dft',
+                        dest='n_dft',
+                        action='store',
+                        type=int,
+                        default=2048,
+                        help='DFT size')
+
     parser.add_argument('-nrs',
                         '--num-random-samples',
                         dest='num_random_samples',
@@ -182,6 +214,10 @@ if __name__ == '__main__':
     thresholds = args['thresholds']
     layers = args['include_layers']
     filters = args['num_filters']
+    samp_rate = args['samp_rate']
+    n_mels = args['n_mels']
+    n_hop = args['n_hop']
+    n_dft = args['n_dft']
 
     LOGGER.info('Configuration: {}'.format(str(args)))
 
@@ -219,7 +255,8 @@ if __name__ == '__main__':
         LOGGER.info('Loading embedding model...')
         l3embedding_model = load_embedding(model_path, model_type, 'audio', pooling_type,
                                            tgt_num_gpus=num_gpus, thresholds=thresholds, \
-                                           include_layers=layers, num_filters=filters, from_convlayer=from_conv_layer)
+                                           include_layers=layers, num_filters=filters, from_convlayer=from_conv_layer,
+                                           n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)
 
     elif is_l3_feature:
         # Get output dir
@@ -266,38 +303,38 @@ if __name__ == '__main__':
             generate_us8k_fold_data(metadata_path, data_dir, fold_num-1, dataset_output_dir,
                                     l3embedding_model=l3embedding_model,
                                     features=features, random_state=random_state,
-                                    hop_size=hop_size, num_random_samples=num_random_samples)
+                                    hop_size=hop_size, num_random_samples=num_random_samples, samp_rate=samp_rate)
 
         else:
             # Otherwise, generate all the folds
             generate_us8k_folds(metadata_path, data_dir, dataset_output_dir,
                                 l3embedding_model=l3embedding_model,
                                 features=features, random_state=random_state,
-                                hop_size=hop_size, num_random_samples=num_random_samples)
+                                hop_size=hop_size, num_random_samples=num_random_samples, samp_rate=samp_rate)
 
     elif dataset_name == 'esc50':
         if fold_num is not None:
             generate_esc50_fold_data(data_dir, fold_num-1, dataset_output_dir,
                                      l3embedding_model=l3embedding_model,
                                      features=features, random_state=random_state,
-                                     hop_size=hop_size, num_random_samples=num_random_samples)
+                                     hop_size=hop_size, num_random_samples=num_random_samples, samp_rate=samp_rate)
         else:
             generate_esc50_folds(data_dir, dataset_output_dir,
                                  l3embedding_model=l3embedding_model,
                                  features=features, random_state=random_state,
-                                 hop_size=hop_size, num_random_samples=num_random_samples)
+                                 hop_size=hop_size, num_random_samples=num_random_samples, samp_rate=samp_rate)
 
     elif dataset_name == 'dcase2013':
         if fold_num is not None:
             generate_dcase2013_fold_data(data_dir, fold_num-1, dataset_output_dir,
                                          l3embedding_model=l3embedding_model,
                                          features=features, random_state=random_state,
-                                         hop_size=hop_size, num_random_samples=num_random_samples)
+                                         hop_size=hop_size, num_random_samples=num_random_samples, samp_rate=samp_rate)
         else:
             generate_dcase2013_folds(data_dir, dataset_output_dir,
                                      l3embedding_model=l3embedding_model,
                                      features=features, random_state=random_state,
-                                     hop_size=hop_size, num_random_samples=num_random_samples)
+                                     hop_size=hop_size, num_random_samples=num_random_samples, samp_rate=samp_rate)
 
     else:
         LOGGER.error('Invalid dataset name: {}'.format(dataset_name))

@@ -312,8 +312,9 @@ def compute_file_features(path, feature_type, l3embedding_model=None, **feature_
             err_msg = 'Must provide L3 embedding model to use {} features'
             raise ValueError(err_msg.format(feature_type))
         hop_size = feature_args.get('hop_size', 0.1)
+        samp_rate = feature_args.get('samp_rate', 48000)
         file_features = get_l3_frames_uniform(path, l3embedding_model,
-                                              hop_size=hop_size)
+                                              hop_size=hop_size, sr=samp_rate)
     elif feature_type == 'vggish':
         hop_size = feature_args.get('hop_size', 0.1)
         file_features = get_vggish_frames_uniform(path, hop_size=hop_size)

@@ -302,7 +302,7 @@ def load_new_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, 
         return m
 
 
-def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, return_io=False):
+def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, return_io=False, **kwargs):
     """
     Loads an audio-visual correspondence model
 
@@ -333,7 +333,7 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, retu
     if model_type not in MODELS:
         raise ValueError('Invalid model type: "{}"'.format(model_type))
 
-    m, inputs, output = MODELS[model_type]()
+    m, inputs, output = MODELS[model_type](**kwargs)
     
     if src_num_gpus > 1:
         m = multi_gpu_model(m, gpus=src_num_gpus)
@@ -365,7 +365,7 @@ def get_non_zero_filters(model):
 
 def load_embedding(weights_path, model_type, embedding_type, pooling_type, kd_model=False, src_num_gpus=0,\
                    tgt_num_gpus=None, thresholds=None, include_layers=None, num_filters=None, return_io=False,
-                   from_convlayer=8):
+                   from_convlayer=8, **kwargs):
     """
     Loads an embedding model
 
@@ -430,7 +430,7 @@ def load_embedding(weights_path, model_type, embedding_type, pooling_type, kd_mo
                                            tgt_num_gpus=tgt_num_gpus, include_layers=include_layers, num_filters=num_filters, return_io=True)
     else:
         m, inputs, output = load_model(weights_path, model_type, src_num_gpus=src_num_gpus,
-                                       tgt_num_gpus=tgt_num_gpus, return_io=True)
+                                       tgt_num_gpus=tgt_num_gpus, return_io=True, **kwargs)
 
     if 'audio' in model_type:
         x_a = inputs
