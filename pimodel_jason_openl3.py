@@ -144,7 +144,7 @@ def amplitude_to_db(x, amin=1e-10, dynamic_range=80.0):
 audio_path = "UrbanSound8K/audio/fold5/100032-3-0-0.wav"
 model_path = "models/16k_64_50/16k_model.h5" #"models/sonyc_el3_models/openl3_audio_mel256_music.h5"
 #classifier_path = "models/us8k-music-melspec2-512emb-model/model.h5"
-classifier_basepath = "models/16k_64_50/downstream_fold5_0.71/"            ####### Only edit this line for alternate downstream models ########
+classifier_basepath = "models/16k_64_50/downstream_fold9_0.75/"            ####### Only edit this line for alternate downstream models ########
 classifier_path = classifier_basepath + "model.h5"
 
 
