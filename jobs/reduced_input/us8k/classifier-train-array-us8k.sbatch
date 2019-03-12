@@ -42,7 +42,6 @@ python $SRCDIR/06_train_classifier.py \
     --gsheet-id $GSHEET_ID \
     --google-dev-app-name $GOOGLE_DEV_APP_NAME \
     --verbose \
-    --parameter-search \
     $FEATURES_DIR \
     $OUTPUT_DIR \
     $FOLD_NUM
