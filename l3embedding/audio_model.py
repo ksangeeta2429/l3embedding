@@ -984,6 +984,8 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
     pool_size_a_4 = tuple(y_a.get_shape().as_list()[1:3]) #(32, 24)
     y_a = MaxPooling2D(pool_size=pool_size_a_4)(y_a)
 
+    print('---Pool Size: ', pool_size_a_4)
+
     y_a = Flatten()(y_a)
 
     m = Model(inputs=x_a, outputs=y_a)

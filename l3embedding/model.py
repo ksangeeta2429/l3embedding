@@ -334,9 +334,10 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, retu
         raise ValueError('Invalid model type: "{}"'.format(model_type))
 
     m, inputs, output = MODELS[model_type](**kwargs)
-    m.summary()
+    
     if src_num_gpus > 1:
         m = multi_gpu_model(m, gpus=src_num_gpus)
+    
     m.load_weights(weights_path)
 
     if tgt_num_gpus is not None and src_num_gpus != tgt_num_gpus:
@@ -566,6 +567,8 @@ def construct_cnn_L3_melspec2(**kwargs):
     """
     vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
     audio_model, x_a, y_a = construct_cnn_L3_melspec2_audio_model(**kwargs)
+
+    print(audio_model.summary)
 
     m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_kapredbinputbn')
     return m

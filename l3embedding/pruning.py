@@ -52,10 +52,6 @@ LOGGER.setLevel(logging.DEBUG)
 # Run a loop for different sparsity values [30, 40, 50, 60, 70, 80, 85, 90, 95] for each CONV layer and test the performance
 ##########
 
-##########
-# Pruning Version 2: Iterative pruning
-# Prune and fine-tune each layer at a time
-##########
 
 ##########
 # Pruning Version 3: Prune whole feature-maps
@@ -373,7 +369,6 @@ def load_audio_model_for_pruning(weight_path, model_type = 'cnn_L3_melspec2'):
     
     m, inputs, outputs = load_model(weight_path, model_type, return_io=True, src_num_gpus=1)
 
-    audio_model = m.get_layer('audio_model')
     count = 1
 
     for layer in audio_model.layers:
@@ -448,10 +443,11 @@ def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=N
             old_audio_model = sparse_model.get_layer('audio_model')
 
             new_video_model.set_weights(old_video_model.get_weights())
-            new_audio_model.get_layer('conv_1').set_weights(old_audio_model.get_layer('conv_1').get_weights())
+            
+            #new_audio_model.get_layer('conv_1').set_weights(old_audio_model.get_layer('conv_1').get_weights())
         else:
             masked_model.set_weights(sparse_model.get_weights())
-            print(masked_model.summary())
+            
         
         for layer in masked_model.get_layer('vision_model').layers:
             layer.trainable = False
@@ -507,14 +503,16 @@ def drop_filters(model, new_model, new_filters_dict, old_filters_dict):
                 new_weights[1] = K.eval(tf.gather(biases, sorted_idx, axis = 0))
 
                 next_conv = 'conv_'+ str(int(layer.name[5])+1)
-                if not 'conv_8' in layer.name: 
+                if not 'audio_embedding_layer' in layer.name:
+
                     weights_dict[next_conv] = K.eval(tf.gather(model.get_layer(next_conv).get_weights()[0], \
                                                                sorted_idx, axis = 2))
                 
                 new_model.get_layer(layer.name).set_weights(new_weights)
             
             else:
-                new_model.get_layer(layer.name).set_weights(layer.get_weights())
+                if layer.name not in weights_dict:
+                    new_model.get_layer(layer.name).set_weights(layer.get_weights())
 
     return new_model
             
@@ -625,7 +623,7 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
     else:
         if pruning:
             if finetune:
-                if old_l3 is not None:
+                if old_l3 is not None: 
                     model, inputs, outputs = initialize_weights(masked_model=new_l3, sparse_model=old_l3, is_L3=True,\
                                                                 input=old_l3.inputs, output=old_l3.outputs)
                 else:
@@ -891,7 +889,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                                                                     num_filters = num_filters)
 
         if filterwise:
-            filter_model_save_str = str(num_filters[4])+"_"+str(num_filters[5])+"_"+str(num_filters[6])+"_"+str(num_filters[7])
+            filter_model_save_str = str(num_filters[0])+"_"+str(num_filters[1])+"_"+str(num_filters[2])+"_"+str(num_filters[3])
             LOGGER.info("Filter Dropping")
             LOGGER.info("**********************************************************************")
         
