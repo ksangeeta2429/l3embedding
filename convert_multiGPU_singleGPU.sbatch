@@ -31,7 +31,7 @@ HOP_LEN=$4
 DFT=$5
 OUTPUT_DIR=$SCRATCH/l3pruning/embedding/fixed/reduced_input 
 
-python $SRCDIR/07_convert_multiGPU_singleGPU.py \
+python $SRCDIR/04_convert_multiGPU_singleGPU.py \
     --multiGPU-weight-dir $MODEL_PATH \
     --samp-rate $SAMPLING_RATE \
     --num-mels $NUM_MELS \

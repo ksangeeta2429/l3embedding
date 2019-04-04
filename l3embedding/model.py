@@ -123,7 +123,7 @@ def L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, model_name
     return m, [x_i, x_a], y
 
 
-def convert_num_gpus(model, inputs, outputs, model_type, src_num_gpus, tgt_num_gpus):
+def convert_num_gpus(model, inputs, outputs, model_type, src_num_gpus, tgt_num_gpus, **kwargs):
     """
     Converts a multi-GPU model to a model that uses a different number of GPUs
 
@@ -161,7 +161,7 @@ def convert_num_gpus(model, inputs, outputs, model_type, src_num_gpus, tgt_num_g
     if src_num_gpus <= 1 and tgt_num_gpus <= 1:
         return model, inputs, outputs
 
-    m_new, inputs_new, output_new = MODELS[model_type]()
+    m_new, inputs_new, output_new = MODELS[model_type](**kwargs)
     m_new.set_weights(model.layers[-2].get_weights())
 
     if tgt_num_gpus > 1:
@@ -342,7 +342,7 @@ def load_model(weights_path, model_type, src_num_gpus=0, tgt_num_gpus=None, retu
 
     if tgt_num_gpus is not None and src_num_gpus != tgt_num_gpus:
         m, inputs, output = convert_num_gpus(m, inputs, output, model_type,
-                                             src_num_gpus, tgt_num_gpus)
+                                             src_num_gpus, tgt_num_gpus, **kwargs)
     if return_io:
         return m, inputs, output
     else:

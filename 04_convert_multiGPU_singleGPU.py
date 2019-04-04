@@ -1,5 +1,6 @@
 import argparse
 import keras
+from keras.models import Model
 import os
 import glob
 from l3embedding.model import load_model
@@ -118,6 +119,7 @@ if __name__ == '__main__':
     #output_weight_file = os.path.join(output_dir, os.path.basename(wf))
 
     # Load and convert model back to 1 gpu
+    print("Loading model.......................")
     m, inputs, outputs = load_model(weight_file, mt, src_num_gpus=4, tgt_num_gpus=1, return_io=True, n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)
     _, x_a = inputs
     audio_model_output = m.get_layer('audio_model').get_layer('audio_embedding_layer').output

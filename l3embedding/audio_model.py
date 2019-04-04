@@ -909,9 +909,8 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
     #audio_window_dur = 1
     # INPUT
     x_a = Input(shape=(1, asr * audio_window_dur), dtype='float32')
-    print('Sampling rate: ', asr)
+
     # MELSPECTROGRAM PREPROCESSING
-    # 128 x 199 x 1
     y_a = Melspectrogram(n_dft=n_dft, n_hop=n_hop, n_mels=n_mels,
                       sr=asr, power_melgram=1.0, htk=True, # n_win=n_win,
                       return_decibel_melgram=True, padding='same')(x_a)
@@ -984,7 +983,7 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
     pool_size_a_4 = tuple(y_a.get_shape().as_list()[1:3]) #(32, 24)
     y_a = MaxPooling2D(pool_size=pool_size_a_4)(y_a)
 
-    print('---Pool Size: ', pool_size_a_4)
+    print('Pool Size: ', pool_size_a_4)
 
     y_a = Flatten()(y_a)
 
