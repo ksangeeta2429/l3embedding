@@ -3,6 +3,8 @@ import logging
 import os
 import keras
 import json
+from keras.optimizers import Adam
+from kapre.time_frequency import Melspectrogram
 from l3embedding.model import load_embedding
 from data.usc.dcase2013 import generate_dcase2013_folds, generate_dcase2013_fold_data
 from data.usc.esc50 import generate_esc50_folds, generate_esc50_fold_data
@@ -276,16 +278,35 @@ if __name__ == '__main__':
                                            'audio', pooling_type,
                                            tgt_num_gpus=num_gpus,
                                            n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)"""
-        model = keras.models.load_model(model_path)
+        model = keras.models.load_model(model_path, custom_objects={'Melspectrogram': Melspectrogram})
         POOLINGS = {
             'cnn_L3_melspec2': {
                 '16k_64_50': (8, 6),
+                '48K_64_968_2048': (8, 6),
+                '48K_64_242_2048': (8, 24),
+                '48K_64_1936_2048': (8, 3),
+                '48K_128_968_2048': (16, 6),
+                '48K_128_1936_2048': (16, 3),
+                '48K_256_484_2048': (32, 12),
+                '48K_256_968_2048': (32, 6),
+                '48K_256_1936_2048': (32, 3),
+                '16K_64_968_1024': (8, 2),
+                '16K_64_484_1024': (8, 4),
             }
-        }
+        }        
+
         pool_size = POOLINGS[model_type][pooling_type]
+
+        print(model.summary())
         y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(model.output)
         y_a = keras.layers.Flatten()(y_a)
         l3embedding_model = keras.models.Model(inputs=model.input, outputs=y_a)
+       
+        #print("------------------------------------------------------------------")
+        #print(model.summary())
+        print("------------------------------------------------------------------")
+        print(l3embedding_model.summary())
+
     else:
         # Get output dir
         dataset_output_dir = os.path.join(output_dir, 'features', dataset_name, features)

@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32GB
 #SBATCH --time=2-0
-#SBATCH --mail-type=FAIL
+#SBATCH --mail-type=ALL
 #SBATCH --output="gen-embedding-reduced-melspec2-us8k-%A-%a.out"
 #SBATCH --err="gen-embedding-reduced-melspec2-us8k-%A-%a.err"
 
@@ -24,21 +24,21 @@ fi
 
 # Process args
 weight_file=$1
-NUM_MELS=$2
-HOP_LEN=$3
-ASR=$4
+ASR=$2
+NUM_MELS=$3
+HOP_LEN=$4
 NUM_DFT=$5
 
+L3_POOLING_TYPE=$(echo $ASR | sed 's/0*$//')'K_'${NUM_MELS}'_'${HOP_LEN}'_'${NUM_DFT}
+
 echo "ASR=$ASR"
-echo "NUM MELS=$NUM_MELS"
-echo "HOP LENGTH=$HOP_LEN"
-echo "NUM_DFT=$NUM_DFT"
+echo "POOL SIZE=$L3_POOLING_TYPE"
 
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
-L3_MODEL_PATH=$SCRATCH/l3pruning/embedding/fixed/${weight_file} #'/scratch/dr2915/l3pruning/reduced_input/embedding/music/cnn_L3_melspec2/20190306112819/16k_model.h5'
+L3_MODEL_PATH=$SCRATCH/l3pruning/embedding/fixed/reduced_input/${weight_file} 
 L3_MODEL_TYPE='cnn_L3_melspec2'
-L3_POOLING_TYPE='original'
+#L3_POOLING_TYPE='original'
 US8K_PATH=/beegfs/jtc440/UrbanSound8K
 METADATA_PATH=$US8K_PATH/metadata/UrbanSound8K.csv
 DATA_DIR=$US8K_PATH/audio
