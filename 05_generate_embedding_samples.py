@@ -297,15 +297,14 @@ if __name__ == '__main__':
 
         pool_size = POOLINGS[model_type][pooling_type]
 
-        print(model.summary())
         y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(model.output)
         y_a = keras.layers.Flatten()(y_a)
         l3embedding_model = keras.models.Model(inputs=model.input, outputs=y_a)
        
         #print("------------------------------------------------------------------")
         #print(model.summary())
-        print("------------------------------------------------------------------")
-        print(l3embedding_model.summary())
+        #print("------------------------------------------------------------------")
+        #print(l3embedding_model.summary())
 
     else:
         # Get output dir
@@ -348,14 +347,13 @@ if __name__ == '__main__':
     elif dataset_name == 'esc50':
         if fold_num is not None:
             generate_esc50_fold_data(data_dir, fold_num-1, dataset_output_dir,
-                                     l3embedding_model=l3embedding_model,
-                                     features=features, random_state=random_state,
-                                     hop_size=hop_size, num_random_samples=num_random_samples, samp_rate=samp_rate)
+                                     l3embedding_model=l3embedding_model, features=features, 
+				     random_state=random_state, hop_size=hop_size, num_random_samples=num_random_samples, 
+				     mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, samp_rate=samp_rate)
         else:
             generate_esc50_folds(data_dir, dataset_output_dir,
-                                 l3embedding_model=l3embedding_model,
-                                 features=features, random_state=random_state,
-                                 hop_size=hop_size, num_random_samples=num_random_samples, samp_rate=samp_rate)
+                                 l3embedding_model=l3embedding_model, features=features, random_state=random_state, 
+                                 num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, samp_rate=samp_rate)
 
     elif dataset_name == 'dcase2013':
         if fold_num is not None:
