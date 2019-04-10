@@ -17,15 +17,12 @@ source activate l3embedding-new-cpu
 
 #SRCDIR=$HOME/dev/l3embedding
 SRCDIR=.
-#FEATURES_DIR=/scratch/dr2915/embeddings/features/us8k/l3comp/short/models/cnn_l3_melspec2_recent/model_best_valid_accuracy/
 FEATURES_DIR=$1
 OUTPUT_DIR=$SCRATCH/embeddings
 MODEL_TYPE='mlp'
 FEATURE_MODE='framewise'
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo'
-#FOLD_NUM=$SLURM_ARRAY_TASK_ID
-#FOLD_NUM=1
 FOLD_NUM=$2
 
 module purge
