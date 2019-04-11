@@ -285,6 +285,7 @@ def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256, mel_
         features:  Array of embedding vectors
                    (Type: np.ndarray)
     """
+
     if type(audio) == str:
         audio = load_audio(audio, sr)
 
@@ -307,24 +308,29 @@ def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256, mel_
         right_pad= pad_length - left_pad
         audio = np.pad(audio, (left_pad, right_pad), mode='constant')
 
-    # Divide into overlapping 1 second frames
-    #x = librosa.util.utils.frame(audio, frame_length=frame_length, hop_length=hop_length).T
-    frames = librosa.util.utils.frame(audio, frame_length=frame_length, hop_length=hop_length).T
 
-    X = []
-    for frame in frames:
-        S = np.abs(librosa.core.stft(frame, n_fft=n_fft, hop_length=mel_hop_length,
-                                     window='hann', center=True,
-                                     pad_mode='constant'))
-        S = librosa.feature.melspectrogram(sr=sr, S=S, n_mels=n_mels,
+    if with_melSpec:
+        print("Melspectrogram is part of the weight file")
+        # Divide into overlapping 1 second frames
+        x = librosa.util.utils.frame(audio, frame_length=frame_length, hop_length=hop_length).T    
+        # Add a channel dimension
+        X = x.reshape((x.shape[0], 1, x.shape[-1]))
+    
+    else:
+        print("Melspectrogram has been removed from the weight file")
+        frames = librosa.util.utils.frame(audio, frame_length=frame_length, hop_length=hop_length).T
+
+        X = []
+        for frame in frames:
+            S = np.abs(librosa.core.stft(frame, n_fft=n_fft, hop_length=mel_hop_length,
+                                         window='hann', center=True,
+                                         pad_mode='constant'))
+            S = librosa.feature.melspectrogram(sr=sr, S=S, n_mels=n_mels,
                                            power=1.0, htk=True)
-        S = amplitude_to_db(np.array(S))
-        X.append(S)
+            S = amplitude_to_db(np.array(S))
+            X.append(S)
 
-
-    # Add a channel dimension
-    #x = x.reshape((x.shape[0], 1, x.shape[-1]))
-    X = np.array(X)[:, :, :, np.newaxis]
+        X = np.array(X)[:, :, :, np.newaxis]
 
     # Get the L3 embedding for each frame
     l3embedding = l3embedding_model.predict(X)

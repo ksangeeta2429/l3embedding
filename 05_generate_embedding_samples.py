@@ -81,6 +81,14 @@ def parse_arguments():
                         default=8,
                         help='Conv. layer to derive embedding from (1-8)')
 
+    parser.add_argument('-melSpec',
+                        '--with-melSpec',
+                        dest='with_melSpec',
+                        action='store_true',
+                        default=False,
+                        help='Set to True is Melspec is included in the model')
+
+
     parser.add_argument('-hs',
                         '--hop-size',
                         dest='hop_size',
@@ -208,6 +216,7 @@ if __name__ == '__main__':
     hop_size = args['hop_size']
     random_state = args['random_state']
     num_random_samples = args['num_random_samples']
+    with_melSpec = args['with_melSpec']
     model_path = args['l3embedding_model_path']
     num_gpus = args['gpus']
     output_dir = args['output_dir']
@@ -222,7 +231,13 @@ if __name__ == '__main__':
     n_hop = args['n_hop']
     n_dft = args['n_dft']
 
+
     LOGGER.info('Configuration: {}'.format(str(args)))
+    
+    if with_melSpec:
+        LOGGER.info('Using Melspectrogram layer from weight file')
+    else:
+        LOGGER.info('Using external Melspectrogram')
 
     is_l3_feature = features == 'l3'
     is_l3_comp = features == 'l3comp'
@@ -259,7 +274,7 @@ if __name__ == '__main__':
         l3embedding_model = load_embedding(model_path, model_type, 'audio', pooling_type,
                                            tgt_num_gpus=num_gpus, thresholds=thresholds, \
                                            include_layers=layers, num_filters=filters, from_convlayer=from_conv_layer,
-                                           n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)
+                                           n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate, with_melSpec=with_melSpec)
 
     elif is_l3_feature:
         # Get output dir
@@ -338,25 +353,28 @@ if __name__ == '__main__':
             generate_us8k_fold_data(metadata_path, data_dir, fold_num-1, dataset_output_dir,
                                     l3embedding_model=l3embedding_model,
                                     features=features, random_state=random_state,
-                                    hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, sr=samp_rate)
+                                    hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels,\
+                                    n_fft=n_dft, sr=samp_rate, with_melSpec=with_melSpec)
 
         else:
             # Otherwise, generate all the folds
             generate_us8k_folds(metadata_path, data_dir, dataset_output_dir,
                                 l3embedding_model=l3embedding_model,
                                 features=features, random_state=random_state,
-                                hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, sr=samp_rate)
+                                hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels,\
+                                n_fft=n_dft, sr=samp_rate, with_melSpec=with_melSpec)
 
     elif dataset_name == 'esc50':
         if fold_num is not None:
             generate_esc50_fold_data(data_dir, fold_num-1, dataset_output_dir,
                                      l3embedding_model=l3embedding_model, features=features, 
 				     random_state=random_state, hop_size=hop_size, num_random_samples=num_random_samples, 
-				     mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, sr=samp_rate)
+				     mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, sr=samp_rate, with_melSpec=with_melSpec)
         else:
             generate_esc50_folds(data_dir, dataset_output_dir,
                                  l3embedding_model=l3embedding_model, features=features, random_state=random_state, 
-                                 num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, sr=samp_rate)
+                                 num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, \
+                                 n_fft=n_dft, sr=samp_rate, with_melSpec=with_melSpec)
 
     elif dataset_name == 'dcase2013':
         if fold_num is not None:

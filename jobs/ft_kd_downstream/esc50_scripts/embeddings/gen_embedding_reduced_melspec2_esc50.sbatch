@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64GB
-#SBATCH --time=7-0
+#SBATCH --time=2-0
 #SBATCH --mail-type=ALL
 #SBATCH --output="gen-embedding-reduced-melspec2-esc50-%A-%a.out"
 #SBATCH --err="gen-embedding-reduced-melspec2-esc50-%A-%a.err"
@@ -26,7 +26,7 @@ shift
 
 #SRCDIR=$HOME/dev/l3embedding
 SRCDIR=.
-L3_MODEL_PATH=$SCRATCH/l3pruning/embedding/fixed/${filename}
+L3_MODEL_PATH=$SCRATCH/l3pruning/embedding/fixed/filterwise/${filename}
 L3_POOLING_TYPE='short'
 L3_MODEL_TYPE='cnn_L3_melspec2_reduced'
 DATA_DIR=$SCRATCH/data/esc50/audio
@@ -50,6 +50,7 @@ python $SRCDIR/05_generate_embedding_samples.py \
     --l3embedding-model-path $L3_MODEL_PATH \
     --l3embedding-model-type $L3_MODEL_TYPE \
     --l3embedding-pooling-type $L3_POOLING_TYPE \
+    --with-melSpec \
     --num_filters ${FILTERS[*]} \
     --hop-size 0.1 \
     --gpus 0 \
