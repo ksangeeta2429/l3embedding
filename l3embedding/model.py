@@ -608,7 +608,7 @@ def construct_cnn_L3_melspec2_reduced(include_layers = None, num_filters = None)
     """
     vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
 
-    audio_model, x_a, y_a = load_student_audio_model_withFFT(include_layers = include_layers,\
+    audio_model, x_a, y_a = construct_cnn_L3_melspec2_reduced_audio_model(include_layers = include_layers,\
                                                              num_filters = num_filters)
 
     m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_reduced')
@@ -617,7 +617,7 @@ def construct_cnn_L3_melspec2_reduced(include_layers = None, num_filters = None)
 
 @gpu_wrapper
 def construct_cnn_L3_melspec2_reduced_audio_model(include_layers = None, num_filters = None):
-    audio_model, x_a, y_a = load_student_audio_model_withFFT(include_layers = include_layers,\
+    audio_model, x_a, y_a = construct_cnn_L3_melspec2_reduced_audio_model(include_layers = include_layers,\
                                                              num_filters = num_filters)
 
     return audio_model, x_a, y_a

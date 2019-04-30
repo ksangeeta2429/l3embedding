@@ -420,9 +420,11 @@ def gpu_wrapper_4gpus(model_f):
     """
     def wrapped(*args, **kwargs):
         m, inp, out = model_f(*args, **kwargs)
+        
         num_gpus = 4
         if num_gpus > 1:
-            m = multi_gpu_model(m, gpus=num_gpus)
+            m = keras.utils.multi_gpu_model(m, gpus=num_gpus)
+            m.save_weights('after_multi.h5')
 
         return m, inp, out
 
@@ -634,7 +636,7 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
                 audio_model, x_a, y_a = construct_cnn_L3_melspec2_masked_audio_model(thresholds)
                 model, x_a, y_a = initialize_weights(masked_model=audio_model, sparse_model=new_l3, is_L3=False, input=x_a, output=y_a)           
         else:
-            model, x_a, y_a = load_student_audio_model_withFFT(include_layers = include_layers,\
+            model, x_a, y_a = construct_cnn_L3_melspec2_reduced_audio_model(include_layers = include_layers,\
                                                                num_filters = num_filters)
     
 
@@ -885,7 +887,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
             include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
 
         old_model, audio_model = load_audio_model_for_pruning(weight_path)
-        new_audio_model, x_a, y_a = load_student_audio_model_withFFT(include_layers = include_layers,\
+        new_audio_model, x_a, y_a = construct_cnn_L3_melspec2_reduced_audio_model(include_layers = include_layers,\
                                                                     num_filters = num_filters)
 
         if filterwise:
