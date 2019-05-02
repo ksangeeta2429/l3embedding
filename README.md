@@ -20,7 +20,7 @@ There is also a module `classifier/` which contains code to train a downstream c
 
 # References
 
-Please cite the following papers when using EpenL3 in your work:
+Please cite the following papers when using EdgeL3 in your work:
 
 [1] EdgeL3: Compressing L3-Net for Mote-Scale Urban Noise Monitoring
 Sangeeta Kumari, Dhrubojyoti Roy, Mark Cartwright, Juan Pablo Bello, and Anish Arora. </br>
