@@ -175,19 +175,14 @@ if __name__ == '__main__':
     #    os.makedirs(out_model_dir)
         
     weight_file = glob.glob(os.path.join(weight_dir, '*best_valid_accuracy*'))[0]
-    #print('Model_id: ', model_id)
-    #print('Model Type: ',mt)
-    #print('Weight File: ', weight_file)
-
-    #output_weight_file = os.path.join(output_dir, os.path.basename(wf))
-
+    
     # Load and convert model back to 1 gpu
     print("Loading model.......................")
     m, inputs, outputs = load_model(weight_file, mt, src_num_gpus=4, tgt_num_gpus=1, return_io=True, n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)
     _, x_a = inputs
     audio_model_output = m.get_layer('audio_model').get_layer('audio_embedding_layer').output
     audio_embed_model = Model(inputs=x_a, outputs=audio_model_output)
-    audio_output_path = os.path.join(output_dir, 'l3_audio_{}_{}.h5'.format(model_id, input_repr))
+    audio_output_path = os.path.join(output_dir, 'pruned_l3_audio_sparsity_{}.h5'.format(sparsity))
 
     weights = audio_embed_model.get_weights()[3:]
 
