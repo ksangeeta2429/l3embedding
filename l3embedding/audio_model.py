@@ -917,7 +917,7 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
     y_a = BatchNormalization()(y_a)
 
     # CONV BLOCK 1
-    n_filter_a_1 = 64
+    n_filter_a_1 = 32 #64
     filt_size_a_1 = (3, 3)
     pool_size_a_1 = (2, 2)
     y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
@@ -983,7 +983,7 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
     pool_size_a_4 = tuple(y_a.get_shape().as_list()[1:3]) #(32, 24)
     y_a = MaxPooling2D(pool_size=pool_size_a_4)(y_a)
 
-    print('Pool Size: ', pool_size_a_4)
+    #print('Pool Size: ', pool_size_a_4)
 
     y_a = Flatten()(y_a)
 
