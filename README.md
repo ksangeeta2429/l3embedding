@@ -14,22 +14,40 @@ Dependencies
 
 Note that the metadata format expected is the same used in [AudioSet](https://research.google.com/audioset/download.html) ([Gemmeke, J., Ellis, D., et al. 2017](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45857.pdf)), as training this model on AudioSet was one of the goals for this implementation.
 
-You can train an AVC/embedding model using `train.py`. Run `python train.py -h` to read the help message regarding how to use the script.
+# Using EdgeL3 Repository:
 
-There is also a module `classifier/` which contains code to train a downstream classifier with the embedding extracted from the L3 audio model. In EdgeL3, we evaluated the embedding on two datasets, US8K and ESC50. Run `python train_classifier.py -h` to read the help message regarding how to use the script to train a dowwnstream classifier.
+The `l3embedding/pruning.py` has most of the logic to l3 pruning and re-training of the pruned models.</br>
+
+1. Pruning can be done in two ways:</br>
+  a. Layerwise with a specified sparsity list.</br>
+  b. Filterwise where entire filters (feature maps) are dropped according to the specified sparsity values.</br>
+2. After pruning, re-training can be done in two ways:</br>
+  a. Fine-tuning the sparsified weights of the audio model by feezing the vision model.</br>
+  b. Training the sparsified audio model in teacher-student setting with the original L3 model as teacher.</br>
+
+ Original L3 model:</br>
+ 
+ Original i.e. non-pruned L3 model can be found in `models/cnn_l3_melspec2_recent`. There are two versions:</br>
+ a. `model_best_valid_accuracy.h5`, single GPU format - Use its path for WEIGHT_PATH in script files.</br>
+ b. `model_best_valid_accuracy_multiGPU.h5`, Multi GPU format - All the L3 models are trained (or re-trained) with 4 GPUS and gpu_wrapper_4gpus decorator in pruning.py is for the same.</br>
+
+There is also a module `classifier/` which contains code to train a downstream classifier with the embedding extracted from the pruned L3 audio model. In EdgeL3, we evaluated the embedding on two datasets, US8K and ESC50. </br>
+
+If you use a SLURM environment, sample sbatch scripts for re-training pruned models are available in jobs/. A sample command to run the script is also mentioned in form of a comment. Note that some of the variables need to be changed depending on your paths.
 
 # References
 
 Please cite the following papers when using EdgeL3 in your work:
 
-[1] EdgeL3: Compressing L3-Net for Mote-Scale Urban Noise Monitoring </br>
+[1] **EdgeL3: Compressing L3-Net for Mote-Scale Urban Noise Monitoring** </br>
 Sangeeta Kumari, Dhrubojyoti Roy, Mark Cartwright, Juan Pablo Bello, and Anish Arora. </br>
 Parallel AI and Systems for the Edge (PAISE), Rio de Janeiro, Brazil, May 2019.
 
-[2] Look, Listen and Learn More: Design Choices for Deep Audio Embeddings </br>
+[2] **Look, Listen and Learn More: Design Choices for Deep Audio Embeddings** </br>
 Jason Cramer, Ho-Hsiang Wu, Justin Salamon, and Juan Pablo Bello.<br/>
 IEEE Int. Conf. on Acoustics, Speech and Signal Processing (ICASSP), pages 3852–3856, Brighton, UK, May 2019.
 
-[3] Look, Listen and Learn<br/>
+[3] **Look, Listen and Learn**<br/>
 Relja Arandjelović and Andrew Zisserman<br/>
 IEEE International Conference on Computer Vision (ICCV), Venice, Italy, Oct. 2017.
+
