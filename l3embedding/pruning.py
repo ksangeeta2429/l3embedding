@@ -33,28 +33,18 @@ from kapre.time_frequency import Spectrogram, Melspectrogram
 
 LOGGER = logging.getLogger('prunedl3embedding')
 LOGGER.setLevel(logging.DEBUG)
-
+CONV_LAYERS = 8
 
 ##########
-# Pruning Version 1:
+# Pruning Layers:
 # Step 1: Prune each layer with different aprsity levels to decide the sensitivity of each 
 #         Prune whole model after deciding the sensitivity of each layer and test the performance
 # Step 2: Fine-tune the whole model at a go
 # Step 3: Use knowledge distillation setting to retrain the pruned model. This does not take into account the AVC problem.
 
-##########
-# Step 1
-# Pseudo-code
-# Construct the l3 model and load the weights from trained cnn_l3_melspec2
-# Version 1
-# Run a loop for different sparsity values [30, 40, 50, 60, 70] for each CONV block and test the performance
-# Version 2
-# Run a loop for different sparsity values [30, 40, 50, 60, 70, 80, 85, 90, 95] for each CONV layer and test the performance
-##########
-
 
 ##########
-# Pruning Version 3: Prune whole feature-maps
+# Pruning Filters (whole feature-maps)
 # Pseudo-code
 # Step 1: Get the magnitude of each filter
 # Step 2: Experiment with different sparsity values and drop the resulting insignificant filters (with magnitude lesser than the threshold)
@@ -64,9 +54,7 @@ LOGGER.setLevel(logging.DEBUG)
 ##########
 
 graph = tf.get_default_graph()
-weight_path = 'models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
-audio_model = load_embedding(weight_path, model_type = 'cnn_L3_melspec2', embedding_type = 'audio', \
-                             pooling_type = 'short', kd_model=False, tgt_num_gpus = 1)
+audio_model = None
 
 class LossHistory(keras.callbacks.Callback):
     """
@@ -183,7 +171,7 @@ class TimeHistory(keras.callbacks.Callback):
         self.batch_times.append(t)
 
 
-def data_generator(data_dir, kd_model=False, batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
+def data_generator(data_dir, weight_path, kd_model=False, batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
     random.seed(random_state)
 
     batch = None
@@ -191,8 +179,10 @@ def data_generator(data_dir, kd_model=False, batch_size=512, random_state=201802
     batch_idx = 0
     file_idx = 0
     start_label_idx = 0
+    audio_model = load_embedding(weight_path, model_type = 'cnn_L3_melspec2', embedding_type = 'audio', \
+                                 pooling_type = 'short', kd_model=False, tgt_num_gpus = 1)
+
     global graph
-    global audio_model
 
     # Limit keys to avoid producing batches with all of the metadata fields
     if not keys:
@@ -254,9 +244,9 @@ def data_generator(data_dir, kd_model=False, batch_size=512, random_state=201802
                 batch = None
 
 
-def single_epoch_data_generator(data_dir, epoch_size, kd_model, **kwargs):
+def single_epoch_data_generator(data_dir, weight_path, epoch_size, kd_model, **kwargs):
     while True:
-        data_gen = data_generator(data_dir, kd_model, **kwargs)
+        data_gen = data_generator(data_dir, weight_path, kd_model, **kwargs)
         for idx, item in enumerate(data_gen):
             yield item
             # Once we generate all batches for an epoch, restart the generator
@@ -264,27 +254,13 @@ def single_epoch_data_generator(data_dir, epoch_size, kd_model, **kwargs):
                 break
 
 
-def get_sparsity_blocks(block, sparsity_blk, sparsity_value_blocks):
-    num_conv_blocks = 4
-    sparsity = {}
-
-    for blockid in range(num_conv_blocks):
-        block_layer_1 = 'conv_'+str(2*blockid + 1)
-        block_layer_2 = 'conv_'+str(2*blockid + 2)
-        if (blockid == block):
-            sparsity[block_layer_1] = sparsity_blk
-            sparsity[block_layer_2] = sparsity_blk
-        else:
-            sparsity[block_layer_1] = sparsity_value_blocks[blockid]
-            sparsity[block_layer_2] = sparsity_value_blocks[blockid]
-    
-    return sparsity
-
-
 def get_sparsity_layers(layer, sparsity_layer, sparsity_value_layers):
     sparsity = {}
     for idx in range(len(sparsity_value_layers)):
-        layer_name = 'conv_'+str(idx+1)
+        if idx+1 == 8:
+            layer_name = 'audio_embedding_layer'
+        else:
+            layer_name = 'conv_'+str(idx+1)
         if(layer and sparsity_layer and idx == layer):
             sparsity[layer_name] = sparsity_layer
         else:
@@ -303,7 +279,7 @@ def sparsify_layer(model, sparsity_dict):
     masks = {}
     thresholds = {}
     for layer in model.layers:
-        if 'conv_' in layer.name:
+        if 'conv_' in layer.name or 'audio_embedding' in layer.name:
             target_weights = np.empty_like(layer.get_weights())
             weights = layer.get_weights()[0]
 
@@ -327,44 +303,6 @@ def sparsify_layer(model, sparsity_dict):
     return model, masks, thresholds
 
 
-def sparsify_block(model, sparsity_dict):
-    conv_blocks = 4
-
-    for block in range(conv_blocks):
-        layer_1 = 'conv_'+str(2*block + 1)
-        layer_2 = 'conv_'+str(2*block + 2)
-        
-        if (sparsity_dict[layer_1]):
-            weights_1 = model.get_layer(layer_1).get_weights()[0]
-            weights_2 = model.get_layer(layer_2).get_weights()[0]
-            weights = np.append(weights_1.flatten(), weights_2.flatten())
-            
-            threshold, np_threshold = calculate_threshold(weights, sparsity_dict[layer_1])
-
-            #print(K.eval(threshold))
-            target_weights_1 = np.empty_like(model.get_layer(layer_1).get_weights())
-            target_weights_2 = np.empty_like(model.get_layer(layer_2).get_weights())
-
-            mask_1      = K.cast(K.greater(K.abs(weights_1), threshold), dtypes.float32)
-            mask_2      = K.cast(K.greater(K.abs(weights_2), threshold), dtypes.float32)
-
-            new_weights_1 = weights_1 * K.eval(mask_1)
-            new_weights_2 = weights_2 * K.eval(mask_2)
-            
-            target_weights_1[0] = new_weights_1
-            target_weights_1[1] = model.get_layer(layer_1).get_weights()[1]
-
-            target_weights_2[0] = new_weights_2
-            target_weights_2[1] = model.get_layer(layer_2).get_weights()[1]
-            
-            model.get_layer(layer_1).set_weights(target_weights_1)
-            model.get_layer(layer_2).set_weights(target_weights_2)
-            
-            #print(new_weights)
-                        
-    return model
-
-
 def load_audio_model_for_pruning(weight_path, model_type = 'cnn_L3_melspec2'):
     
     m, inputs, outputs = load_model(weight_path, model_type, return_io=True, src_num_gpus=1)
@@ -374,15 +312,13 @@ def load_audio_model_for_pruning(weight_path, model_type = 'cnn_L3_melspec2'):
     for layer in audio_model.layers:
         layer_name = layer.name
         
-        if (layer_name[0:6] == 'conv2d' or layer_name == 'audio_embedding_layer'):
-            #Rename the conv layers as conv_1, conv_2 .... conv_8 
+        if (layer_name[0:6] == 'conv2d':
             audio_model.get_layer(name=layer.name).name='conv_'+str(count)
             count += 1
-            #print (layer.name)
     return m, audio_model
 
 
-def test(model, validation_data_dir, learning_rate=1e-4, validation_epoch_size=1024, validation_batch_size=64, random_state=20180216):
+def test(model, weight_path, validation_data_dir, learning_rate=1e-4, validation_epoch_size=1024, validation_batch_size=64, random_state=20180216):
     loss = 'binary_crossentropy'
     metrics = ['accuracy']
 
@@ -391,6 +327,7 @@ def test(model, validation_data_dir, learning_rate=1e-4, validation_epoch_size=1
                   metrics=metrics)
 
     val_gen = single_epoch_data_generator(validation_data_dir,
+                                          weight_path,
                                           validation_epoch_size,
                                           batch_size=validation_batch_size,
                                           kd_model=False,
@@ -437,7 +374,7 @@ def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=N
     if is_L3:
         embedding_length_new = masked_model.get_layer('audio_model').output_shape
 
-        if embedding_length_new != embedding_length_original or 'conv_8' not in sparse_model.get_layer('audio_model').layers:
+        if embedding_length_new != embedding_length_original or len(sparse_model.get_layer('audio_model').layers) < 8:
             LOGGER.info("New embedding Length: {0}".format(embedding_length_new))
             new_video_model = masked_model.get_layer('vision_model')
             old_video_model = sparse_model.get_layer('vision_model')
@@ -446,7 +383,6 @@ def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=N
 
             new_video_model.set_weights(old_video_model.get_weights())
             
-            #new_audio_model.get_layer('conv_1').set_weights(old_audio_model.get_layer('conv_1').get_weights())
         else:
             masked_model.set_weights(sparse_model.get_weights())
             
@@ -457,13 +393,6 @@ def initialize_weights(masked_model=None, sparse_model=None, is_L3=True, input=N
         masked_model.set_weights(sparse_model.get_layer('audio_model').get_weights())
         
     return masked_model, input, output
-
-
-def zero_check(sparsity_list):
-    for val in sparsity_list:
-        if val:
-            return False
-    return True
 
 
 def printList(plist):
@@ -504,10 +433,13 @@ def drop_filters(model, new_model, new_filters_dict, old_filters_dict):
                 new_weights[0] = K.eval(tf.gather(weights, sorted_idx, axis = -1))
                 new_weights[1] = K.eval(tf.gather(biases, sorted_idx, axis = 0))
 
-                next_conv = 'conv_'+ str(int(layer.name[5])+1)
-                if not 'audio_embedding_layer' in layer.name:
-
-                    weights_dict[next_conv] = K.eval(tf.gather(model.get_layer(next_conv).get_weights()[0], \
+                if not 'audio_embedding' in layer.name:
+			if int(layer.name[5]) != 7:
+            			next_conv = 'conv_'+ str(int(layer.name[5])+1)
+			else:
+				next_conv = 'audio_embedding_layer'
+            		
+			weights_dict[next_conv] = K.eval(tf.gather(model.get_layer(next_conv).get_weights()[0], \
                                                                sorted_idx, axis = 2))
                 
                 new_model.get_layer(layer.name).set_weights(new_weights)
@@ -529,11 +461,11 @@ def get_filters(conv_layers, conv_filters, num_filters):
     return new_filters, old_filters
 
 
-def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, include_layers = [1, 1, 1, 1, 1, 1, 1, 1],\
-          num_filters = [64, 64, 128, 128, 256, 256, 512, 512], pruning=True, finetune=False, layerwise=False, filterwise=False, output_dir = None, \
-          num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
-          model_type = 'cnn_L3_melspec2', log_path=None, disable_logging=False, random_state=20180216,\
-          learning_rate=0.001, verbose=True, checkpoint_interval=10, gpus=1, sparsity=[], continue_model_dir=None,\
+def train(train_data_dir, validation_data_dir, weight_path, new_l3 = None, old_l3 = None, include_layers = [1, 1, 1, 1, 1, 1, 1, 1],\
+          num_filters = [64, 64, 128, 128, 256, 256, 512, 512], pruning=True, finetune=False, layerwise=False, filterwise=False,\
+          output_dir = None, num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, \
+          validation_batch_size=64, model_type = 'cnn_L3_melspec2', log_path=None, disable_logging=False, random_state=20180216,\
+          learning_rate=0.0001, verbose=True, checkpoint_interval=10, gpus=1, sparsity=[], \
           gsheet_id=None, google_dev_app_name=None, thresholds=None):
 
     init_console_logger(LOGGER, verbose=verbose)
@@ -735,6 +667,7 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
 
     if finetune:
         train_gen = data_generator(train_data_dir,
+                                   weight_path,
                                    kd_model=False,
                                    batch_size=train_batch_size,
                                    random_state=random_state,
@@ -745,6 +678,7 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
                                                'label')
 
         val_gen = single_epoch_data_generator(validation_data_dir,
+                                              weight_path,
                                               validation_epoch_size,
                                               kd_model=False,
                                               batch_size=validation_batch_size,
@@ -756,6 +690,7 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
 
     else:
         train_gen = data_generator(train_data_dir,
+                                   weight_path,
                                    kd_model=True,
                                    batch_size=train_batch_size,
                                    random_state=random_state,
@@ -766,6 +701,7 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
                                                'label')
 
         val_gen = single_epoch_data_generator(validation_data_dir,
+                                              weight_path,
                                               validation_epoch_size,
                                               kd_model=True,
                                               batch_size=validation_batch_size,
@@ -801,11 +737,10 @@ def train(train_data_dir, validation_data_dir, new_l3 = None, old_l3 = None, inc
     LOGGER.info('Done!')
 
 
-def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scratch/sk7898/pruned_model',\
-            blockwise=False, layerwise=True, per_layer=False, filterwise=False, sparsity=[], include_layers=[], num_filters=[],\
+def pruning(weight_path, train_data_dir, validation_data_dir, output_dir,\
+            layerwise=True, per_layer=False, filterwise=False, sparsity=[], include_layers=[], num_filters=[],\
             test_model=False, save_model=False, retrain_model=False, finetune = True, **kwargs):
     
-    conv_blocks = 4
     isReduced = False
 
     if sparsity==[]:
@@ -824,25 +759,6 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
                         
     if len(include_layers) > 0 or len(num_filters) > 0:
         isReduced = True
-
-    if blockwise:
-        LOGGER.info("Block-wise Pruning")
-        LOGGER.info("*********************************************************************")
-    
-        sparsity_blks = [0, 0, 0, 0]
-        sparsity_values = [70., 80., 85., 90., 95.]
-        for sparsity in sparsity_values:
-            for blockid in range(conv_blocks):
-                model, audio_model = load_audio_model_for_pruning(weight_path)
-                sparsity_vals = get_sparsity_blocks(blockid, sparsity, sparsity_blks) 
-                sparsified_model = sparsify_block(audio_model, sparsity_vals)
-            
-                model.get_layer('audio_model').set_weights(sparsified_model.get_weights()) 
-            
-                score = test(model, validation_data_dir)
-                LOGGER.info('Conv Block Pruned: {0} Sparsity Value: {1}'.format(blockid+1, sparsity))
-                LOGGER.info('Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
-                LOGGER.info('---------------------------------------------------------------')
     
     if layerwise and per_layer:
         LOGGER.info("Layer-wise Pruning")
@@ -850,7 +766,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
         
         sparsity_values = [70., 80., 85., 90., 95.]
         for sparsity in sparsity_values:
-            for layerid in range(conv_blocks*2):
+            for layerid in range(CONV_LAYERS):
                 model, audio_model = load_audio_model_for_pruning(weight_path)
                 sparsity_vals = get_sparsity_layers(layerid, sparsity, sparsity_list)
                 sparsified_model, masks, thresholds = sparsify_layer(audio_model, sparsity_vals)
@@ -876,8 +792,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
             
             if test_model:
                 score = test(model, validation_data_dir)
-                print('Sparsity:')
-                printList(sparsity)
+                print('Sparsity: ', printList(sparsity))
                 print('TEST Loss: ', score[0], '\tAccuracy: ',score[1])
                 LOGGER.info('TEST Loss: {0} Accuracy: {1}'.format(score[0], score[1]))
                 LOGGER.info('----------------------------------------------------------------')
@@ -888,7 +803,7 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
 
         old_model, audio_model = load_audio_model_for_pruning(weight_path)
         new_audio_model, x_a, y_a = construct_cnn_L3_melspec2_reduced_audio_model(include_layers = include_layers,\
-                                                                    num_filters = num_filters)
+                                                                                  num_filters = num_filters)
 
         if filterwise:
             filter_model_save_str = str(num_filters[0])+"_"+str(num_filters[1])+"_"+str(num_filters[2])+"_"+str(num_filters[3])
@@ -919,27 +834,9 @@ def pruning(weight_path, train_data_dir, validation_data_dir, output_dir = '/scr
 
     if retrain_model:
         if isReduced:
-            train(train_data_dir, validation_data_dir, new_l3=model, old_l3=old_model, sparsity=sparsity, finetune=finetune,\
+            train(train_data_dir, validation_data_dir, weight_path, new_l3=model, old_l3=old_model, sparsity=sparsity, finetune=finetune,\
                   layerwise=layerwise, filterwise=filterwise, output_dir=output_dir, include_layers=include_layers, num_filters=num_filters, **kwargs)
         else:
-            train(train_data_dir, validation_data_dir, new_l3=model, sparsity=sparsity, thresholds=thresholds,\
+            train(train_data_dir, validation_data_dir, weight_path, new_l3=model, sparsity=sparsity, thresholds=thresholds,\
                   finetune=finetune, layerwise=layerwise, filterwise=filterwise, output_dir=output_dir, **kwargs)
-
-def main():
-    is_pruning = True
-    train_data_dir = '/beegfs/work/AudioSetSamples/music_train'
-    validation_data_dir = '/beegfs/work/AudioSetSamples/music_valid'
-
-    if is_pruning:
-        pruning(weight_path, train_data_dir, validation_data_dir, save_model=False, layerwise=True, per_layer=False,
-                test_model=False, filterwise=False, retrain_model=True, finetune=True)
-    else:
-        include_layers = [1, 1, 1, 1, 1, 1, 1, 1]
-        num_filters = [64, 64, 128, 128, 256, 256, 512, 512]
-        train(train_data_dir, validation_data_dir, include_layers = include_layers,
-              num_filters = num_filters, pruning=False, finetune=False, continue_model_dir=None)
-
-
-if __name__=='__main__':
-    main()
 
