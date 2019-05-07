@@ -271,7 +271,8 @@ def train(train_data_dir, validation_data_dir, output_dir,
 
     if continue_model_dir:
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
-        m, inputs, outputs = load_model(latest_model_path, model_type, return_io=True, src_num_gpus=gpus)
+        m, inputs, outputs = load_model(latest_model_path, model_type, return_io=True, src_num_gpus=gpus, \
+                                        n_mels=n_mels, n_hop=n_hop, n_dft=n_dft,asr=samp_rate)
     else:
         m, inputs, outputs = MODELS[model_type](n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate, num_gpus=gpus)
 
