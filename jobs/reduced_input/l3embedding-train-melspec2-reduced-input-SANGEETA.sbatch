@@ -57,7 +57,6 @@ python $SRCDIR/03_train_embedding.py \
     --random-state 20180216 \
     --gsheet-id $GSHEET_ID \
     --google-dev-app-name $GOOGLE_DEV_APP_NAME \
-    --continue-model-dir /scratch/sk7898/l3pruning/reduced_input/embedding/music/cnn_L3_melspec2/20190421113650 \
     --verbose \
     $TRAIN_DATA_DIR \
     $VAL_DATA_DIR \

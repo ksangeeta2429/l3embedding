@@ -933,7 +933,7 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
     y_a = MaxPooling2D(pool_size=pool_size_a_1, strides=2)(y_a)
 
     # CONV BLOCK 2
-    n_filter_a_2 = 128
+    n_filter_a_2 = 64 #128
     filt_size_a_2 = (3, 3)
     pool_size_a_2 = (2, 2)
     y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
@@ -949,7 +949,7 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
     y_a = MaxPooling2D(pool_size=pool_size_a_2, strides=2)(y_a)
 
     # CONV BLOCK 3
-    n_filter_a_3 = 256
+    n_filter_a_3 = 128 #256
     filt_size_a_3 = (3, 3)
     pool_size_a_3 = (2, 2)
     y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
@@ -965,7 +965,7 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
     y_a = MaxPooling2D(pool_size=pool_size_a_3, strides=2)(y_a)
 
     # CONV BLOCK 4
-    n_filter_a_4 = 512
+    n_filter_a_4 = 256 #512
     filt_size_a_4 = (3, 3)
     #pool_size_a_4 = (32, 24)
     y_a = Conv2D(n_filter_a_4, filt_size_a_4, padding='same',
@@ -989,6 +989,9 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
 
     m = Model(inputs=x_a, outputs=y_a)
     m.name = 'audio_model'
+
+    #print(m.summary())
+    #exit(0)
 
     return m, x_a, y_a
 
