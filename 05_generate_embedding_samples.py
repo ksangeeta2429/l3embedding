@@ -9,6 +9,7 @@ from l3embedding.model import load_embedding
 from data.usc.dcase2013 import generate_dcase2013_folds, generate_dcase2013_fold_data
 from data.usc.esc50 import generate_esc50_folds, generate_esc50_fold_data
 from data.usc.us8k import generate_us8k_folds, generate_us8k_fold_data
+from data.usc.sonyc_ust import extract_embeddings_l3
 from log import init_console_logger
 
 LOGGER = logging.getLogger('cls-data-generation')
@@ -183,10 +184,21 @@ def parse_arguments():
                         action='store',
                         help='Path to UrbanSound8K metadata file')
 
+    parser.add_argument("--hop-duration", 
+                        dest='hop_duration')
+                        type=float,
+                        help='Hop size in seconds')
+
+    parser.add_argument('--annotation-path',
+                        dest='annotation_path',
+                        type=str,
+                        action='store',
+                        help='Path to annotation file for SONYC_UST dataset')
+
     parser.add_argument('dataset_name',
                         action='store',
                         type=str,
-                        choices=['us8k', 'esc50', 'dcase2013'],
+                        choices=['us8k', 'esc50', 'dcase2013', 'sonyc_ust'],
                         help='Name of dataset')
 
     parser.add_argument('data_dir',
@@ -230,6 +242,8 @@ if __name__ == '__main__':
     n_mels = args['n_mels']
     n_hop = args['n_hop']
     n_dft = args['n_dft']
+    annotation_path = args['annotation_path']
+    hop_duration =args['hop_duration']
 
 
     LOGGER.info('Configuration: {}'.format(str(args)))
@@ -285,18 +299,13 @@ if __name__ == '__main__':
         dataset_output_dir = os.path.join(output_dir, 'features', dataset_name,
                                           features, pooling_type, embedding_desc_str)
         print('Output directory:',dataset_output_dir)
+
         # Load L3 embedding model if using L3 features
-        LOGGER.info('Loading embedding model...')
-        #model_type = embedding_desc_str.split('/')[-1]
-        """l3embedding_model = load_embedding(model_path,
-                                           model_type,
-                                           'audio', pooling_type,
-                                           tgt_num_gpus=num_gpus,
-                                           n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)"""
+        LOGGER.info('Loading embedding model...')        
         model = keras.models.load_model(model_path, custom_objects={'Melspectrogram': Melspectrogram})
+        
         POOLINGS = {
             'cnn_L3_melspec2': {
-                '16k_64_50': (8, 6),
                 '48K_64_968_2048': (8, 6),
                 '48K_64_242_2048': (8, 24),
                 '48K_64_1936_2048': (8, 3),
@@ -314,16 +323,10 @@ if __name__ == '__main__':
         }        
 
         pool_size = POOLINGS[model_type][pooling_type]
-
         y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(model.output)
         y_a = keras.layers.Flatten()(y_a)
         l3embedding_model = keras.models.Model(inputs=model.input, outputs=y_a)
        
-        #print("------------------------------------------------------------------")
-        #print(model.summary())
-        #print("------------------------------------------------------------------")
-        #print(l3embedding_model.summary())
-
     else:
         # Get output dir
         dataset_output_dir = os.path.join(output_dir, 'features', dataset_name, features)
@@ -375,6 +378,16 @@ if __name__ == '__main__':
                                  l3embedding_model=l3embedding_model, features=features, random_state=random_state, 
                                  num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, \
                                  n_fft=n_dft, sr=samp_rate, with_melSpec=with_melSpec)
+
+    elif dataset_name == 'sonyc_ust':
+        if annotation_path is None:
+            raise ValueError('Must provide path to annotation file for SONYC_UST')
+
+        extract_embeddings_l3(annotation_path=annotation_path,
+                              dataset_dir=data_dir,
+                              output_dir=dataset_output_dir,
+                              l3embedding_model=l3embedding_model,
+                              hop_duration=hop_duration)
 
     elif dataset_name == 'dcase2013':
         if fold_num is not None:

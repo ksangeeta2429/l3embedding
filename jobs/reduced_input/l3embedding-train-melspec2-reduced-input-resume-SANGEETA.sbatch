@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:2
 #SBATCH --job-name=l3embedding-train-melspec2-reduced-input-Sangeeta
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
@@ -21,7 +21,7 @@ VAL_DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
 OUTPUT_DIR=$SCRATCH/l3pruning/reduced_input
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
-NUM_GPUS=4
+NUM_GPUS=2
 ASR=$1
 NUM_MELS=$2
 HOP_LEN=$3
@@ -57,7 +57,7 @@ python $SRCDIR/03_train_embedding.py \
     --random-state 20180216 \
     --gsheet-id $GSHEET_ID \
     --google-dev-app-name $GOOGLE_DEV_APP_NAME \
-    --continue-model-dir /scratch/dr2915/l3pruning/reduced_input/embedding/music/cnn_L3_melspec2/20190410183259 \
+    --continue-model-dir /scratch/sk7898/l3pruning/reduced_input/embedding/music/cnn_L3_melspec2/20190511023137 \
     --verbose \
     $TRAIN_DATA_DIR \
     $VAL_DATA_DIR \

@@ -223,7 +223,7 @@ class TimeHistory(keras.callbacks.Callback):
 
 
 
-def load_student_model(student, temp=5, return_io=True):
+def load_student_model_entropy(student, temp=5):
     student = model.load_weights(weight_path)
 
     # Remove the softmax layer from the student network
@@ -242,10 +242,10 @@ def load_student_model(student, temp=5, return_io=True):
     # This is our new student model
     student = Model(student.input, output)
 
-    if return_io:
-        return student, student.input, output
-    else:
-        return student
+    for layer in student.get_layer('vision_model').layers:
+        layer.trainable = False
+
+    return student
 
 
 def get_teacher_logits(teacher, video_batch, audio_batch, temp=5):
@@ -385,11 +385,16 @@ def kd_accuracy(y_true, y_pred):
     return categorical_accuracy(y_true, y_pred)
 
 
-def train(train_data_dir, validation_data_dir, student_weight_path, teacher_weight_path, output_dir = None, loss_type='entropy',\
+def train(train_data_dir, validation_data_dir, teacher_weight_path, student_weight_path=None, output_dir=None, loss_type='entropy',\
           num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
-          model_type = 'cnn_L3_melspec2', log_path=None, disable_logging=False, random_state=20180216, temp=5, lambda_constant=0.8,\
+          model_type='cnn_L3_melspec2', log_path=None, disable_logging=False, random_state=20180216, temp=5, lambda_constant=0.8,\
           learning_rate=0.00001, verbose=True, checkpoint_interval=10, gpus=1, continue_model_dir=None,\
           gsheet_id=None, google_dev_app_name=None, thresholds=None):
+
+
+    if not continue_model_dir and not student_weight_path:
+        print("Student Weight Path needed if not continuing training (i.e.e continue_model_dir is not provided)")
+        exit(10)
 
     init_console_logger(LOGGER, verbose=verbose)
     if not disable_logging:
@@ -397,7 +402,6 @@ def train(train_data_dir, validation_data_dir, student_weight_path, teacher_weig
     LOGGER.debug('Initialized logging.')
     LOGGER.info('Student Model: %s', student_weight_path)
     LOGGER.info('Teaacher Model: %s', teacher_weight_path)
-
     
     # Form model ID
     data_subset_name = os.path.basename(train_data_dir)
@@ -450,11 +454,15 @@ def train(train_data_dir, validation_data_dir, student_weight_path, teacher_weig
         
     if continue_model_dir:
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
-        student_base_model, inputs, outputs  = keras.models.load_model(latest_model_path, custom_objects={'Melspectrogram': Melspectrogram})
+        student_base_model = keras.models.load_model(latest_model_path, custom_objects={'Melspectrogram': Melspectrogram})
     else:
         student = keras.models.load_model(student_weight_path, custom_objects={'Melspectrogram': Melspectrogram})
-        student_base_model, inputs, outputs  = load_student_model(student, student_weight_path, temp=temp, return_io=True)
-        
+        if loss_type == 'entropy':
+            student_base_model = load_student_model_entropy(student, student_weight_path, temp=temp)
+        if loss_type == 'mse':
+            student_base_model = student.get_layer('audio_model')
+
+    #Convert the base (single-GPU) model to Multi-GPU model
     model = multi_gpu_model(student_base_model, gpus=gpus)
 
     param_dict['model_dir'] = model_dir
