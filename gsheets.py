@@ -105,6 +105,40 @@ NEW_EMBEDDING_FIELD_NAMES = [
     'best_validation_acc'
 ]
 
+DISTILLATION_FIELD_NAMES = [
+    'username',
+    'model_id',
+    'model_dir',
+    'git_commit',
+    'train_data_dir',
+    'validation_data_dir',
+    'continue_model_dir',
+    'model_type',
+    'student',
+    'teacher',
+    'loss_type',
+    'temperature',
+    'lambda',
+    'num_epochs',
+    'train_epoch_size',
+    'validation_epoch_size',
+    'train_batch_size',
+    'validation_batch_size',
+    'random_state',
+    'learning_rate',
+    'gpus',
+    'checkpoint_interval',
+    'latest_epoch',
+    'latest_train_loss',
+    'latest_validation_loss',
+    'latest_train_acc',
+    'latest_validation_acc',
+    'best_train_loss',
+    'best_validation_loss',
+    'best_train_acc',
+    'best_validation_acc'
+]
+
 CLASSIFIER_FIELD_NAMES = [
     'username',
     'model_id',
@@ -184,6 +218,8 @@ def append_row(service, spreadsheet_id, param_dict, sheet_name):
         field_names = CLASSIFIER_FIELD_NAMES
     elif sheet_name == 'prunedembedding':
         field_names = PRUNED_EMBEDDING_FIELD_NAMES
+    elif sheet_name == 'distillation':
+        field_names = DISTILLATION_FIELD_NAMES
     else:
         raise ValueError('Unknown spreadsheet sheet name: {}'.format(sheet_name))
 
@@ -201,12 +237,11 @@ def append_row(service, spreadsheet_id, param_dict, sheet_name):
         "values": [[str(param_dict[field_name]) for field_name in field_names ]]
     }
 
-    request = service.spreadsheets().values().append(
-        spreadsheetId=spreadsheet_id,
-        range=range_,
-        valueInputOption=value_input_option,
-        insertDataOption=insert_data_option,
-        body=value_range_body)
+    request = service.spreadsheets().values().append(spreadsheetId=spreadsheet_id,
+                                                     range=range_,
+                                                     valueInputOption=value_input_option,
+                                                     insertDataOption=insert_data_option,
+                                                     body=value_range_body)
     response = request_with_retry(request)
 
 
@@ -229,10 +264,9 @@ def get_row(service, spreadsheet_id, param_dict, sheet_name, id_field='model_dir
     range_ = '{}!C:C'.format(sheet_name)
     major_dimension = 'COLUMNS'
 
-    request = service.spreadsheets().values().get(
-        spreadsheetId=spreadsheet_id,
-        range=range_,
-        majorDimension=major_dimension)
+    request = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id,
+                                                  range=range_,
+                                                  majorDimension=major_dimension)
     response = request_with_retry(request)
 
     try:
@@ -252,11 +286,10 @@ def update_experiment(service, spreadsheet_id, param_dict, start_col, end_col, v
         "values": [[str(val) for val in values]]
     }
 
-    request = service.spreadsheets().values().update(
-        spreadsheetId=spreadsheet_id,
-        range=range_,
-        valueInputOption=value_input_option,
-        body=value_range_body)
+    request = service.spreadsheets().values().update(spreadsheetId=spreadsheet_id,
+                                                     range=range_,
+                                                     valueInputOption=value_input_option,
+                                                     body=value_range_body)
     response = request_with_retry(request)
 
 if __name__ == '__main__':

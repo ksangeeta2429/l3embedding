@@ -13,30 +13,6 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser(description='Train an L3-like audio-visual correspondence model')
 
-    parser.add_argument('-lt',
-                        '--loss-type',
-                        dest='loss_type',
-                        action='store',
-                        type=str,
-                        default='entropy',
-                        help='`entropy` for crossentropy on AVC, `mse` for embedding approximation')
-
-    parser.add_argument('-temp',
-                        '--temperature',
-                        dest='temp',
-                        action='store',
-                        type=int,
-                        default=4,
-                        help='Temperature for smoothing logits. Value of 1 corresponds to softmax.')
-
-    parser.add_argument('-lambda',
-                        '--lambda-constant',
-                        dest='lambda_constant',
-                        action='store',
-                        type=float,
-                        default=0.9,
-                        help='Weight factor for softened crossentropy')
-
     parser.add_argument('-e',
                         '--num-epochs',
                         dest='num_epochs',
@@ -90,8 +66,30 @@ def parse_arguments():
                         dest='model_type',
                         action='store',
                         type=str,
-                        default='cnn_L3_orig',
+                        default='cnn_L3_melspec2',
                         help='Name of model type to train')
+
+    parser.add_argument('-teacher',
+                        '--teacher-weight-path',
+                        dest='teacher_weight_path',
+                        action='store',
+                        type=str,
+                        help='Path to the teacher weight file')
+
+    parser.add_argument('-student',
+                        '--student-weight-path',
+                        dest='student_weight_path',
+                        action='store',
+                        type=str,
+                        help='Path to the student weight file')
+
+    parser.add_argument('-lt',
+                        '--loss-type',
+                        dest='loss_type',
+                        action='store',
+                        type=str,
+                        default='entropy',
+                        help='Type of loss to optimize: `mse` or `entropy`')
 
     parser.add_argument('-ci',
                         '--checkpoint-interval',
@@ -165,16 +163,6 @@ def parse_arguments():
                         action='store',
                         type=str,
                         help='Path to directory where validation set files are stored')
-
-    parser.add_argument('student_weight_path',
-                        action='store',
-                        type=str,
-                        help='Path to model weights directory')
-
-    parser.add_argument('teacher_weight_path',
-                        action='store',
-                        type=str,
-                        help='Path to model weights directory')
 
     parser.add_argument('output_dir',
                         action='store',

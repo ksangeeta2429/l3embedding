@@ -34,7 +34,7 @@ else
   module load cudnn/9.0v7.3.0.29
 fi
 
-python $SRCDIR/03_train_embedding.py \
+python $SRCDIR/03_train_knowledge_distilled_student.py \
     --num-epochs 300 \
     --train-epoch-size 4096 \
     --train-batch-size 64 \

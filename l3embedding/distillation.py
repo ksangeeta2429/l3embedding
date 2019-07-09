@@ -249,23 +249,27 @@ def load_student_model_entropy(student, temp=5):
 
 def get_teacher_logits(teacher, video_batch, audio_batch, temp=5):
     if teacher is None:
-        print("Teacher L3 not provided. Exiting!")
-        exit(0)
+        raise ValueError('Teacher L3 not provided. Exiting!')
     
+    from tensorflow import Graph, Session
     try:
-        with tf.Graph().as_default():    
-            #Remove softmax from l3
-            teacher.layers.pop()
-            logits = teacher.layers[-1].output
+        graph = Graph()
+        with graph.as_default():
+            session = Session()
+            with session.as_default():
+                #with tf.Graph().as_default(), tf.Session().as_default():
+                #Remove softmax from l3
+                teacher.layers.pop()
+                logits = teacher.layers[-1].output
             
-            # soft probabilities
-            logits_T = Lambda(lambda x: x/temp)(logits)
-            probabilities_T = Activation('softmax')(logits_T)
+                # soft probabilities
+                logits_T = Lambda(lambda x: x/temp)(logits)
+                probabilities_T = Activation('softmax')(logits_T)
             
-            #Collect the logits from the previous layer output and store it in a different model
-            teacher_WO_Softmax = Model(teacher.input, probabilities_T)
-            teacher_logits = teacher_WO_Softmax.predict([video_batch, audio_batch])
-            return teacher_logits
+                #Collect the logits from the previous layer output and store it in a different model
+                teacher_WO_Softmax = Model(teacher.input, probabilities_T)
+                teacher_logits = teacher_WO_Softmax.predict([video_batch, audio_batch])
+                return teacher_logits
 
     except GeneratorExit:
         pass
@@ -273,11 +277,10 @@ def get_teacher_logits(teacher, video_batch, audio_batch, temp=5):
 
 def get_teacher_embeddings(teacher):
     if teacher is None:
-        print("Teacher L3 not provided. Exiting!")
-        exit(0)
+        raise ValueError('Teacher L3 not provided!')
 
     try:
-        with tf.Graph().as_default:
+        with tf.Graph().as_default(), tf.Session().as_default():
             audio_model = teacher.get_layer('audio_model')
             embed_layer = audio_model.get_layer('audio_embedding_layer')
             y_a = MaxPooling2D(pool_size=pool_size, padding='same')(embed_layer.output)
