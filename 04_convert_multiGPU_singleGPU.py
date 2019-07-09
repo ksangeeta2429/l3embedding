@@ -22,8 +22,13 @@ def parse_arguments():
                         dest='multiGPU_weight_dir',
                         action='store',
                         type=str,
-                        default='',
                         help='Path to L3 embedding multi-GPU model weights file directory')
+
+    parser.add_argument('--gpus',
+                        dest='gpus',
+                        type=int,
+                        default=4,
+                        help='Number of gpus used to train model.')
 
     parser.add_argument('-srate',
                         '--samp-rate',
@@ -36,8 +41,7 @@ def parse_arguments():
     parser.add_argument('-audio',
                         '--only-audio',
                         dest='only_audio',
-                        action = 'store_true'
-                        type=bool,
+                        action='store_true',
                         default=False,
                         help='Save only audio model?')
 
@@ -169,6 +173,7 @@ if __name__ == '__main__':
     n_mels = args['n_mels']
     n_hop = args['n_hop']
     n_dft = args['n_dft']
+    src_gpus = args['gpus']
     weight_dir = args['multiGPU_weight_dir']
     output_dir = args['output_dir']
     
@@ -183,7 +188,7 @@ if __name__ == '__main__':
 
     # Load and convert model back to 1 gpu
     print("Loading model.......................")
-    m, inputs, outputs = load_model(weight_file, mt, src_num_gpus=4, tgt_num_gpus=1, return_io=True, n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)
+    m, inputs, outputs = load_model(weight_file, mt, src_num_gpus=src_gpus, tgt_num_gpus=1, return_io=True, n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)
     _, x_a = inputs
 
     if args['only_audio']:
@@ -200,5 +205,6 @@ if __name__ == '__main__':
 
     else:
         model_output_path = os.path.join(output_dir, 'l3_full_{}_{}.h5'.format(model_id, input_repr))
+        m.save(model_output_path)
 
     print('Single GPU Model saved: ', model_output_path)

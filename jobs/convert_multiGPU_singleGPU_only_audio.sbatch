@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:4
-#SBATCH --job-name=l3embedding-train-melspec2-reduced-input
+#SBATCH --job-name=l3embedding-convert-multiGPU-singleGPU-audio
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=ALL
-#SBATCH --output="l3embedding-convert-multiGPU-singleGPU-%j.out"
-#SBATCH --err="l3embedding-convert-multiGPU-singleGPU-%j.err"
+#SBATCH --output="l3embedding-convert-multiGPU-singleGPU-audio-%j.out"
+#SBATCH --err="l3embedding-convert-multiGPU-singleGPU-audio-%j.err"
 
 source ~/.bashrc
 source activate l3embedding-new-cpu
@@ -29,10 +29,12 @@ SAMPLING_RATE=$2
 NUM_MELS=$3
 HOP_LEN=$4
 DFT=$5
+NUM_GPUS=4
 OUTPUT_DIR=$SCRATCH/l3pruning/embedding/fixed/reduced_input 
 
 python $SRCDIR/04_convert_multiGPU_singleGPU.py \
     --multiGPU-weight-dir $MODEL_PATH \
+    --gpus $NUM_GPUS \
     --samp-rate $SAMPLING_RATE \
     --num-mels $NUM_MELS \
     --hop-length $HOP_LEN \

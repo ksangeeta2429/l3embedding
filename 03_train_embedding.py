@@ -1,7 +1,7 @@
 import argparse
 import logging
 import os.path
-from l3embedding.train import *
+from l3embedding.distillation import train
 
 
 def parse_arguments():
@@ -70,6 +70,28 @@ def parse_arguments():
                         type=str,
                         default='cnn_L3_melspec2',
                         help='Name of model type to train')
+
+    parser.add_argument('-teacher',
+                        '--teacher-weight-path',
+                        dest='teacher_weight_path',
+                        action='store',
+                        type=str,
+                        help='Path to the teacher weight file')
+
+    parser.add_argument('-student',
+                        '--student-weight-path',
+                        dest='student_weight_path',
+                        action='store',
+                        type=str,
+                        help='Path to the student weight file')
+
+    parser.add_argument('-lt',
+                        '--loss-type',
+                        dest='loss_type',
+                        action='store',
+                        type=str,
+                        default='entropy',
+                        help='Type of loss to optimize: `mse` or `entropy`')
 
     parser.add_argument('-ci',
                         '--checkpoint-interval',
@@ -148,38 +170,6 @@ def parse_arguments():
                         action='store',
                         type=str,
                         help='Path to directory where output files will be stored')
-
-    parser.add_argument('-srate',
-                        '--samp-rate',
-                        dest='samp_rate',
-                        action='store',
-                        type=int,
-                        default=48000,
-                        help='Sampling rate')
-
-    parser.add_argument('-nmels',
-                        '--num-mels',
-                        dest='n_mels',
-                        action='store',
-                        type=int,
-                        default=256,
-                        help='Number of mel filters')
-
-    parser.add_argument('-lhop',
-                        '--hop-length',
-                        dest='n_hop',
-                        action='store',
-                        type=int,
-                        default=242,
-                        help='Hop length in samples')
-
-    parser.add_argument('-ndft',
-                        '--num-dft',
-                        dest='n_dft',
-                        action='store',
-                        type=int,
-                        default=2048,
-                        help='DFT size')
 
 
     return vars(parser.parse_args())

@@ -20,6 +20,7 @@ from keras.layers import *
 from keras.optimizers import Adam
 from keras.models import Model
 from keras.losses import categorical_crossentropy
+from keras.metrics import categorical_accuracy
 from skimage import img_as_float
 from tensorflow.python.ops import math_ops
 from tensorflow.python.framework import dtypes
@@ -36,13 +37,13 @@ LOGGER.setLevel(logging.DEBUG)
 
 nb_classes = 2
 
-class MultiGPUCheckpointCallback(Callback):
+class MultiGPUCheckpointCallback(keras.callbacks.Callback):
 
     def __init__(self, filepath, base_model, monitor='val_loss', verbose=0,
                  save_best_only=False, save_weights_only=False,
                  mode='auto', period=1):
 
-        super(MultiGPU_Checkpoint_Callback, self).__init__()
+        super(MultiGPUCheckpointCallback, self).__init__()
         self.base_model = base_model
         self.monitor = monitor
         self.verbose = verbose
@@ -224,8 +225,6 @@ class TimeHistory(keras.callbacks.Callback):
 
 
 def load_student_model_entropy(student, temp=5):
-    student = model.load_weights(weight_path)
-
     # Remove the softmax layer from the student network
     student.layers.pop()
 
@@ -385,7 +384,7 @@ def kd_accuracy(y_true, y_pred):
     return categorical_accuracy(y_true, y_pred)
 
 
-def train(train_data_dir, validation_data_dir, teacher_weight_path, student_weight_path=None, output_dir=None, loss_type='entropy',\
+def train(train_data_dir, validation_data_dir, output_dir, teacher_weight_path=None, student_weight_path=None, loss_type='entropy',\
           num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
           model_type='cnn_L3_melspec2', log_path=None, disable_logging=False, random_state=20180216, temp=5, lambda_constant=0.8,\
           learning_rate=0.00001, verbose=True, checkpoint_interval=10, gpus=1, continue_model_dir=None,\
@@ -393,21 +392,21 @@ def train(train_data_dir, validation_data_dir, teacher_weight_path, student_weig
 
 
     if not continue_model_dir and not student_weight_path:
-        print("Student Weight Path needed if not continuing training (i.e.e continue_model_dir is not provided)")
-        exit(10)
+        raise ValueError('Student Weight Path needed if not continuing training')
 
     init_console_logger(LOGGER, verbose=verbose)
     if not disable_logging:
         init_file_logger(LOGGER, log_path=log_path)
     LOGGER.debug('Initialized logging.')
     LOGGER.info('Student Model: %s', student_weight_path)
-    LOGGER.info('Teaacher Model: %s', teacher_weight_path)
+    LOGGER.info('Teacher Model: %s', teacher_weight_path)
     
     # Form model ID
     data_subset_name = os.path.basename(train_data_dir)
     data_subset_name = data_subset_name[:data_subset_name.rindex('_')]
     model_id = os.path.join(data_subset_name, model_type)
-
+    model_attribute = 'distillation_'+loss_type
+    
     param_dict = {
         'username': getpass.getuser(),
         'train_data_dir': train_data_dir,
@@ -458,7 +457,7 @@ def train(train_data_dir, validation_data_dir, teacher_weight_path, student_weig
     else:
         student = keras.models.load_model(student_weight_path, custom_objects={'Melspectrogram': Melspectrogram})
         if loss_type == 'entropy':
-            student_base_model = load_student_model_entropy(student, student_weight_path, temp=temp)
+            student_base_model = load_student_model_entropy(student, temp=temp)
         if loss_type == 'mse':
             student_base_model = student.get_layer('audio_model')
 
@@ -472,7 +471,7 @@ def train(train_data_dir, validation_data_dir, teacher_weight_path, student_weig
 
     LOGGER.info('Compiling model...')
     if loss_type == 'entropy':
-        model.compile(optimizers.SGD(lr=learning_rate, momentum=0.9, nesterov=True), #Adam(lr=learning_rate)
+        model.compile(Adam(lr=learning_rate),
                       loss=lambda y_true, y_pred: knowledge_distillation_loss(y_true, y_pred, lambda_constant),
                       metrics=[kd_accuracy])
     
@@ -557,7 +556,7 @@ def train(train_data_dir, validation_data_dir, teacher_weight_path, student_weig
     cb.append(reduceLR)
 
     if gsheet_id:
-        cb.append(GSheetLogger(google_dev_app_name, gsheet_id, param_dict, kd_flag))
+        cb.append(GSheetLogger(google_dev_app_name, gsheet_id, param_dict, loss_type))
 
     LOGGER.info('Setting up train data generator...')
     if continue_model_dir is not None:

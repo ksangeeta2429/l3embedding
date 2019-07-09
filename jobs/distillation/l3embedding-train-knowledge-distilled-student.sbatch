@@ -15,14 +15,15 @@ source activate l3embedding-new-cpu
 cd `git rev-parse --show-toplevel`
 
 SRCDIR=. #/home/sk7898/l3embedding
+WEIGHT_DIR=$SCRATCH/l3pruning/embedding/fixed/reduced_input
 TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples/music_train
 VAL_DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
 OUTPUT_DIR=$SCRATCH/distillation
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
-STUDENT_WEIGHT_PATH=$1
-TEACHER_WEIGHT_PATH=$2
+TEACHER_WEIGHT_PATH=$WEIGHT_DIR/$1
+STUDENT_WEIGHT_PATH=$WEIGHT_DIR/$2
 LOSS_TYPE=$3
 
 module purge
@@ -43,6 +44,8 @@ python $SRCDIR/03_train_embedding.py \
     --checkpoint-interval 10 \
     --gpus $NUM_GPUS \
     --loss-type $LOSS_TYPE \
+    --teacher-weight-path $TEACHER_WEIGHT_PATH \
+    --student-weight-path $STUDENT_WEIGHT_PATH \
     --learning-rate 0.00001 \
     --random-state 20180216 \
     --gsheet-id $GSHEET_ID \
@@ -50,6 +53,4 @@ python $SRCDIR/03_train_embedding.py \
     --verbose \
     $TRAIN_DATA_DIR \
     $VAL_DATA_DIR \
-    $STUDENT_WEIGHT_PATH \
-    $TEACHER_WEIGHT_PATH \
     $OUTPUT_DIR
