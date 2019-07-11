@@ -13,7 +13,9 @@ import pescador
 import tensorflow as tf
 import h5py
 import copy
+import tempfile
 from keras import backend as K
+from keras import activations
 from keras.optimizers import Adam
 from keras.regularizers import l2
 from keras.layers import *
@@ -31,6 +33,7 @@ from gsheets import get_credentials, append_row, update_experiment, get_row
 from googleapiclient import discovery
 from log import *
 from kapre.time_frequency import Spectrogram, Melspectrogram
+from resampy import resample
 
 LOGGER = logging.getLogger('l3distillation')
 LOGGER.setLevel(logging.DEBUG)
@@ -223,11 +226,27 @@ class TimeHistory(keras.callbacks.Callback):
         self.batch_times.append(t)
 
 
+def apply_modifications(model, custom_objects=None):
+    """Applies modifications to the model layers to create a new Graph. For example, simply changing
+    `model.layers[idx].activation= new activation` does not change the graph. The entire graph needs to be updated
+    with modified inbound and outbound tensors because of change in layer building function.
+    Args:
+        model: The `keras.models.Model` instance.
+    Returns:
+        The modified model with changes applied. Does not mutate the original `model`.
+    """
+    # The strategy is to save the modified model and load it back. This is done because setting the activation
+    # in a Keras layer doesnt actually change the graph. We have to iterate the entire graph and change the
+    # layer inbound and outbound nodes with modified tensors. This is doubly complicated in Keras 2.x since
+    # multiple inbound and outbound nodes are allowed with the Graph API.
+    model_path = os.path.join(tempfile.gettempdir(), next(tempfile._get_candidate_names()) + '.h5')
+    try:
+        model.save(model_path)
+        return keras.models.load_model(model_path, custom_objects=custom_objects)
+    finally:
+        os.remove(model_path)
 
 def load_student_model_entropy(student, temp=5):
-    # Remove the softmax layer from the student network
-    student.layers.pop()
-
     # Now collect the logits from the last layer
     logits = student.layers[-1].output 
     probs = Activation('softmax')(logits)
@@ -247,9 +266,9 @@ def load_student_model_entropy(student, temp=5):
     return student
 
 
-def get_teacher_logits(teacher, video_batch, audio_batch, temp=5):
-    if teacher is None:
-        raise ValueError('Teacher L3 not provided. Exiting!')
+def get_teacher_logits(teacher_weight_path, video_batch, audio_batch, temp=5):
+    if teacher_weight_path is None:
+        raise ValueError('Teacher L3 not provided!')
     
     from tensorflow import Graph, Session
     try:
@@ -258,8 +277,11 @@ def get_teacher_logits(teacher, video_batch, audio_batch, temp=5):
             session = Session()
             with session.as_default():
                 #with tf.Graph().as_default(), tf.Session().as_default():
+                teacher = keras.models.load_model(teacher_weight_path, custom_objects={'Melspectrogram': Melspectrogram})
                 #Remove softmax from l3
-                teacher.layers.pop()
+                teacher.layers[-1].activation = activations.linear
+                teacher = apply_modifications(teacher, custom_objects={'Melspectrogram': Melspectrogram})
+
                 logits = teacher.layers[-1].output
             
                 # soft probabilities
@@ -275,24 +297,28 @@ def get_teacher_logits(teacher, video_batch, audio_batch, temp=5):
         pass
 
 
-def get_teacher_embeddings(teacher):
-    if teacher is None:
+def get_teacher_embeddings(teacher_weight_path, audio_batch):
+    if teacher_weight_path is None:
         raise ValueError('Teacher L3 not provided!')
 
     try:
         with tf.Graph().as_default(), tf.Session().as_default():
+            teacher = keras.models.load_model(teacher_weight_path, custom_objects={'Melspectrogram': Melspectrogram})
             audio_model = teacher.get_layer('audio_model')
             embed_layer = audio_model.get_layer('audio_embedding_layer')
+            pool_size = tuple(embed_layer.get_output_shape_at(0)[1:3])
             y_a = MaxPooling2D(pool_size=pool_size, padding='same')(embed_layer.output)
             y_a = Flatten()(y_a)
-            teacher_audio = Model(inputs=audio_model.input, outputs=y_a)
-            embeddings = teacher_audio.predict(batch['audio'])
+            teacher_audio = Model(inputs=audio_model.get_input_at(0), outputs=y_a)
+            embeddings = teacher_audio.predict(audio_batch)
             return embeddings
 
     except GeneratorExit:
         pass
 
-def data_generator(data_dir, teacher, loss_type='entropy', temp=5, batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
+def data_generator(data_dir, teacher_weight_path=None, loss_type='entropy', temp=5, student_samp_rate=48000,
+                   batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
+
     random.seed(random_state)
 
     batch = None
@@ -300,6 +326,8 @@ def data_generator(data_dir, teacher, loss_type='entropy', temp=5, batch_size=51
     batch_idx = 0
     file_idx = 0
     start_label_idx = 0
+    teacher_samp_rate = int(os.path.basename(teacher_weight_path).split('_')[-4])
+    print('Teacher sampling rate: ',teacher_samp_rate)
 
     # Limit keys to avoid producing batches with all of the metadata fields
     if not keys:
@@ -342,19 +370,30 @@ def data_generator(data_dir, teacher, loss_type='entropy', temp=5, batch_size=51
                 # If we are starting from a particular batch, skip yielding all of the prior batches
                 if start_batch_idx is None or batch_idx >= start_batch_idx:
                     # Convert audio to float
-                    batch['audio'] = pcm2float(batch['audio'], dtype='float32')
+                    if teacher_samp_rate==48000:
+                        #temp_audio = batch['audio']
+                        teacher_audio_batch = pcm2float(batch['audio'], dtype='float32')
+                    else:
+                        teacher_audio_batch = resample(pcm2float(batch['audio'], dtype='float32'), sr_orig=48000,
+                                                       sr_new=teacher_samp_rate)
+
+                    if student_samp_rate==48000:
+                        batch['audio'] = pcm2float(batch['audio'], dtype='float32')
+                    else:
+                        batch['audio'] = resample(pcm2float(batch['audio'], dtype='float32'), sr_orig=48000,
+                                                  sr_new=student_samp_rate)
 
                     if loss_type == 'entropy':
                         # Preprocess video so samples are in [-1,1]
                         batch['video'] = 2 * img_as_float(batch['video']).astype('float32') - 1
                         
-                        teacher_logits = get_teacher_logits(teacher, batch['video'], batch['audio'], temp)
-                        batch['labels'] = np.concatenate([batch['labels'], teacher_logits], axis=1)
+                        teacher_logits = get_teacher_logits(teacher_weight_path, batch['video'], teacher_audio_batch, temp)
+                        batch['label'] = np.concatenate([batch['label'], teacher_logits], axis=1)
                         
                     if loss_type == 'mse':
                         # Get the embedding layer output from the audio_model and flatten it to be treated as labels for the student audio model
-                        batch['label'] = get_teacher_embeddings(teacher)                            
-                                                
+                        batch['label'] = get_teacher_embeddings(teacher_weight_path, teacher_audio_batch)                            
+                                           
                     yield batch
 
                 batch_idx += 1
@@ -362,9 +401,9 @@ def data_generator(data_dir, teacher, loss_type='entropy', temp=5, batch_size=51
                 batch = None
 
 
-def single_epoch_data_generator(data_dir, epoch_size, teacher, **kwargs):
+def single_epoch_data_generator(data_dir, epoch_size, teacher_weight_path, **kwargs):
     while True:
-        data_gen = data_generator(data_dir, teacher, **kwargs)
+        data_gen = data_generator(data_dir, teacher_weight_path, **kwargs)
         for idx, item in enumerate(data_gen):
             yield item
             # Once we generate all batches for an epoch, restart the generator
@@ -443,7 +482,9 @@ def train(train_data_dir, validation_data_dir, output_dir, teacher_weight_path=N
          
     LOGGER.info('Training with the following arguments: {}'.format(param_dict))
 
-    teacher = keras.models.load_model(teacher_weight_path, custom_objects={'Melspectrogram': Melspectrogram})
+    #teacher = keras.models.load_model(teacher_weight_path, custom_objects={'Melspectrogram': Melspectrogram})
+    student_samp_rate = int(os.path.basename(student_weight_path).split('_')[-4])
+    LOGGER.info('Student sampling rate: {}'.format(student_samp_rate))
 
     # Make sure the directories we need exist
     if continue_model_dir:
@@ -460,6 +501,8 @@ def train(train_data_dir, validation_data_dir, output_dir, teacher_weight_path=N
     else:
         student = keras.models.load_model(student_weight_path, custom_objects={'Melspectrogram': Melspectrogram})
         if loss_type == 'entropy':
+            student.layers[-1].activation = activations.linear
+            student = apply_modifications(student, custom_objects={'Melspectrogram': Melspectrogram})
             student_base_model = load_student_model_entropy(student, temp=temp)
         if loss_type == 'mse':
             student_base_model = student.get_layer('audio_model')
@@ -569,24 +612,26 @@ def train(train_data_dir, validation_data_dir, output_dir, teacher_weight_path=N
 
 
     train_gen = data_generator(train_data_dir,
-                               teacher,
+                               teacher_weight_path,
                                loss_type=loss_type,
                                temp=temp,
+                               student_samp_rate=student_samp_rate,
                                batch_size=train_batch_size,
                                random_state=random_state,
                                start_batch_idx=train_start_batch_idx)
 
     val_gen = single_epoch_data_generator(validation_data_dir,
                                           validation_epoch_size,
-                                          teacher,
+                                          teacher_weight_path,
                                           loss_type=loss_type,
                                           temp=temp,
+                                          student_samp_rate=student_samp_rate,
                                           batch_size=validation_batch_size,
                                           random_state=random_state)
 
 
     if loss_type == 'entropy':
-        
+                                        
         train_gen = pescador.maps.keras_tuples(train_gen,
                                                ['video', 'audio'],
                                                'label')
