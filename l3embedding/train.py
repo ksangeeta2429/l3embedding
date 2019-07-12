@@ -10,6 +10,8 @@ import csv
 import numpy as np
 import keras
 from keras.optimizers import Adam
+from keras import backend as K
+import tensorflow as tf
 import pescador
 from skimage import img_as_float
 
@@ -25,6 +27,14 @@ from googleapiclient import discovery
 
 LOGGER = logging.getLogger('l3embedding')
 LOGGER.setLevel(logging.DEBUG)
+
+# Do not allocate all the memory for visible GPU
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3"
+config = tf.ConfigProto()
+config.gpu_options.allow_growth=True
+sess = tf.Session(config=config)
+K.set_session(sess)
 
 
 class LossHistory(keras.callbacks.Callback):
