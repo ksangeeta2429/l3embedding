@@ -35,7 +35,7 @@ else
 fi
 
 python $SRCDIR/03_train_knowledge_distilled_student.py \
-    --num-epochs 300 \
+    --num-epochs 1 \
     --train-epoch-size 4096 \
     --train-batch-size 64 \
     --model-type cnn_L3_melspec2 \
