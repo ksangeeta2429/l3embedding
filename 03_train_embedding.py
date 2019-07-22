@@ -111,6 +111,14 @@ def parse_arguments():
                         default=2048,
                         help='DFT size')
 
+    parser.add_argument('-fmax',
+                        '--freq-max',
+                        dest='fmax',
+                        action='store',
+                        type=int,
+                        default=None,
+                        help='DFT size')
+
     parser.add_argument('-r',
                         '--random-state',
                         dest='random_state',

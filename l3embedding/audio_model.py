@@ -881,7 +881,7 @@ def load_student_audio_model_withFFT(include_layers, num_filters = [64, 64, 128,
     return m, x_a, y_a
 
 
-def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048, asr = 48000, audio_window_dur = 1):
+def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048, asr = 48000, fmax=None, audio_window_dur = 1):
     """
     Constructs a model that replicates the audio subnetwork  used in Look,
     Listen and Learn
@@ -912,7 +912,7 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
 
     # MELSPECTROGRAM PREPROCESSING
     y_a = Melspectrogram(n_dft=n_dft, n_hop=n_hop, n_mels=n_mels,
-                      sr=asr, power_melgram=1.0, htk=True, # n_win=n_win,
+                      sr=asr, fmax=fmax, power_melgram=1.0, htk=True, # n_win=n_win,
                       return_decibel_melgram=True, padding='same')(x_a)
     y_a = BatchNormalization()(y_a)
 

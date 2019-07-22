@@ -40,7 +40,35 @@ else
   module load cudnn/9.0v7.3.0.29
 fi
 
-python $SRCDIR/03_train_embedding.py \
+if [ $# -gt 4 ]
+then
+  FMAX=$5
+  echo "FMAX=$FMAX"
+
+  python $SRCDIR/03_train_embedding.py \
+    --num-epochs 300 \
+    --train-epoch-size 4096 \
+    --train-batch-size 64 \
+    --model-type cnn_L3_melspec2 \
+    --validation-epoch-size 1024 \
+    --validation-batch-size 64 \
+    --checkpoint-interval 10 \
+    --gpus $NUM_GPUS \
+    --samp-rate $ASR \
+    --num-mels $NUM_MELS \
+    --hop-length $HOP_LEN \
+    --num-dft $DFT \
+    --freq-max $FMAX \
+    --learning-rate 0.00001 \
+    --random-state 20180216 \
+    --gsheet-id $GSHEET_ID \
+    --google-dev-app-name $GOOGLE_DEV_APP_NAME \
+    --verbose \
+    $TRAIN_DATA_DIR \
+    $VAL_DATA_DIR \
+    $OUTPUT_DIR
+else
+  python $SRCDIR/03_train_embedding.py \
     --num-epochs 300 \
     --train-epoch-size 4096 \
     --train-batch-size 64 \
@@ -61,3 +89,4 @@ python $SRCDIR/03_train_embedding.py \
     $TRAIN_DATA_DIR \
     $VAL_DATA_DIR \
     $OUTPUT_DIR
+fi
