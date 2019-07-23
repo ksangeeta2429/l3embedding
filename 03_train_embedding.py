@@ -119,6 +119,13 @@ def parse_arguments():
                         default=None,
                         help='DFT size')
 
+    parser.add_argument('-half',
+                        '--halved-filters',
+                        dest='halved_convs',
+                        action='store_true',
+                        default=False,
+                        help='Use half the number of conv. filters as in the original audio model?')
+
     parser.add_argument('-r',
                         '--random-state',
                         dest='random_state',

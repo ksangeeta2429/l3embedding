@@ -881,7 +881,8 @@ def load_student_audio_model_withFFT(include_layers, num_filters = [64, 64, 128,
     return m, x_a, y_a
 
 
-def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048, asr = 48000, fmax=None, audio_window_dur = 1):
+def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
+                                          asr = 48000, fmax=None, halved_convs=False, audio_window_dur = 1):
     """
     Constructs a model that replicates the audio subnetwork  used in Look,
     Listen and Learn
@@ -916,8 +917,14 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
                       return_decibel_melgram=True, padding='same')(x_a)
     y_a = BatchNormalization()(y_a)
 
+    print('fmax:', fmax)
+
     # CONV BLOCK 1
     n_filter_a_1 = 64
+
+    if halved_convs:
+        n_filter_a_1 //= 2
+
     filt_size_a_1 = (3, 3)
     pool_size_a_1 = (2, 2)
     y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
@@ -934,6 +941,10 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
 
     # CONV BLOCK 2
     n_filter_a_2 = 128
+
+    if halved_convs:
+        n_filter_a_2 //= 2
+
     filt_size_a_2 = (3, 3)
     pool_size_a_2 = (2, 2)
     y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
@@ -950,6 +961,10 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
 
     # CONV BLOCK 3
     n_filter_a_3 = 256
+
+    if halved_convs:
+        n_filter_a_3 //= 2
+
     filt_size_a_3 = (3, 3)
     pool_size_a_3 = (2, 2)
     y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
@@ -966,6 +981,10 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
 
     # CONV BLOCK 4
     n_filter_a_4 = 512
+
+    if halved_convs:
+        n_filter_a_4 //= 2
+
     filt_size_a_4 = (3, 3)
     #pool_size_a_4 = (32, 24)
     y_a = Conv2D(n_filter_a_4, filt_size_a_4, padding='same',
@@ -990,8 +1009,7 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
     m = Model(inputs=x_a, outputs=y_a)
     m.name = 'audio_model'
 
-    #print(m.summary())
-    #exit(0)
+    #m.summary()
 
     return m, x_a, y_a
 
