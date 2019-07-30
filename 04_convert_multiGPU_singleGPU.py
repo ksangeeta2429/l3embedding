@@ -53,7 +53,6 @@ def parse_arguments():
                         default=256,
                         help='Number of mel filters')
 
-
     parser.add_argument('-lhop',
                         '--hop-length',
                         dest='n_hop',
@@ -70,6 +69,13 @@ def parse_arguments():
                         default=2048,
                         help='DFT size')
 
+    parser.add_argument('-half',
+                        '--halved-filters',
+                        dest='halved_convs',
+                        action='store_true',
+                        default=False,
+                        help='Use half the number of conv. filters as in the original audio model?')
+
     parser.add_argument('output_dir',
                         action='store',
                         type=str,
@@ -78,7 +84,7 @@ def parse_arguments():
     return vars(parser.parse_args())
 
 
-def construct_cnn_L3_melspec2_spec_model(n_mels=256, n_hop = 242, n_dft = 2048, asr = 48000, audio_window_dur = 1):
+def construct_cnn_L3_melspec2_spec_model(n_mels=256, n_hop = 242, n_dft = 2048, asr = 48000, halved_convs=False, audio_window_dur = 1):
     """
     Constructs a model that replicates the audio subnetwork  used in Look,
     Listen and Learn
@@ -100,6 +106,9 @@ def construct_cnn_L3_melspec2_spec_model(n_mels=256, n_hop = 242, n_dft = 2048, 
 
     # CONV BLOCK 1
     n_filter_a_1 = 64
+    if halved_convs:
+        n_filter_a_1 //= 2
+
     filt_size_a_1 = (3, 3)
     pool_size_a_1 = (2, 2)
     y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
@@ -116,6 +125,9 @@ def construct_cnn_L3_melspec2_spec_model(n_mels=256, n_hop = 242, n_dft = 2048, 
 
     # CONV BLOCK 2
     n_filter_a_2 = 128
+    if halved_convs:
+        n_filter_a_2 //= 2
+
     filt_size_a_2 = (3, 3)
     pool_size_a_2 = (2, 2)
     y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
@@ -132,6 +144,9 @@ def construct_cnn_L3_melspec2_spec_model(n_mels=256, n_hop = 242, n_dft = 2048, 
 
     # CONV BLOCK 3
     n_filter_a_3 = 256
+    if halved_convs:
+        n_filter_a_3 //= 2
+
     filt_size_a_3 = (3, 3)
     pool_size_a_3 = (2, 2)
     y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
@@ -148,8 +163,10 @@ def construct_cnn_L3_melspec2_spec_model(n_mels=256, n_hop = 242, n_dft = 2048, 
 
     # CONV BLOCK 4
     n_filter_a_4 = 512
+    if halved_convs:
+        n_filter_a_4 //= 2
+
     filt_size_a_4 = (3, 3)
-    #pool_size_a_4 = (32, 24)
     y_a = Conv2D(n_filter_a_4, filt_size_a_4, padding='same',
                  kernel_initializer='he_normal',
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
@@ -176,6 +193,7 @@ if __name__ == '__main__':
     src_gpus = args['gpus']
     weight_dir = args['multiGPU_weight_dir']
     output_dir = args['output_dir']
+    halved_convs = args['half']
     
     model_id = weight_dir.split('/')[-1]
     mt = os.path.basename(os.path.dirname(weight_dir))
@@ -188,7 +206,8 @@ if __name__ == '__main__':
 
     # Load and convert model back to 1 gpu
     print("Loading model.......................")
-    m, inputs, outputs = load_model(weight_file, mt, src_num_gpus=src_gpus, tgt_num_gpus=1, return_io=True, n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)
+    m, inputs, outputs = load_model(weight_file, mt, src_num_gpus=src_gpus, tgt_num_gpus=1, return_io=True, \
+                                    n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, halved_convs=halved_convs, asr=samp_rate)
     _, x_a = inputs
 
     if args['only_audio']:
@@ -199,7 +218,8 @@ if __name__ == '__main__':
         weights = audio_embed_model.get_weights()[3:]
 
         # Save converted model back to disk
-        audio_spec_embed_model, _, _ = construct_cnn_L3_melspec2_spec_model(n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate)
+        audio_spec_embed_model, _, _ = construct_cnn_L3_melspec2_spec_model(n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, \
+                                                                            halved_convs=halved_convs, asr=samp_rate)
         audio_spec_embed_model.set_weights(weights)
         audio_spec_embed_model.save(model_output_path)
 

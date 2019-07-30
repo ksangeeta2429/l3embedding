@@ -303,26 +303,8 @@ if __name__ == '__main__':
         # Load L3 embedding model if using L3 features
         LOGGER.info('Loading embedding model...')        
         model = keras.models.load_model(model_path, custom_objects={'Melspectrogram': Melspectrogram})
-        
-        POOLINGS = {
-            'cnn_L3_melspec2': {
-                '48K_64_968_2048': (8, 6),
-                '48K_64_242_2048': (8, 24),
-                '48K_64_1936_2048': (8, 3),
-                '48K_128_968_2048': (16, 6),
-                '48K_128_1936_2048': (16, 3),
-                '48K_256_484_2048': (32, 12),
-                '48K_256_968_2048': (32, 6),
-                '48K_256_1936_2048': (32, 3),
-                '16K_64_968_1024': (8, 2),
-                '16K_64_484_1024': (8, 4),
-                '16K_32_484_1024': (4, 4), 
-                '16K_32_968_1024': (4, 2),
-
-            }
-        }        
-
-        pool_size = POOLINGS[model_type][pooling_type]
+        embed_layer = model.get_layer('audio_embedding_layer')
+        pool_size = tuple(embed_layer.get_output_shape_at(0)[1:3])
         y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(model.output)
         y_a = keras.layers.Flatten()(y_a)
         l3embedding_model = keras.models.Model(inputs=model.input, outputs=y_a)
