@@ -292,14 +292,16 @@ if __name__ == '__main__':
 
     elif is_l3_feature:
         # Get output dir
-        model_desc_start_idx = model_path.rindex('embedding')+10
-        model_desc_end_idx = os.path.dirname(model_path).rindex('/')
-        embedding_desc_str = model_path[model_desc_start_idx:model_desc_end_idx]
-        # If using an L3 model, make model arch. type and pooling type to path
-        dataset_output_dir = os.path.join(output_dir, 'features', dataset_name,
-                                          features, pooling_type, embedding_desc_str)
+        if 'reduced_input' in model_path:
+            model_type = 'reduced_input'
+        else:
+            model_type = ''
+            
+        model_desc = os.path.splitext(os.path.basename(model_path))[0]
+        model_desc_str = model_desc[model_desc.rindex('l3_audio_')+9:]
+        dataset_output_dir = os.path.join(output_dir, 'features', dataset_name, 'l3', model_type, model_desc_str)
         print('Output directory:',dataset_output_dir)
-
+        
         # Load L3 embedding model if using L3 features
         LOGGER.info('Loading embedding model...')        
         model = keras.models.load_model(model_path, custom_objects={'Melspectrogram': Melspectrogram})

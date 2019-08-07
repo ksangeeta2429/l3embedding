@@ -197,7 +197,11 @@ if __name__ == '__main__':
     
     model_id = weight_dir.split('/')[-1]
     mt = os.path.basename(os.path.dirname(weight_dir))
-    input_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)
+    
+    if halved_convs:
+        input_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_half'
+    else:
+        input_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)
 
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)

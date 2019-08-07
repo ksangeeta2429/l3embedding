@@ -36,8 +36,8 @@ echo "ASR=$ASR"
 
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
-L3_MODEL_PATH=$SCRATCH/l3pruning/embedding/fixed/reduced_input/${weight_file} 
-L3_MODEL_TYPE='cnn_L3_melspec2'
+L3_MODEL_PATH=$SCRATCH/l3pruning/embedding/fixed/reduced_input/${weight_file} #$SCRATCH/l3pruning/embedding/fixed/reduced_input/${weight_file} 
+#L3_MODEL_TYPE='cnn_L3_melspec2'
 #L3_POOLING_TYPE='original'
 US8K_PATH=/beegfs/jtc440/UrbanSound8K
 METADATA_PATH=$US8K_PATH/metadata/UrbanSound8K.csv
@@ -51,7 +51,6 @@ python $SRCDIR/05_generate_embedding_samples.py \
     --random-state 20180302 \
     --verbose \
     --features 'l3' \
-    --l3embedding-model-type $L3_MODEL_TYPE \
     --l3embedding-model-path $L3_MODEL_PATH \
     --hop-size 0.1 \
     --gpus 0 \
