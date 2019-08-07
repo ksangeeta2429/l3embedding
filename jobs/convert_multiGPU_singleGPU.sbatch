@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64GB
-#SBATCH --time=7:00:00
+#SBATCH --time=1:00:00
 #SBATCH --mail-type=ALL
 #SBATCH --output="l3embedding-convert-multiGPU-singleGPU-%j.out"
 #SBATCH --err="l3embedding-convert-multiGPU-singleGPU-%j.err"
@@ -34,7 +34,7 @@ NUM_GPUS=4
 OUTPUT_DIR=$SCRATCH/l3pruning/embedding/fixed/reduced_input 
 
 #Pass 6th parameter as 'half'
-if ([ $# -gt 5 ] && [ "$5" = "half" ]); then
+if ([ $# -gt 5 ] && [ "$6" = "half" ]); then
     python $SRCDIR/04_convert_multiGPU_singleGPU.py \
         --multiGPU-weight-dir $MODEL_PATH \
         --gpus $NUM_GPUS \

@@ -185,7 +185,7 @@ def parse_arguments():
                         help='Path to UrbanSound8K metadata file')
 
     parser.add_argument("--hop-duration", 
-                        dest='hop_duration')
+                        dest='hop_duration',
                         type=float,
                         help='Hop size in seconds')
 

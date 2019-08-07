@@ -114,7 +114,7 @@ def extract_embeddings_l3(annotation_path, dataset_dir, output_dir, l3embedding_
 
     # Load model
     #model = get_l3_embedding_model(input_repr, content_type, embedding_size,
-                                   load_weights=load_l3_weights)
+                                   #load_weights=load_l3_weights)
 
     print("* Extracting embeddings.")
     for _, row in row_iter:

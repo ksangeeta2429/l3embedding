@@ -193,7 +193,7 @@ if __name__ == '__main__':
     src_gpus = args['gpus']
     weight_dir = args['multiGPU_weight_dir']
     output_dir = args['output_dir']
-    halved_convs = args['half']
+    halved_convs = args['halved_convs']
     
     model_id = weight_dir.split('/')[-1]
     mt = os.path.basename(os.path.dirname(weight_dir))

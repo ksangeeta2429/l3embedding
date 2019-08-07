@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:4
 #SBATCH --job-name=l3embedding-train-melspec2-reduced-input-Sangeeta
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64GB
-#SBATCH --time=7-0
+#SBATCH --time=5-0
 #SBATCH --mail-type=ALL
 #SBATCH --output="l3embedding-train-melspec2-reduced-input-%j.out"
 #SBATCH --err="l3embedding-train-melspec2-reduced-input-%j.err"
@@ -57,7 +57,7 @@ python $SRCDIR/03_train_embedding.py \
     --random-state 20180216 \
     --gsheet-id $GSHEET_ID \
     --google-dev-app-name $GOOGLE_DEV_APP_NAME \
-    --continue-model-dir /scratch/sk7898/l3pruning/reduced_input/embedding/music/cnn_L3_melspec2/20190511023137 \
+    --continue-model-dir  /scratch/sk7898/l3pruning/reduced_input/embedding/music/cnn_L3_melspec2/20190604134053 \
     --verbose \
     $TRAIN_DATA_DIR \
     $VAL_DATA_DIR \

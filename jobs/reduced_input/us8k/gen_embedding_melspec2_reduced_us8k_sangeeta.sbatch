@@ -29,10 +29,10 @@ NUM_MELS=$3
 HOP_LEN=$4
 NUM_DFT=$5
 
-L3_POOLING_TYPE=$(echo $ASR | sed 's/0*$//')'K_'${NUM_MELS}'_'${HOP_LEN}'_'${NUM_DFT}
+#L3_POOLING_TYPE=$(echo $ASR | sed 's/0*$//')'K_'${NUM_MELS}'_'${HOP_LEN}'_'${NUM_DFT}
 
 echo "ASR=$ASR"
-echo "POOL SIZE=$L3_POOLING_TYPE"
+#echo "POOL SIZE=$L3_POOLING_TYPE"
 
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
@@ -53,7 +53,6 @@ python $SRCDIR/05_generate_embedding_samples.py \
     --features 'l3' \
     --l3embedding-model-type $L3_MODEL_TYPE \
     --l3embedding-model-path $L3_MODEL_PATH \
-    --l3embedding-pooling-type $L3_POOLING_TYPE \
     --hop-size 0.1 \
     --gpus 0 \
     --samp-rate $ASR \
