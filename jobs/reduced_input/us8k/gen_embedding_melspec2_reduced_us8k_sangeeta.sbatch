@@ -33,6 +33,9 @@ NUM_DFT=$5
 
 echo "ASR=$ASR"
 #echo "POOL SIZE=$L3_POOLING_TYPE"
+echo "NUM MELS=$NUM_MELS"
+echo "HOP LENGTH=$HOP_LEN"
+echo "DFT=NUM_DFT"
 
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
@@ -47,20 +50,42 @@ DATASET='us8k'
 
 echo "WEIGHT FILE=$L3_MODEL_PATH"
 
-python $SRCDIR/05_generate_embedding_samples.py \
-    --random-state 20180302 \
-    --verbose \
-    --features 'l3' \
-    --l3embedding-model-path $L3_MODEL_PATH \
-    --hop-size 0.1 \
-    --gpus 0 \
-    --samp-rate $ASR \
-    --num-mels $NUM_MELS \
-    --hop-length $HOP_LEN \
-    --num-dft $NUM_DFT \
-    --us8k-metadata-path $METADATA_PATH \
-    $DATASET \
-    $DATA_DIR \
-    $OUTPUT_DIR
+if [ $# -gt 5 ]
+then
+    FMAX=$6
+    echo "FMAX=$FMAX"
 
+    python $SRCDIR/05_generate_embedding_samples.py \
+        --random-state 20180302 \
+        --verbose \
+        --features 'l3' \
+        --l3embedding-model-path $L3_MODEL_PATH \
+        --hop-size 0.1 \
+        --gpus 0 \
+        --samp-rate $ASR \
+        --num-mels $NUM_MELS \
+        --hop-length $HOP_LEN \
+        --num-dft $NUM_DFT \
+        --freq-max $FMAX \
+        --us8k-metadata-path $METADATA_PATH \
+        $DATASET \
+        $DATA_DIR \
+        $OUTPUT_DIR
+else
+    python $SRCDIR/05_generate_embedding_samples.py \
+        --random-state 20180302 \
+        --verbose \
+        --features 'l3' \
+        --l3embedding-model-path $L3_MODEL_PATH \
+        --hop-size 0.1 \
+        --gpus 0 \
+        --samp-rate $ASR \
+        --num-mels $NUM_MELS \
+        --hop-length $HOP_LEN \
+        --num-dft $NUM_DFT \
+        --us8k-metadata-path $METADATA_PATH \
+        $DATASET \
+        $DATA_DIR \
+        $OUTPUT_DIR
+fi
 

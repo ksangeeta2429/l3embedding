@@ -130,6 +130,14 @@ def parse_arguments():
                         default=2048,
                         help='DFT size')
 
+    parser.add_argument('-fmax',
+                        '--freq-max',
+                        dest='fmax',
+                        action='store',
+                        type=int,
+                        default=None,
+                        help='Max. freq in DFT')
+
     parser.add_argument('-nrs',
                         '--num-random-samples',
                         dest='num_random_samples',
@@ -242,6 +250,7 @@ if __name__ == '__main__':
     n_mels = args['n_mels']
     n_hop = args['n_hop']
     n_dft = args['n_dft']
+    fmax = args['fmax']
     annotation_path = args['annotation_path']
     hop_duration =args['hop_duration']
 
@@ -288,7 +297,7 @@ if __name__ == '__main__':
         l3embedding_model = load_embedding(model_path, model_type, 'audio', pooling_type,
                                            tgt_num_gpus=num_gpus, thresholds=thresholds, \
                                            include_layers=layers, num_filters=filters, from_convlayer=from_conv_layer,
-                                           n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=samp_rate, with_melSpec=with_melSpec)
+                                           n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, fmax=fmax, asr=samp_rate, with_melSpec=with_melSpec)
 
     elif is_l3_feature:
         # Get output dir
@@ -341,7 +350,7 @@ if __name__ == '__main__':
                                     l3embedding_model=l3embedding_model,
                                     features=features, random_state=random_state,
                                     hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels,\
-                                    n_fft=n_dft, sr=samp_rate, with_melSpec=with_melSpec)
+                                    n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
 
         else:
             # Otherwise, generate all the folds
@@ -349,19 +358,19 @@ if __name__ == '__main__':
                                 l3embedding_model=l3embedding_model,
                                 features=features, random_state=random_state,
                                 hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels,\
-                                n_fft=n_dft, sr=samp_rate, with_melSpec=with_melSpec)
+                                n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
 
     elif dataset_name == 'esc50':
         if fold_num is not None:
             generate_esc50_fold_data(data_dir, fold_num-1, dataset_output_dir,
                                      l3embedding_model=l3embedding_model, features=features, 
 				     random_state=random_state, hop_size=hop_size, num_random_samples=num_random_samples, 
-				     mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, sr=samp_rate, with_melSpec=with_melSpec)
+				     mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
         else:
             generate_esc50_folds(data_dir, dataset_output_dir,
                                  l3embedding_model=l3embedding_model, features=features, random_state=random_state, 
                                  num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, \
-                                 n_fft=n_dft, sr=samp_rate, with_melSpec=with_melSpec)
+                                 n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
 
     elif dataset_name == 'sonyc_ust':
         if annotation_path is None:
