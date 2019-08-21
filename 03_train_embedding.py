@@ -117,7 +117,7 @@ def parse_arguments():
                         action='store',
                         type=int,
                         default=None,
-                        help='DFT size')
+                        help='Max. freq in DFT')
 
     parser.add_argument('-half',
                         '--halved-filters',
