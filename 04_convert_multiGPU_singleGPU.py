@@ -69,6 +69,14 @@ def parse_arguments():
                         default=2048,
                         help='DFT size')
 
+    parser.add_argument('-fmax',
+                        '--freq-max',
+                        dest='fmax',
+                        action='store',
+                        type=int,
+                        default=None,
+                        help='Max. freq in DFT')
+
     parser.add_argument('-half',
                         '--halved-filters',
                         dest='halved_convs',
@@ -84,7 +92,8 @@ def parse_arguments():
     return vars(parser.parse_args())
 
 
-def construct_cnn_L3_melspec2_spec_model(n_mels=256, n_hop = 242, n_dft = 2048, asr = 48000, halved_convs=False, audio_window_dur = 1):
+def construct_cnn_L3_melspec2_spec_model(n_mels=256, n_hop = 242, n_dft = 2048,
+                                         fmax=None, asr = 48000, halved_convs=False, audio_window_dur = 1):
     """
     Constructs a model that replicates the audio subnetwork  used in Look,
     Listen and Learn
@@ -190,6 +199,7 @@ if __name__ == '__main__':
     n_mels = args['n_mels']
     n_hop = args['n_hop']
     n_dft = args['n_dft']
+    fmax = args['fmax']
     src_gpus = args['gpus']
     weight_dir = args['multiGPU_weight_dir']
     output_dir = args['output_dir']
@@ -203,6 +213,10 @@ if __name__ == '__main__':
     else:
         input_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)
 
+    # Add suffix for fmax
+    if fmax:
+        input_repr = input_repr + '_fmax_' + str(fmax)
+
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
         
@@ -211,7 +225,7 @@ if __name__ == '__main__':
     # Load and convert model back to 1 gpu
     print("Loading model.......................")
     m, inputs, outputs = load_model(weight_file, mt, src_num_gpus=src_gpus, tgt_num_gpus=1, return_io=True, \
-                                    n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, halved_convs=halved_convs, asr=samp_rate)
+                                    n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, halved_convs=halved_convs, fmax=fmax, asr=samp_rate)
     _, x_a = inputs
 
     if args['only_audio']:
