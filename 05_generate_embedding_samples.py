@@ -9,7 +9,7 @@ from l3embedding.model import load_embedding
 from data.usc.dcase2013 import generate_dcase2013_folds, generate_dcase2013_fold_data
 from data.usc.esc50 import generate_esc50_folds, generate_esc50_fold_data
 from data.usc.us8k import generate_us8k_folds, generate_us8k_fold_data
-from data.usc.sonyc_ust import extract_embeddings_l3
+#from data.usc.sonyc_ust import extract_embeddings_l3
 from log import init_console_logger
 
 LOGGER = logging.getLogger('cls-data-generation')
@@ -376,11 +376,11 @@ if __name__ == '__main__':
         if annotation_path is None:
             raise ValueError('Must provide path to annotation file for SONYC_UST')
 
-        extract_embeddings_l3(annotation_path=annotation_path,
+        '''extract_embeddings_l3(annotation_path=annotation_path,
                               dataset_dir=data_dir,
                               output_dir=dataset_output_dir,
                               l3embedding_model=l3embedding_model,
-                              hop_duration=hop_duration)
+                              hop_duration=hop_duration)'''
 
     elif dataset_name == 'dcase2013':
         if fold_num is not None:
