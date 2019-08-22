@@ -113,8 +113,7 @@ def extract_embeddings_l3(annotation_path, dataset_dir, output_dir, l3embedding_
         row_iter = tqdm(row_iter, total=len(df))
 
     # Load model
-    #model = get_l3_embedding_model(input_repr, content_type, embedding_size,
-                                   #load_weights=load_l3_weights)
+    #model = get_l3_embedding_model(input_repr, content_type, embedding_size, load_weights=load_l3_weights)
 
     print("* Extracting embeddings.")
     for _, row in row_iter:
