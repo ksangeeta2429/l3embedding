@@ -35,7 +35,7 @@ echo "ASR=$ASR"
 #echo "POOL SIZE=$L3_POOLING_TYPE"
 echo "NUM MELS=$NUM_MELS"
 echo "HOP LENGTH=$HOP_LEN"
-echo "DFT=NUM_DFT"
+echo "DFT=$NUM_DFT"
 
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
