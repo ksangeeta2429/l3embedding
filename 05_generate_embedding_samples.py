@@ -9,7 +9,7 @@ from l3embedding.model import load_embedding
 from data.usc.dcase2013 import generate_dcase2013_folds, generate_dcase2013_fold_data
 from data.usc.esc50 import generate_esc50_folds, generate_esc50_fold_data
 from data.usc.us8k import generate_us8k_folds, generate_us8k_fold_data
-#from data.usc.sonyc_ust import extract_embeddings_l3
+from data.usc.sonyc_ust import generate_sonyc_ust_data
 from log import init_console_logger
 
 LOGGER = logging.getLogger('cls-data-generation')
@@ -114,8 +114,8 @@ def parse_arguments():
                         default=256,
                         help='Number of mel filters')
 
-    parser.add_argument('-lhop',
-                        '--hop-length',
+    parser.add_argument('-melhop',
+                        '--mel-hop-length',
                         dest='n_hop',
                         action='store',
                         type=int,
@@ -192,11 +192,6 @@ def parse_arguments():
                         action='store',
                         help='Path to UrbanSound8K metadata file')
 
-    parser.add_argument("--hop-duration", 
-                        dest='hop_duration',
-                        type=float,
-                        help='Hop size in seconds')
-
     parser.add_argument('--annotation-path',
                         dest='annotation_path',
                         type=str,
@@ -252,7 +247,6 @@ if __name__ == '__main__':
     n_dft = args['n_dft']
     fmax = args['fmax']
     annotation_path = args['annotation_path']
-    hop_duration =args['hop_duration']
 
 
     LOGGER.info('Configuration: {}'.format(str(args)))
@@ -295,7 +289,7 @@ if __name__ == '__main__':
         # Load L3 embedding model if using L3 features
         LOGGER.info('Loading embedding model...')
         l3embedding_model = load_embedding(model_path, model_type, 'audio', pooling_type,
-                                           tgt_num_gpus=num_gpus, thresholds=thresholds, \
+                                           tgt_num_gpus=num_gpus, thresholds=thresholds,
                                            include_layers=layers, num_filters=filters, from_convlayer=from_conv_layer,
                                            n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, fmax=fmax, asr=samp_rate, with_melSpec=with_melSpec)
 
@@ -357,7 +351,7 @@ if __name__ == '__main__':
             generate_us8k_folds(metadata_path, data_dir, dataset_output_dir,
                                 l3embedding_model=l3embedding_model,
                                 features=features, random_state=random_state,
-                                hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels,\
+                                hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels,
                                 n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
 
     elif dataset_name == 'esc50':
@@ -369,18 +363,17 @@ if __name__ == '__main__':
         else:
             generate_esc50_folds(data_dir, dataset_output_dir,
                                  l3embedding_model=l3embedding_model, features=features, random_state=random_state, 
-                                 num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels, \
+                                 num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels,
                                  n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
 
     elif dataset_name == 'sonyc_ust':
         if annotation_path is None:
             raise ValueError('Must provide path to annotation file for SONYC_UST')
 
-        '''extract_embeddings_l3(annotation_path=annotation_path,
-                              dataset_dir=data_dir,
-                              output_dir=dataset_output_dir,
-                              l3embedding_model=l3embedding_model,
-                              hop_duration=hop_duration)'''
+        generate_sonyc_ust_data(annotation_path=annotation_path, dataset_dir=data_dir,
+                                output_dir=dataset_output_dir, l3embedding_model=l3embedding_model, features=features,
+                                hop_size=hop_size, mel_hop_length=n_hop, n_mels=n_mels,
+                                n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
 
     elif dataset_name == 'dcase2013':
         if fold_num is not None:
