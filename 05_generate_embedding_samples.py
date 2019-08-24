@@ -192,7 +192,7 @@ def parse_arguments():
                         action='store',
                         help='Path to UrbanSound8K metadata file')
 
-    parser.add_argument('--annotation-path',
+    parser.add_argument('--sonyc-ust-annotation-path',
                         dest='annotation_path',
                         type=str,
                         action='store',
