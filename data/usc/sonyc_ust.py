@@ -51,8 +51,12 @@ def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embeddin
         audio_path = os.path.join(dataset_dir, split_str, filename)
         output_path = os.path.join(output_dir, os.path.splitext(filename)[0] + '.npz')
 
+        if not os.path.exists(audio_path):
+            LOGGER.info('Audio file {} doesn''t exist'.format(audio_path))
+            continue
+
         if os.path.exists(output_path):
-            LOGGER.info('File {} already exists'.format(output_path))
+            LOGGER.info('Output file {} already exists'.format(output_path))
             return
 
         X = cls_features.compute_file_features(audio_path, features, l3embedding_model=l3embedding_model,
