@@ -7,8 +7,8 @@
 #SBATCH --mem=32GB
 #SBATCH --time=2-0
 #SBATCH --mail-type=ALL
-#SBATCH --output="gen-embedding-reduced-melspec2-us8k-%A-%a.out"
-#SBATCH --err="gen-embedding-reduced-melspec2-us8k-%A-%a.err"
+#SBATCH --output="gen-embedding-reduced-melspec2-sonyc-%A-%a.out"
+#SBATCH --err="gen-embedding-reduced-melspec2-sonyc-%A-%a.err"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
