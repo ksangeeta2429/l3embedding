@@ -266,7 +266,7 @@ def amplitude_to_db(S, amin=1e-10, dynamic_range=80.0):
     return log_spec
 
 
-def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256, \
+def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256,
                           mel_hop_length=242, hop_size=0.1, sr=48000, with_melSpec=None, fmax=None, **kwargs):
     """
     Get L3 embedding for each frame in the given audio file
