@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=gen-embedding-reduced-melspec2-us8k
+#SBATCH --job-name=gen-embedding-reduced-melspec2-sonyc
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32GB
