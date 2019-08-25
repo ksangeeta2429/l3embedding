@@ -8,6 +8,190 @@ from keras.layers.core import Lambda
 from keras.layers.merge import concatenate
 import tensorflow as tf
 
+class MultiGPUCheckpointCallback(keras.callbacks.Callback):
+
+    def __init__(self, filepath, base_model, monitor='val_loss', verbose=0,
+                 save_best_only=False, save_weights_only=False,
+                 mode='auto', period=1):
+
+        super(MultiGPUCheckpointCallback, self).__init__()
+        self.base_model = base_model
+        self.monitor = monitor
+        self.verbose = verbose
+        self.filepath = filepath
+        self.save_best_only = save_best_only
+        self.save_weights_only = save_weights_only
+        self.period = period
+        self.epochs_since_last_save = 0
+
+        if mode not in ['auto', 'min', 'max']:
+            warnings.warn('ModelCheckpoint mode %s is unknown, '
+                          'fallback to auto mode.' % (mode),
+                          RuntimeWarning)
+            mode = 'auto'
+
+        if mode == 'min':
+            self.monitor_op = np.less
+            self.best = np.Inf
+        elif mode == 'max':
+            self.monitor_op = np.greater
+            self.best = -np.Inf
+        else:
+            if 'acc' in self.monitor or self.monitor.startswith('fmeasure'):
+                self.monitor_op = np.greater
+                self.best = -np.Inf
+            else:
+                self.monitor_op = np.less
+                self.best = np.Inf
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        self.epochs_since_last_save += 1
+        if self.epochs_since_last_save >= self.period:
+            self.epochs_since_last_save = 0
+            filepath = self.filepath.format(epoch=epoch + 1, **logs)
+            if self.save_best_only:
+                current = logs.get(self.monitor)
+                if current is None:
+                    warnings.warn('Can save best model only with %s available, '
+                                  'skipping.' % (self.monitor), RuntimeWarning)
+                else:
+                    if self.monitor_op(current, self.best):
+                        if self.verbose > 0:
+                            print('Epoch %05d: %s improved from %0.5f to %0.5f,'
+                                  ' saving model to %s'
+                                  % (epoch + 1, self.monitor, self.best,
+                                     current, filepath))
+                        self.best = current
+                        if self.save_weights_only:
+                            self.base_model.save_weights(filepath, overwrite=True)
+                        else:
+                            self.base_model.save(filepath, overwrite=True)
+                    else:
+                        if self.verbose > 0:
+                            print('Epoch %05d: %s did not improve' %
+                                  (epoch + 1, self.monitor))
+            else:
+                if self.verbose > 0:
+                    print('Epoch %05d: saving model to %s' % (epoch + 1, filepath))
+                if self.save_weights_only:
+                    self.base_model.save_weights(filepath, overwrite=True)
+                else:
+                    self.base_model.save(filepath, overwrite=True)
+
+
+class LossHistory(keras.callbacks.Callback):
+    """
+    Keras callback to record loss history
+    """
+
+    def __init__(self, outfile):
+        super().__init__()
+        self.outfile = outfile
+
+    def on_train_begin(self, logs=None):
+        if logs is None:
+            logs = {}
+        self.loss = []
+        self.val_loss = []
+
+    # def on_batch_end(self, batch, logs={}):
+    def on_epoch_end(self, epoch, logs=None):
+        if logs is None:
+            logs = {}
+        self.loss.append(logs.get('loss'))
+        self.val_loss.append(logs.get('val_loss'))
+
+        loss_dict = {'loss': self.loss, 'val_loss': self.val_loss}
+        with open(self.outfile, 'wb') as fp:
+            pickle.dump(loss_dict, fp)
+
+
+def cycle_shuffle(iterable, shuffle=True):
+    lst = list(iterable)
+    while True:
+        yield from lst
+        if shuffle:
+            random.shuffle(lst)
+
+class GSheetLogger(keras.callbacks.Callback):
+    """
+    Keras callback to update Google Sheets Spreadsheet
+    """
+
+    def __init__(self, google_dev_app_name, spreadsheet_id, param_dict, loss_type):
+        super(GSheetLogger).__init__()
+        self.loss_type = loss_type
+        self.google_dev_app_name = google_dev_app_name
+        self.spreadsheet_id = spreadsheet_id
+        self.credentials = get_credentials(google_dev_app_name)
+        self.service = discovery.build('sheets', 'v4', credentials=self.credentials)
+        self.param_dict = copy.deepcopy(param_dict)
+
+        row_num = get_row(self.service, self.spreadsheet_id, self.param_dict, 'embedding_approx_mse')
+        if row_num is None:
+            append_row(self.service, self.spreadsheet_id, self.param_dict, 'embedding_approx_mse')
+
+    def on_train_begin(self, logs=None):
+        if logs is None:
+            logs = {}
+        self.best_train_loss = float('inf')
+        self.best_valid_loss = float('inf')
+        self.best_train_mae = float('-inf')
+        self.best_valid_mae = float('-inf')
+
+    # def on_batch_end(self, batch, logs={}):
+    def on_epoch_end(self, epoch, logs=None):
+        if logs is None:
+            logs = {}
+        latest_epoch = epoch
+        latest_train_loss = logs.get('loss')
+        latest_valid_loss = logs.get('val_loss')
+        latest_train_mae = logs.get('mean_absolute_error')
+        latest_valid_mae = logs.get('val_mean_absolute_error')
+
+        if latest_train_loss < self.best_train_loss:
+            self.best_train_loss = latest_train_loss
+        if latest_valid_loss < self.best_valid_loss:
+            self.best_valid_loss = latest_valid_loss
+        if latest_train_acc > self.best_train_acc:
+            self.best_train_mae = latest_train_mae
+        if latest_valid_mae > self.best_valid_mae:
+            self.best_valid_mae = latest_valid_mae
+
+        values = [latest_epoch, latest_train_loss, latest_valid_loss,
+                  latest_train_mae, latest_valid_mae, self.best_train_loss,
+                  self.best_valid_loss, self.best_train_mae, self.best_valid_mae]
+
+        update_experiment(self.service, self.spreadsheet_id, self.param_dict,
+                          'X', 'AF', values, 'embedding_approx_mse')
+
+
+class TimeHistory(keras.callbacks.Callback):
+    """
+    Keras callback to log epoch and batch running time
+    """
+    # Copied from https://stackoverflow.com/a/43186440/1260544
+    def on_train_begin(self, logs=None):
+        self.epoch_times = []
+        self.batch_times = []
+
+    def on_epoch_begin(self, batch, logs=None):
+        self.epoch_time_start = time.time()
+
+    def on_epoch_end(self, batch, logs=None):
+        t = time.time() - self.epoch_time_start
+        LOGGER.info('Epoch took {} seconds'.format(t))
+        self.epoch_times.append(t)
+
+    def on_batch_begin(self, batch, logs=None):
+        self.batch_time_start = time.time()
+
+    def on_batch_end(self, batch, logs=None):
+        t = time.time() - self.batch_time_start
+        LOGGER.info('Batch took {} seconds'.format(t))
+        self.batch_times.append(t)
+
 
 def conv_keyval_lists_to_dict(keys, values):
     return dict(zip(keys, values))
