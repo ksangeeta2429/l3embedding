@@ -51,7 +51,7 @@ python $SRCDIR/05_generate_embedding_samples.py \
     --gpus 0 \
     --samp-rate 16000 \
     --num-mels $NUM_MELS \
-    --hop-length $HOP_LEN \
+    --mel-hop-length $HOP_LEN \
     --num-dft 1024 \
     --us8k-metadata-path $METADATA_PATH \
     $DATASET \

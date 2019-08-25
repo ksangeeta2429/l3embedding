@@ -266,8 +266,8 @@ def amplitude_to_db(S, amin=1e-10, dynamic_range=80.0):
     return log_spec
 
 
-def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256, \
-                          mel_hop_length=242, hop_size=0.1, sr=48000, with_melSpec=None, **kwargs):
+def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256,
+                          mel_hop_length=242, hop_size=0.1, sr=48000, with_melSpec=None, fmax=None, **kwargs):
     """
     Get L3 embedding for each frame in the given audio file
 
@@ -326,7 +326,7 @@ def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256, \
             S = np.abs(librosa.core.stft(frame, n_fft=n_fft, hop_length=mel_hop_length,
                                          window='hann', center=True,
                                          pad_mode='constant'))
-            S = librosa.feature.melspectrogram(sr=sr, S=S, n_mels=n_mels,
+            S = librosa.feature.melspectrogram(sr=sr, S=S, n_mels=n_mels, fmax=fmax,
                                            power=1.0, htk=True)
             S = amplitude_to_db(np.array(S))
             X.append(S)

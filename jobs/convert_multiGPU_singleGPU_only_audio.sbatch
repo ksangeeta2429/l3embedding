@@ -30,10 +30,11 @@ NUM_MELS=$3
 HOP_LEN=$4
 DFT=$5
 NUM_GPUS=4
-OUTPUT_DIR=$SCRATCH/l3pruning/embedding/fixed/reduced_input 
+OUTPUT_DIR=$SCRATCH/l3pruning/embedding/fixed/reduced_input
 
-#Pass 6th parameter as 'half'
-if ([ $# -gt 5 ] && [ "$6" = "half" ]); then
+# For halved filters, pass additional parameter "half. Optionally, pass last parameter as desired fmax value"
+if ([ $# -gt 6 ] && [ "$6" = "half" ]); then
+    # $7 must be fmax
     python $SRCDIR/04_convert_multiGPU_singleGPU.py \
 	--multiGPU-weight-dir $MODEL_PATH \
 	--gpus $NUM_GPUS \
@@ -43,6 +44,30 @@ if ([ $# -gt 5 ] && [ "$6" = "half" ]); then
 	--num-dft $DFT \
 	--only-audio \
 	--halved-filters \
+	--freq-max $7 \
+	$OUTPUT_DIR
+elif ([ $# -gt 5 ] && [ "$6" = "half" ]); then
+    python $SRCDIR/04_convert_multiGPU_singleGPU.py \
+	--multiGPU-weight-dir $MODEL_PATH \
+	--gpus $NUM_GPUS \
+	--samp-rate $SAMPLING_RATE \
+	--num-mels $NUM_MELS \
+	--hop-length $HOP_LEN \
+	--num-dft $DFT \
+	--only-audio \
+	--halved-filters \
+	$OUTPUT_DIR
+elif ([ $# -gt 5 ] && [ "$6" != "half" ]); then
+    # $6 must be fmax
+    python $SRCDIR/04_convert_multiGPU_singleGPU.py \
+	--multiGPU-weight-dir $MODEL_PATH \
+	--gpus $NUM_GPUS \
+	--samp-rate $SAMPLING_RATE \
+	--num-mels $NUM_MELS \
+	--hop-length $HOP_LEN \
+	--num-dft $DFT \
+	--only-audio \
+	--freq-max $6 \
 	$OUTPUT_DIR
 else
     python $SRCDIR/04_convert_multiGPU_singleGPU.py \
