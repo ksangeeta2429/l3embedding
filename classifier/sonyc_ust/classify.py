@@ -21,7 +21,7 @@ from sklearn.preprocessing import StandardScaler
 
 ## HELPERS
 
-def load_embeddings(file_list, emb_dir):
+def load_embeddings(file_list, emb_dir, features='l3'):
     """
     Load saved embeddings from an embedding directory
 
@@ -36,11 +36,19 @@ def load_embeddings(file_list, emb_dir):
     ignore_idxs
 
     """
+    print('Feature type:', features)
+
     embeddings = []
-    for idx, filename in enumerate(file_list):
-        emb_path = os.path.join(emb_dir, os.path.splitext(filename)[0] + '.npz')
-        cur_emb = np.load(emb_path)['embedding']
-        embeddings.append(cur_emb)
+    if features=='l3':
+        for idx, filename in enumerate(file_list):
+            emb_path = os.path.join(emb_dir, os.path.splitext(filename)[0] + '.npz')
+            cur_emb = np.load(emb_path)['embedding']
+            embeddings.append(cur_emb)
+    elif features=='vggish':
+        for idx, filename in enumerate(file_list):
+            emb_path = os.path.join(emb_dir, os.path.splitext(filename)[0] + '.npy.gz')
+            with gzip.open(emb_path, 'rb') as f:
+                embeddings.append(np.load(f))
 
     return embeddings
 
@@ -331,7 +339,7 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir, exp_id,
                     label_mode="fine", batch_size=64, num_epochs=100,
                     patience=20, learning_rate=1e-4, hidden_layer_size=128,
                     num_hidden_layers=0, l2_reg=1e-5, standardize=True,
-                    timestamp=None):
+                    timestamp=None, features='l3'):
     """
     Train and evaluate a framewise MLP model.
 
@@ -391,7 +399,7 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir, exp_id,
 
     num_classes = len(labels)
 
-    embeddings = load_embeddings(file_list, emb_dir)
+    embeddings = load_embeddings(file_list, emb_dir, features=features)
 
     X_train, y_train, X_valid, y_valid, scaler \
         = prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings,
@@ -628,6 +636,8 @@ if __name__ == '__main__':
     parser.add_argument("--no_standardize", action='store_true')
     parser.add_argument("--label_mode", type=str, choices=["fine", "coarse"],
                         default='fine')
+    parser.add_argument("--features", type=str, choices=["l3", "vggish"],
+                        default='l3')
 
     args = parser.parse_args()
 
@@ -653,4 +663,5 @@ if __name__ == '__main__':
                     num_hidden_layers=args.num_hidden_layers,
                     l2_reg=args.l2_reg,
                     standardize=(not args.no_standardize),
-                    timestamp=timestamp)
+                    timestamp=timestamp,
+                    features=args.features)
