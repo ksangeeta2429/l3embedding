@@ -12,7 +12,7 @@ import keras
 import pescador
 import tensorflow as tf
 import h5py
-import copy
+#import copy
 import tempfile
 import umap
 from keras import backend as K
@@ -27,11 +27,11 @@ from keras.metrics import categorical_accuracy
 from skimage import img_as_float
 from tensorflow.python.ops import math_ops
 from tensorflow.python.framework import dtypes
-from .training_utils import conv_dict_to_val_list, multi_gpu_model
+from .training_utils import conv_dict_to_val_list, multi_gpu_model, MultiGPUCheckpointCallback, LossHistory, GSheetLogger, TimeHistory
 from .model import *
 from .audio import pcm2float
-from gsheets import get_credentials, append_row, update_experiment, get_row
-from googleapiclient import discovery
+#from gsheets import get_credentials, append_row, update_experiment, get_row
+#from googleapiclient import discovery
 from log import *
 from kapre.time_frequency import Spectrogram, Melspectrogram
 from resampy import resample
@@ -41,23 +41,27 @@ from sklearn.manifold import TSNE
 LOGGER = logging.getLogger('embedding_approx_mse')
 LOGGER.setLevel(logging.DEBUG)
 
-
 graph = tf.get_default_graph()
 weight_path = 'models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
 audio_model = load_embedding(weight_path, model_type = 'cnn_L3_melspec2', embedding_type = 'audio', \
                              pooling_type = 'short', kd_model=False, tgt_num_gpus = 1)
 
+
+def cycle_shuffle(iterable, shuffle=True):
+    lst = list(iterable)
+    while True:
+        yield from lst
+        if shuffle:
+            random.shuffle(lst)
+
 def get_embedding_length(model):
     embed_layer = model.get_layer('audio_embedding_layer')
-    pool_size = tuple(embed_layer.get_output_shape_at(0)[1:3])
-    y_a = MaxPooling2D(pool_size=pool_size, padding='same')(embed_layer.output)
-    y_a = Flatten()(y_a)
-    emb_len = y_a.get_shape().as_list()[1]
-    return emb_len
+    emb_len = tuple(embed_layer.get_output_shape_at(0))
+    return emb_len[-1]
 
 
 def data_generator(data_dir, approx_mode='umap', neighbors=10, min_dist=0.5, student_emb_length=None, \
-                   batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
+                   student_asr=16000, batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
     
     if student_emb_length is None:
         raise ValueError('Student Embedding Length should be given for Embedding Approximation')
@@ -118,9 +122,12 @@ def data_generator(data_dir, approx_mode='umap', neighbors=10, min_dist=0.5, stu
                         if approx_mode == 'umap':
                             batch['label'] = umap.umap_.UMAP(n_neighbors=neighbors, min_dist=min_dist, \
                                                              n_components=student_emb_length).fit_transform(embeddings)
-                        else if approx_mode == 'tsne':
+                        if approx_mode == 'tsne':
                             batch['label'] = TSNE(perplexity=neighbors, n_components=student_emb_length, n_iter=300).fit_transform(embeddings)
-                                                
+                                      
+                    if student_asr!=48000:
+                        batch['audio'] = resample(batch['audio'], sr_orig=48000, sr_new=student_asr)
+
                     yield batch
 
                 batch_idx += 1
@@ -128,7 +135,7 @@ def data_generator(data_dir, approx_mode='umap', neighbors=10, min_dist=0.5, stu
                 batch = None
 
 
-def single_epoch_data_generator(data_dir, approx_mode='umap', neighbors=10, min_dist=0.5, student_emb_length,\
+def single_epoch_data_generator(data_dir, approx_mode='umap', neighbors=10, min_dist=0.5, student_emb_length=None,\
                                 batch_size=512, **kwargs):
     while True:
         data_gen = data_generator(data_dir, approx_mode=approx_mode, neighbors=neighbors, min_dist=min_dist, \
@@ -140,7 +147,7 @@ def single_epoch_data_generator(data_dir, approx_mode='umap', neighbors=10, min_
                 break
 
 
-def train(train_data_dir, validation_data_dir, output_dir, student_weight_path=None, approx_mode='umap', neighbors=10, min_dist=None,\
+def train(train_data_dir, validation_data_dir, output_dir, student_weight_path=None, approx_mode='umap', neighbors=10, min_dist=0.3,\
           num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
           model_type='cnn_L3_melspec2', n_mels=256, n_hop=242, n_dft=2048, samp_rate=48000, fmax=None, halved_convs=False,\
           log_path=None, disable_logging=False, random_state=20180216,learning_rate=0.00001, verbose=True, checkpoint_interval=10,\
@@ -160,9 +167,6 @@ def train(train_data_dir, validation_data_dir, output_dir, student_weight_path=N
         model_attribute = 'emb_approx_umap_k_' + str(neighbors) + '_dist_' + str(min_dist)
     if approx_mode == 'tsne':
         model_attribute = 'emb_approx_tsne_k_' + str(neighbors)
-    
-    
-    LOGGER.info('Student sampling rate: {}'.format(student_samp_rate))
 
     # Make sure the directories we need exist
     if continue_model_dir:
@@ -176,10 +180,12 @@ def train(train_data_dir, validation_data_dir, output_dir, student_weight_path=N
     if continue_model_dir:
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
         student_base_model = keras.models.load_model(latest_model_path, custom_objects={'Melspectrogram': Melspectrogram})
-    else if student_weight_path:
-        model_repr = weight_path
+    elif student_weight_path:
+        student_samp_rate = int(os.path.basename(student_weight_path).split('_')[3])
+        model_repr = os.path.basename(student_weight_path)
         student_base_model = keras.models.load_model(student_weight_path, custom_objects={'Melspectrogram': Melspectrogram})
     else:
+        student_samp_rate = samp_rate
         student_base_model, inputs, outputs = MODELS[model_type](n_mels=n_mels, n_hop=n_hop, n_dft=n_dft,
                                                                  asr=samp_rate, fmax=fmax, halved_convs=halved_convs, num_gpus=1)
         if halved_convs:
@@ -187,7 +193,12 @@ def train(train_data_dir, validation_data_dir, output_dir, student_weight_path=N
         else:
             model_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_fmax_'+str(fmax)
 
+    LOGGER.info('Student sampling rate: {}'.format(student_samp_rate))
     student_emb_len = get_embedding_length(student_base_model);
+
+    print('Model Attribute: ', model_attribute)
+    print(student_base_model.summary())
+    print('Student Embedding Length: ', student_emb_len)
 
     param_dict = {
         'username': getpass.getuser(),
@@ -294,8 +305,8 @@ def train(train_data_dir, validation_data_dir, output_dir, student_weight_path=N
     cb.append(earlyStopping)
     cb.append(reduceLR)
 
-    if gsheet_id:
-        cb.append(GSheetLogger(google_dev_app_name, gsheet_id, param_dict, loss_type))
+    #if gsheet_id:
+    #    cb.append(GSheetLogger(google_dev_app_name, gsheet_id, param_dict))
 
     LOGGER.info('Setting up train data generator...')
     if continue_model_dir is not None:
@@ -309,6 +320,7 @@ def train(train_data_dir, validation_data_dir, output_dir, student_weight_path=N
                                neighbors=neighbors,
                                min_dist=min_dist,
                                student_emb_length=student_emb_len,
+                               student_asr=student_samp_rate,
                                batch_size=train_batch_size,
                                random_state=random_state,
                                start_batch_idx=train_start_batch_idx)
@@ -318,6 +330,7 @@ def train(train_data_dir, validation_data_dir, output_dir, student_weight_path=N
                                           neighbors=neighbors,
                                           min_dist=min_dist,
                                           student_emb_length=student_emb_len,
+                                          student_asr=student_samp_rate,
                                           batch_size=validation_batch_size,
                                           random_state=random_state)
 

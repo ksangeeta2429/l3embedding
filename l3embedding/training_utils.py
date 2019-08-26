@@ -2,6 +2,11 @@
 # Move import tensorflow as tf to the top to address the pickle issue
 # https://github.com/fchollet/keras/issues/8123
 
+import keras
+import copy
+import numpy as np
+from gsheets import get_credentials, append_row, update_experiment, get_row
+from googleapiclient import discovery
 from keras import backend as K
 from keras.engine.training import Model
 from keras.layers.core import Lambda
@@ -107,21 +112,13 @@ class LossHistory(keras.callbacks.Callback):
             pickle.dump(loss_dict, fp)
 
 
-def cycle_shuffle(iterable, shuffle=True):
-    lst = list(iterable)
-    while True:
-        yield from lst
-        if shuffle:
-            random.shuffle(lst)
-
 class GSheetLogger(keras.callbacks.Callback):
     """
     Keras callback to update Google Sheets Spreadsheet
     """
 
-    def __init__(self, google_dev_app_name, spreadsheet_id, param_dict, loss_type):
+    def __init__(self, google_dev_app_name, spreadsheet_id, param_dict):
         super(GSheetLogger).__init__()
-        self.loss_type = loss_type
         self.google_dev_app_name = google_dev_app_name
         self.spreadsheet_id = spreadsheet_id
         self.credentials = get_credentials(google_dev_app_name)
