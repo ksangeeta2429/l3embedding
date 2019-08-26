@@ -56,7 +56,10 @@ def data_generator(data_dir, reduced_emb_len, output_dir, reduction_method='umap
 
         blob = h5py.File(batch_path, 'r')
         blob_size = len(blob['label'])
+
+        old_embeddings = np.zeros((blob_size, 512), dtype=np.float32)
         embeddings = np.zeros((blob_size, reduced_emb_len), dtype=np.float32)
+
         if data_dir == output_dir:
             raise ValueError('Output path should not be same as Data path to avoid overwriting data files!')
         embedding_out_path = os.path.join(output_dir, fname)
@@ -96,6 +99,7 @@ def data_generator(data_dir, reduced_emb_len, output_dir, reduction_method='umap
                     with graph.as_default():
                         teacher_embedding = audio_model.predict(batch['audio'])
 
+                    old_embeddings[blob_start_idx:blob_end_idx, :] = teacher_embedding
                     embeddings[blob_start_idx:blob_end_idx,:] = get_embedding(teacher_embedding, reduction_method, neighbors=neighbors, \
                                                                               min_dist=min_dist, iterations=tsne_iter)
 
@@ -105,6 +109,7 @@ def data_generator(data_dir, reduced_emb_len, output_dir, reduction_method='umap
 
         with h5py.File(embedding_out_path, 'a') as f:
             f.create_dataset(embedding_key, data=embeddings)
+            f.create_dataset('embedding', data=old_embeddings)
             f.close()
 
 
