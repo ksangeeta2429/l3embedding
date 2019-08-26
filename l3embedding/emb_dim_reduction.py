@@ -31,16 +31,13 @@ def get_embedding(data, method, emb_length=None, neighbors=10, min_dist=0.3, ite
     
     return embedding
 
-def cycle_shuffle(iterable, shuffle=True):
-    lst = list(iterable)
-    while True:
-        yield from lst
-        if shuffle:
-            random.shuffle(lst)
 
 def data_generator(data_dir, reduced_emb_len, output_dir, reduction_method='umap', neighbors=10, min_dist=0.3, tsne_iter=300, \
                    batch_size=1024, random_state=20180123, start_batch_idx=None):
     
+    if data_dir == output_dir:
+        raise ValueError('Output path should not be same as Data path to avoid overwriting data files!')
+
     random.seed(random_state)
 
     batch = None
@@ -50,7 +47,7 @@ def data_generator(data_dir, reduced_emb_len, output_dir, reduction_method='umap
     batch_idx = 0
     keys = ['audio']
 
-    for fname in cycle_shuffle(os.listdir(data_dir)):
+    for fname in os.listdir(data_dir):
         batch_path = os.path.join(data_dir, fname)
         blob_start_idx = 0
 
@@ -59,9 +56,6 @@ def data_generator(data_dir, reduced_emb_len, output_dir, reduction_method='umap
 
         old_embeddings = np.zeros((blob_size, 512), dtype=np.float32)
         embeddings = np.zeros((blob_size, reduced_emb_len), dtype=np.float32)
-
-        if data_dir == output_dir:
-            raise ValueError('Output path should not be same as Data path to avoid overwriting data files!')
         embedding_out_path = os.path.join(output_dir, fname)
 
         if reduction_method == 'umap':
@@ -84,7 +78,6 @@ def data_generator(data_dir, reduced_emb_len, output_dir, reduction_method='umap
                                                    blob[k][blob_start_idx:blob_end_idx]])
 
             curr_batch_size += blob_end_idx - blob_start_idx
-            blob_start_idx = blob_end_idx
 
             if blob_end_idx == blob_size:
                 blob.close()
@@ -100,14 +93,14 @@ def data_generator(data_dir, reduced_emb_len, output_dir, reduction_method='umap
                         teacher_embedding = audio_model.predict(batch['audio'])
 
                     old_embeddings[blob_start_idx:blob_end_idx, :] = teacher_embedding
-                    embeddings[blob_start_idx:blob_end_idx,:] = get_embedding(teacher_embedding, reduction_method, neighbors=neighbors, \
-                                                                              min_dist=min_dist, iterations=tsne_iter)
-
+                    embeddings[blob_start_idx:blob_end_idx,:] = get_embedding(teacher_embedding, reduction_method, emb_length=reduced_emb_len, \
+                                                                              neighbors=neighbors, min_dist=min_dist, iterations=tsne_iter)
+                blob_start_idx = blob_end_idx
                 batch_idx += 1
                 curr_batch_size = 0
                 batch = None
 
-        with h5py.File(embedding_out_path, 'a') as f:
+        with h5py.File(embedding_out_path, 'w') as f:
             f.create_dataset(embedding_key, data=embeddings)
             f.create_dataset('embedding', data=old_embeddings)
             f.close()
