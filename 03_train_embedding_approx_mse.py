@@ -75,19 +75,34 @@ def parse_arguments():
                         type=str,
                         help='Path to the student weight file')
 
+   parser.add_argument('-emb',
+                        '--reduced-emb-path',
+                        dest='reduced_emb_path',
+                        action='store',
+                        type=str,
+                        help='Path where the reduced embeddings are saved')
+
     parser.add_argument('-am',
                         '--approx-mode',
                         dest='approx_mode',
                         action='store',
                         type=str,
                         default='umap',
-                        help='Type of loss to optimize: `mse` or `entropy`')
+                        help='Type of reduction: `umap` or `tsne`')
 
     parser.add_argument('--neighbors',
                         dest='neighbors',
                         type=int,
                         default=20,
-                        help='Corresponds to n_neighbors if approx_mode = `umap` and perplexity if approx_mode = `t-SNE`')
+                        help='Corresponds to n_neighbors if approx_mode = `umap` and perplexity if approx_mode = `tsne`. Possible values = {10, 20, 30}')
+
+    parser.add_argument('-metric',
+                        '--metric',
+                        dest='metric',
+                        action='store',
+                        type=str,
+                        default='euclidean',
+                        help='Type of metric to optimize with umap/tsne: {correlation, euclidean}')
 
     parser.add_argument('-mdist',
                         '--min-dist',
@@ -97,6 +112,14 @@ def parse_arguments():
                         default=0.1,
                         help='UMAP: Minimum distance between clusters. \
                               Sensible values are in the range 0.001 to 0.5, with 0.1 being a reasonable default.')
+
+    parser.add_argument('-iter',
+                        '--tsne-iter',
+                        dest='tsne_iter',
+                        action='store',
+                        type=int,
+                        default=500,
+                        help='Number of iterations for tsne')
 
     parser.add_argument('-srate',
                         '--samp-rate',

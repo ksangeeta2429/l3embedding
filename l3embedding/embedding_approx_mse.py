@@ -12,7 +12,6 @@ import keras
 import pescador
 import tensorflow as tf
 import h5py
-#import copy
 import tempfile
 import umap
 from keras import backend as K
@@ -30,8 +29,6 @@ from tensorflow.python.framework import dtypes
 from .training_utils import conv_dict_to_val_list, multi_gpu_model, MultiGPUCheckpointCallback, LossHistory, GSheetLogger, TimeHistory
 from .model import *
 from .audio import pcm2float
-#from gsheets import get_credentials, append_row, update_experiment, get_row
-#from googleapiclient import discovery
 from log import *
 from kapre.time_frequency import Spectrogram, Melspectrogram
 from resampy import resample
@@ -40,12 +37,6 @@ from sklearn.manifold import TSNE
 
 LOGGER = logging.getLogger('embedding_approx_mse')
 LOGGER.setLevel(logging.DEBUG)
-
-graph = tf.get_default_graph()
-weight_path = 'models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5'
-audio_model = load_embedding(weight_path, model_type = 'cnn_L3_melspec2', embedding_type = 'audio', \
-                             pooling_type = 'short', kd_model=False, tgt_num_gpus = 1)
-
 
 def cycle_shuffle(iterable, shuffle=True):
     lst = list(iterable)
@@ -60,11 +51,12 @@ def get_embedding_length(model):
     return emb_len[-1]
 
 
-def data_generator(data_dir, approx_mode='umap', neighbors=10, min_dist=0.5, student_emb_length=None, \
-                   student_asr=16000, batch_size=512, random_state=20180216, start_batch_idx=None, keys=None):
+def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap', neighbors=10, \
+                   min_dist=0.5, metric='euclidean', tsne_iter=500, batch_size=512, \
+                   student_asr=16000, random_state=20180216, start_batch_idx=None, keys=None):
     
     if student_emb_length is None:
-        raise ValueError('Student Embedding Length should be given for Embedding Approximation')
+        raise ValueError('Student embedding length was not provided')
 
     random.seed(random_state)
     batch = None
@@ -72,21 +64,21 @@ def data_generator(data_dir, approx_mode='umap', neighbors=10, min_dist=0.5, stu
     batch_idx = 0
     file_idx = 0
     start_label_idx = 0
-    global graph
-    global audio_model
-
+    
     # Limit keys to avoid producing batches with all of the metadata fields
     if not keys:
         keys = ['audio']
 
-
     for fname in cycle_shuffle(os.listdir(data_dir)):
-        batch_path = os.path.join(data_dir, fname)
+        data_batch_path = os.path.join(data_dir, fname)
+        emb_batch_path = os.path.join(emb_dir, fname)
 
         blob_start_idx = 0
 
-        blob = h5py.File(batch_path, 'r')
-        blob_size = len(blob['label'])
+        data_blob = h5py.File(data_batch_path, 'r')
+        emb_blob = h5py.File(emb_batch_path, 'r')
+
+        blob_size = len(data_blob['label'])
 
         while blob_start_idx < blob_size:
             #embedding_output = None
@@ -96,12 +88,11 @@ def data_generator(data_dir, approx_mode='umap', neighbors=10, min_dist=0.5, stu
             # the prior batches
             if start_batch_idx is None or batch_idx >= start_batch_idx:
                 if batch is None:
-                    batch = {k:blob[k][blob_start_idx:blob_end_idx]
-                             for k in keys}
+                    batch = {'audio':data_blob['audio'][blob_start_idx:blob_end_idx]}
+                    batch = {'label':emb_blob[][][blob_start_idx:blob_end_idx]}
                 else:
-                    for k in keys:
-                        batch[k] = np.concatenate([batch[k],
-                                                   blob[k][blob_start_idx:blob_end_idx]])
+                    batch['audio'] = np.concatenate([batch['audio'], data_blob['audio'][blob_start_idx:blob_end_idx]])
+                    batch['label'] = np.concatenate([batch['label'], emb_blob[][][blob_start_idx:blob_end_idx]])
 
             curr_batch_size += blob_end_idx - blob_start_idx
             blob_start_idx = blob_end_idx
@@ -115,16 +106,6 @@ def data_generator(data_dir, approx_mode='umap', neighbors=10, min_dist=0.5, stu
                 if start_batch_idx is None or batch_idx >= start_batch_idx:
                     # Convert audio to float
                     batch['audio'] = pcm2float(batch['audio'], dtype='float32')
-                        
-                    # Get the embedding layer output from the audio_model and flatten it to be treated as labels for the student audio model
-                    with graph.as_default():
-                        embeddings = audio_model.predict(batch['audio'])
-                        if approx_mode == 'umap':
-                            batch['label'] = umap.umap_.UMAP(n_neighbors=neighbors, min_dist=min_dist, \
-                                                             n_components=student_emb_length).fit_transform(embeddings)
-                        if approx_mode == 'tsne':
-                            batch['label'] = TSNE(perplexity=neighbors, n_components=student_emb_length, n_iter=300).fit_transform(embeddings)
-                                      
                     if student_asr!=48000:
                         batch['audio'] = resample(batch['audio'], sr_orig=48000, sr_new=student_asr)
 
@@ -135,11 +116,14 @@ def data_generator(data_dir, approx_mode='umap', neighbors=10, min_dist=0.5, stu
                 batch = None
 
 
-def single_epoch_data_generator(data_dir, approx_mode='umap', neighbors=10, min_dist=0.5, student_emb_length=None,\
-                                batch_size=512, **kwargs):
+def single_epoch_data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap', neighbors=10,\
+                                min_dist=0.5, metric='euclidean', tsne_iter=500, \
+                                batch_size=512, student_asr=48000, **kwargs):
     while True:
-        data_gen = data_generator(data_dir, approx_mode=approx_mode, neighbors=neighbors, min_dist=min_dist, \
-                                  student_emb_length=student_emb_length, batch_size=batch_size, **kwargs)
+        data_gen = data_generator(data_dir, emb_dir, student_emb_length=student_emb_length, \
+                                  approx_mode=approx_mode, neighbors=neighbors, min_dist=min_dist, \
+                                  metric=metric, tsne_iter=tsne_iter, batch_size=batch_size, student_asr=student_asr, **kwargs)
+
         for idx, item in enumerate(data_gen):
             yield item
             # Once we generate all batches for an epoch, restart the generator
