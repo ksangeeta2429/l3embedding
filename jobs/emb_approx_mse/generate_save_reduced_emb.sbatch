@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
+#SBATCH --gres=gpu:1
 #SBATCH --job-name=gen=reduced-embedding
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=2
 #SBATCH --mem=32GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=ALL
@@ -14,13 +15,21 @@ source activate l3embedding-new-cpu
 cd `git rev-parse --show-toplevel`
 
 module purge
+if [ $USER == "sk7898" ]; then
+  module load cuda/8.0.44
+  module load cudnn/8.0v6.0
+else
+  module load cudnn/9.0v7.3.0.29
+fi
 
 SRCDIR=.
 DATASET=$1
 if ([ "$DATASET" = "train" ]); then
-   #TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples/music_train
-   DATA_DIR=$SCRATCH/temp_data
+   DATA_DIR=/beegfs/work/AudioSetSamples/music_train
+   #DATA_DIR=$SCRATCH/temp_data
    OUTPUT_DIR=$SCRATCH/reduced_embeddings/music_train
+   #OUTPUT_DIR=$SCRATCH/reduced_embeddings
+
 elif([ "$DATASET" = "valid" ]); then
    DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
    OUTPUT_DIR=$SCRATCH/reduced_embeddings/music_valid
@@ -32,9 +41,9 @@ fi
 APPROX_MODE=$2
 BATCH_SIZE=$3
 EMB_LEN=$4
-NEIGHBORS_LIST=( 10, 20, 30 )
-METRIC_LIST=( 'correlation', 'euclidean' )
-MIN_DIST_LIST=( 0.3, 0.5 )
+NEIGHBORS_LIST=( 10 20 30 )
+METRIC_LIST=( 'correlation' 'euclidean' )
+MIN_DIST_LIST=( 0.3 0.5 )
 TSNE_ITER_LIST=( 500 )
 
 if ([ "$2" = "umap" ]); then
@@ -42,9 +51,9 @@ if ([ "$2" = "umap" ]); then
   python $SRCDIR/02_generate_save_reduced_emb.py \
       --batch-size $BATCH_SIZE \
       --approx-mode $APPROX_MODE \
-      --neighbors-list $NEIGHBORS_LIST \
-      --min-dist-list $MIN_DIST_LIST \
-      --metric-list $METRIC_LIST \
+      --neighbors-list ${NEIGHBORS_LIST[*]} \
+      --min-dist-list ${MIN_DIST_LIST[*]} \
+      --metric-list ${METRIC_LIST[*]} \
       --random-state 20180216 \
       $DATA_DIR \
       $OUTPUT_DIR \
@@ -55,9 +64,9 @@ elif([ "$2" = "tsne" ]); then
   python $SRCDIR/02_generate_save_reduced_emb.py \
       --batch-size $BATCH_SIZE \
       --approx-mode $APPROX_MODE \
-      --neighbors-list $NEIGHBORS_LIST \
-      --tsne-iter-list $TSNE_ITER_LIST \
-      --metric-list $METRIC_LIST \
+      --neighbors-list ${NEIGHBORS_LIST[*]} \
+      --tsne-iter-list ${TSNE_ITER_LIST[*]} \
+      --metric-list ${METRIC_LIST[*]} \
       --random-state 20180216 \
       $DATA_DIR \
       $OUTPUT_DIR \
