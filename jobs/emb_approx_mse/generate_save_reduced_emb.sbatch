@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-#SBATCH --gres=gpu:1
-#SBATCH --job-name=gen=reduced-embedding
+#SBATCH --job-name=gen-reduced-embedding
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=32GB
@@ -11,19 +10,21 @@
 #SBATCH --err="gen-reduced-embedding-%j.err"
 
 source ~/.bashrc
-source activate l3embedding-new-cpu
+source activate l3embedding-cpu
 cd `git rev-parse --show-toplevel`
 
 module purge
-if [ $USER == "sk7898" ]; then
-  module load cuda/8.0.44
-  module load cudnn/8.0v6.0
-else
-  module load cudnn/9.0v7.3.0.29
-fi
 
 SRCDIR=.
 DATASET=$1
+APPROX_MODE=$2
+BATCH_SIZE=$3
+EMB_LEN=$4
+NEIGHBORS_LIST=( 10 20 30 )
+METRIC_LIST=( 'correlation' 'euclidean' )
+MIN_DIST_LIST=( 0.3 0.5 )
+TSNE_ITER_LIST=( 500 )
+
 if ([ "$DATASET" = "train" ]); then
    DATA_DIR=/beegfs/work/AudioSetSamples/music_train
    #DATA_DIR=$SCRATCH/temp_data
@@ -38,13 +39,7 @@ else
    exit
 fi
 
-APPROX_MODE=$2
-BATCH_SIZE=$3
-EMB_LEN=$4
-NEIGHBORS_LIST=( 10 20 30 )
-METRIC_LIST=( 'correlation' 'euclidean' )
-MIN_DIST_LIST=( 0.3 0.5 )
-TSNE_ITER_LIST=( 500 )
+#alias nogpu='export CUDA_VISIBLE_DEVICES=-1;'
 
 if ([ "$2" = "umap" ]); then
   echo "UMAP Approximation"

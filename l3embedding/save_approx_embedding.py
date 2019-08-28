@@ -10,13 +10,22 @@ from joblib import Parallel, delayed
 
 
 def get_teacher_embedding(audio_batch):
-    import keras
     import tensorflow as tf
     from kapre.time_frequency import Melspectrogram
-    os.environ["CUDA_VISIBLE_DEVICES"]="0"
-    
+    from l3embedding.model import load_embedding 
+
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+    import keras
+
+    session_conf = tf.ConfigProto(
+        device_count={'CPU' : 1, 'GPU' : 0},
+        allow_soft_placement=True,
+        log_device_placement=False
+    )
+
     try:
-        with tf.Graph().as_default(), tf.Session().as_default(), tf.device('/gpu:0'):
+        with tf.Graph().as_default(), tf.Session(config=session_conf).as_default():
             weight_path = '/scratch/sk7898/l3pruning/embedding/fixed/reduced_input/l3_full_original_48000_256_242_2048.h5'
             model = keras.models.load_model(weight_path, custom_objects={'Melspectrogram': Melspectrogram}) 
             embeddings = model.get_layer('audio_model').predict(audio_batch)
