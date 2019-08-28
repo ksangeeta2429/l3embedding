@@ -116,6 +116,13 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
 
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
+
+    blob_keys = get_blob_keys(approx_mode, batch_size, reduced_emb_len, \
+                              neighbors_list=neighbors_list, metric_list=metric_list, \
+                              min_dist_list=min_dist_list, tsne_iter_list=tsne_iter_list)
+    
+    print('Embedding Blob Keys: {}'.format(blob_keys))
+
         
     for fname in os.listdir(data_dir):
         print('Data filename: {}'.format(fname))
@@ -147,11 +154,6 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
 
             if curr_batch_size == batch_size:
                 blob_embeddings = dict()
-                blob_keys = get_blob_keys(approx_mode, batch_size, reduced_emb_len, \
-                                          neighbors_list=neighbors_list, metric_list=metric_list, \
-                                          min_dist_list=min_dist_list, tsne_iter_list=tsne_iter_list)
-    
-                print('Embedding Blob Keys: {}'.format(blob_keys))
         
                 # If we are starting from a particular batch, skip yielding all
                 # of the prior batches
@@ -193,8 +195,8 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                       
                         blob_embeddings['l3_embedding'] = teacher_embedding
                         write_to_h5(embedding_out_paths, blob_embeddings, batch_size) 
-                        print('Batch completed!')
                 
+
                 batch_idx += 1
                 curr_batch_size = 0
                 batch = None 
