@@ -134,14 +134,12 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
 
         
     for fname in os.listdir(data_dir):
-        print('Data filename: {}'.format(fname))
-
         batch_path = os.path.join(data_dir, fname)
         blob_start_idx = 0
 
         blob = h5py.File(batch_path, 'r')
-        blob_size = len(blob['label'])
-        
+        blob_size = len(blob['l3_embedding'])        
+
         embedding_out_paths.append(os.path.join(output_dir, fname))
 
         while blob_start_idx < blob_size:
@@ -151,9 +149,9 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
             # the prior batches
             if start_batch_idx is None or batch_idx >= start_batch_idx:
                 if batch is None:
-                    batch = {'audio':blob['audio'][blob_start_idx:blob_end_idx]}
+                    batch = {'l3_embedding':blob['l3_embedding'][blob_start_idx:blob_end_idx]} 
                 else:
-                    batch['audio'] = np.concatenate([batch['audio'], blob['audio'][blob_start_idx:blob_end_idx]])
+                    batch['l3_embedding'] = np.concatenate([[batch['l3_embedding'], blob['l3_embedding'][blob_start_idx:blob_end_idx]])
 
             curr_batch_size += blob_end_idx - blob_start_idx
             blob_start_idx = blob_end_idx
@@ -167,11 +165,8 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                 # If we are starting from a particular batch, skip yielding all
                 # of the prior batches
                 if start_batch_idx is None or batch_idx >= start_batch_idx:
-                    # Convert audio to float
-                    batch['audio'] = pcm2float(batch['audio'], dtype='float32')
-                    
                     # Get the embedding layer output from the audio_model and flatten it to be treated as labels for the student audio model
-                    teacher_embedding = get_teacher_embedding(batch['audio'])
+                    teacher_embedding = batch['l3_embedding'] #get_teacher_embedding(batch['audio'])
                     
                     if approx_mode == 'umap':
                         n_process = len(neighbors_list) * len(metric_list) * len(min_dist_list)
@@ -202,8 +197,7 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                         else:
                             blob_embeddings[blob_keys[idx]] = results[idx]
                       
-                        blob_embeddings['l3_embedding'] = teacher_embedding
-                        write_to_h5(embedding_out_paths, blob_embeddings, batch_size) 
+                    write_to_h5(embedding_out_paths, blob_embeddings, batch_size) 
                 
 
                 batch_idx += 1
