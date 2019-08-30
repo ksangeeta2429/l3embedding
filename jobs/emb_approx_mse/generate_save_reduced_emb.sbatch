@@ -20,19 +20,19 @@ DATASET=$1
 APPROX_MODE=$2
 BATCH_SIZE=$3
 EMB_LEN=$4
-NEIGHBORS_LIST=( 10 20 30 )
-METRIC_LIST=( 'correlation' 'euclidean' )
-MIN_DIST_LIST=( 0.3 0.5 )
-TSNE_ITER_LIST=( 500 )
+NEIGHBORS_LIST=( 5 10 20 30 )
+METRIC_LIST=( 'correlation' )
+MIN_DIST_LIST=( 0.3 )
+#TSNE_ITER_LIST=( 500 )
 
 if ([ "$DATASET" = "train" ]); then
-   DATA_DIR=/beegfs/work/AudioSetSamples/music_train
+   DATA_DIR=$SCRATCH/orig_l3_embeddings/music_train
    #DATA_DIR=$SCRATCH/temp_data
    OUTPUT_DIR=$SCRATCH/reduced_embeddings/music_train
    #OUTPUT_DIR=$SCRATCH/reduced_embeddings
 
 elif([ "$DATASET" = "valid" ]); then
-   DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
+   DATA_DIR=$SCRATCH/orig_l3_embeddings/music_valid
    OUTPUT_DIR=$SCRATCH/reduced_embeddings/music_valid
 else
    echo "First argument can only be train/valid"

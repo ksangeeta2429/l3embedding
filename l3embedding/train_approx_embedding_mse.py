@@ -45,10 +45,39 @@ def cycle_shuffle(iterable, shuffle=True):
         if shuffle:
             random.shuffle(lst)
 
+
 def get_embedding_length(model):
     embed_layer = model.get_layer('audio_embedding_layer')
     emb_len = tuple(embed_layer.get_output_shape_at(0))
     return emb_len[-1]
+
+
+def get_embedding_key(method, batch_size, emb_len, neighbors=None, \
+                      metric=None, min_dist=None, iteration=None):
+    
+    if method == 'umap':
+        if neighbors_list is None or metric_list is None or min_dist_list is None:
+            raise ValueError('Either neighbor_list or metric_list or min_dist_list is missing')
+        
+        key = 'umap_batch_' + str(batch_size) +\
+              '_len_' + str(emb_len) +\
+              '_k_' + str(neighbors) +\
+              '_metric_' + metric +\
+              '_dist|iter_' + str(min_dist)
+         
+                    
+    elif method == 'tsne':
+        if neighbors_list is None or metric_list is None or tsne_iter_list is None:
+            raise ValueError('Either neighbor_list or metric_list or tsne_iter_list is missing')
+        
+        key = 'tsne_batch_' + str(batch_size) +\
+              '_len_' + str(emb_len) +\
+              '_batch_' + str(batch_size) +\
+              '_k_' + str(neighbors) +\
+              '_metric_' + metric +\
+              '_dist|iter_' + str(iteration)
+
+    return key
 
 
 def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap', neighbors=10, \
@@ -64,6 +93,8 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
     batch_idx = 0
     file_idx = 0
     start_label_idx = 0
+    emb_key = get_embedding_key(approx_mode, batch_size, student_emb_length, neighbors=neighbors, \
+                                metric=metric, min_dist=min_dist, iteration=tsne_iter)
     
     # Limit keys to avoid producing batches with all of the metadata fields
     if not keys:
@@ -89,10 +120,10 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
             if start_batch_idx is None or batch_idx >= start_batch_idx:
                 if batch is None:
                     batch = {'audio':data_blob['audio'][blob_start_idx:blob_end_idx]}
-                    batch = {'label':emb_blob[][][blob_start_idx:blob_end_idx]}
+                    batch = {'label':emb_blob[emb_key][blob_start_idx:blob_end_idx]}
                 else:
                     batch['audio'] = np.concatenate([batch['audio'], data_blob['audio'][blob_start_idx:blob_end_idx]])
-                    batch['label'] = np.concatenate([batch['label'], emb_blob[][][blob_start_idx:blob_end_idx]])
+                    batch['label'] = np.concatenate([batch['label'], emb_blob[emb_key][blob_start_idx:blob_end_idx]])
 
             curr_batch_size += blob_end_idx - blob_start_idx
             blob_start_idx = blob_end_idx
@@ -106,6 +137,7 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
                 if start_batch_idx is None or batch_idx >= start_batch_idx:
                     # Convert audio to float
                     batch['audio'] = pcm2float(batch['audio'], dtype='float32')
+
                     if student_asr!=48000:
                         batch['audio'] = resample(batch['audio'], sr_orig=48000, sr_new=student_asr)
 
@@ -131,7 +163,8 @@ def single_epoch_data_generator(data_dir, emb_dir, student_emb_length=None, appr
                 break
 
 
-def train(train_data_dir, validation_data_dir, output_dir, student_weight_path=None, approx_mode='umap', neighbors=10, min_dist=0.3,\
+def train(train_data_dir, validation_data_dir, reduced_emb_dir, output_dir, student_weight_path=None, \
+          approx_mode='umap', neighbors=10, min_dist=0.3, metric='euclidean', tsne_iter=300,\
           num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
           model_type='cnn_L3_melspec2', n_mels=256, n_hop=242, n_dft=2048, samp_rate=48000, fmax=None, halved_convs=False,\
           log_path=None, disable_logging=False, random_state=20180216,learning_rate=0.00001, verbose=True, checkpoint_interval=10,\
@@ -144,6 +177,9 @@ def train(train_data_dir, validation_data_dir, output_dir, student_weight_path=N
     LOGGER.debug('Initialized logging.')
     LOGGER.info('Embedding Reduction Mode: %s', approx_mode)
     LOGGER.info('Neighbors/Perplexity: %s', neighbors)
+
+    reduced_emb_dir_train = os.path.join(reduced_emb_dir, os.path.basename(train_data_dir))
+    reduced_emb_dir_valid = os.path.join(reduced_emb_dir, os.path.basename(validation_data_dir))
     
     if approx_mode == 'umap':
         if min_dist is None:
@@ -181,13 +217,14 @@ def train(train_data_dir, validation_data_dir, output_dir, student_weight_path=N
     student_emb_len = get_embedding_length(student_base_model);
 
     print('Model Attribute: ', model_attribute)
-    print(student_base_model.summary())
+    #print(student_base_model.summary())
     print('Student Embedding Length: ', student_emb_len)
 
     param_dict = {
         'username': getpass.getuser(),
         'train_data_dir': train_data_dir,
         'validation_data_dir': validation_data_dir,
+        'reduced_emb_dir': reduced_embedding_dir,
         'output_dir': output_dir,
         'approx_mode': approx_mode,
         'neighbors': neighbors,
@@ -300,6 +337,7 @@ def train(train_data_dir, validation_data_dir, output_dir, student_weight_path=N
 
 
     train_gen = data_generator(train_data_dir,
+                               reduced_emb_dir_train,
                                approx_mode=approx_mode,
                                neighbors=neighbors,
                                min_dist=min_dist,
@@ -310,6 +348,7 @@ def train(train_data_dir, validation_data_dir, output_dir, student_weight_path=N
                                start_batch_idx=train_start_batch_idx)
 
     val_gen = single_epoch_data_generator(validation_data_dir,
+                                          reduced_emb_dir_valid,
                                           approx_mode=approx_mode,
                                           neighbors=neighbors,
                                           min_dist=min_dist,

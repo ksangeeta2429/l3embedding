@@ -241,6 +241,11 @@ def parse_arguments():
                         type=str,
                         help='Path to directory where validation set files are stored')
 
+    parser.add_argument('reduced_emb_dir',
+                        action='store',
+                        type=str,
+                        help='Path to directory where reduced embeddings are stored')
+
     parser.add_argument('output_dir',
                         action='store',
                         type=str,

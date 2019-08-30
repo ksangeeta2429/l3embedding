@@ -119,6 +119,7 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
     random.seed(random_state)
     
     batch = None
+    blob_embeddings = dict()
     embedding_out_paths = []
     curr_batch_size = 0
     batch_idx = 0
@@ -131,8 +132,8 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                               min_dist_list=min_dist_list, tsne_iter_list=tsne_iter_list)
     
     print('Embedding Blob Keys: {}'.format(blob_keys))
-
-        
+    
+    f_idx = 0    
     for fname in os.listdir(data_dir):
         batch_path = os.path.join(data_dir, fname)
         blob_start_idx = 0
@@ -151,7 +152,7 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                 if batch is None:
                     batch = {'l3_embedding':blob['l3_embedding'][blob_start_idx:blob_end_idx]} 
                 else:
-                    batch['l3_embedding'] = np.concatenate([[batch['l3_embedding'], blob['l3_embedding'][blob_start_idx:blob_end_idx]])
+                    batch['l3_embedding'] = np.concatenate([batch['l3_embedding'], blob['l3_embedding'][blob_start_idx:blob_end_idx]])
 
             curr_batch_size += blob_end_idx - blob_start_idx
             blob_start_idx = blob_end_idx
@@ -160,47 +161,49 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                 blob.close()
 
             if curr_batch_size == batch_size:
-                blob_embeddings = dict()
-        
                 # If we are starting from a particular batch, skip yielding all
                 # of the prior batches
                 if start_batch_idx is None or batch_idx >= start_batch_idx:
-                    # Get the embedding layer output from the audio_model and flatten it to be treated as labels for the student audio model
+
                     teacher_embedding = batch['l3_embedding'] #get_teacher_embedding(batch['audio'])
                     
                     if approx_mode == 'umap':
                         n_process = len(neighbors_list) * len(metric_list) * len(min_dist_list)
                         
-                        results = Parallel(n_jobs=-1)(delayed(get_reduced_embedding)(teacher_embedding, 'umap', \
-                                                                                     emb_len=reduced_emb_len, \
-                                                                                     neighbors=neighbors, \
-                                                                                     metric=metric, \
-                                                                                     min_dist=min_dist) \
+                        results = Parallel(n_jobs=min(multiprocessing.cpu_count(), n_process))\
+                                  (delayed(get_reduced_embedding)(teacher_embedding, 'umap', \
+                                                                  emb_len=reduced_emb_len, \
+                                                                  neighbors=neighbors, \
+                                                                  metric=metric, \
+                                                                  min_dist=min_dist) \
                                           for neighbors in neighbors_list for metric in metric_list for min_dist in min_dist_list)
 
                     elif approx_mode == 'tsne':
                         n_process = len(neighbors_list) * len(metric_list) * len(tsne_iter_list)
                         
-                        results = Parallel(n_jobs=-1)(delayed(get_reduced_embedding)(teacher_embedding, 'tsne', \
-                                                                                     emb_len=reduced_emb_len, \
-                                                                                     neighbors=neighbors, \
-                                                                                     metric=metric, \
-                                                                                     iterations=iterations) \
+                        results = Parallel(n_jobs=n_process)(delayed(get_reduced_embedding)\
+                                                             (teacher_embedding, 'tsne', \
+                                                              emb_len=reduced_emb_len, \
+                                                              neighbors=neighbors, \
+                                                              metric=metric, \
+                                                              iterations=iterations) \
                                           for neighbors in neighbors_list for metric in metric_list for iterations in tsne_iter_list)
 
-                        assert len(results) == n_process
+                    assert len(results) == n_process
                         
                     for idx in range(len(results)):
                         if blob_keys[idx] not in blob_embeddings.keys():    
-                            blob_embeddings[blob_keys[idx]] = np.zeros((blob_size, reduced_emb_len), dtype=np.float32)
+                            blob_embeddings[blob_keys[idx]] = np.zeros((batch_size, reduced_emb_len), dtype=np.float32)
                             blob_embeddings[blob_keys[idx]] = results[idx]
                         else:
                             blob_embeddings[blob_keys[idx]] = results[idx]
-                      
+            
                     write_to_h5(embedding_out_paths, blob_embeddings, batch_size) 
-                
+                    f_idx += 1
+                    print('File {}: {} done!'.format(f_idx, fname))
 
                 batch_idx += 1
                 curr_batch_size = 0
                 batch = None 
+                blob_embeddings = dict()
                 embedding_out_paths = []
