@@ -48,10 +48,10 @@ if ([ "$APPROX_MODE" = "umap" ]); then
   MIN_DIST=$3
   python $SRCDIR/03_train_approx_embedding_mse.py \
 	  --num-epochs 1 \
-	  --train-epoch-size 4096\
+	  --train-epoch-size 64\
 	  --train-batch-size 64 \
 	  --model-type cnn_L3_melspec2 \
-	  --validation-epoch-size 1024 \
+	  --validation-epoch-size 64 \
 	  --validation-batch-size 64 \
 	  --checkpoint-interval 10 \
 	  --gpus $NUM_GPUS \

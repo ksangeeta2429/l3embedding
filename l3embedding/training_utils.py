@@ -5,6 +5,7 @@
 import keras
 import copy
 import numpy as np
+import pickle
 from gsheets import get_credentials, append_row, update_experiment, get_row
 from googleapiclient import discovery
 from keras import backend as K
@@ -151,17 +152,17 @@ class GSheetLogger(keras.callbacks.Callback):
             self.best_train_loss = latest_train_loss
         if latest_validation_loss < self.best_validation_loss:
             self.best_validation_loss = latest_validation_loss
-        if latest_train_acc > self.best_train_acc:
+        if latest_train_mae > self.best_train_mae:
             self.best_train_mae = latest_train_mae
         if latest_validation_mae > self.best_validation_mae:
             self.best_validation_mae = latest_validation_mae
 
-        values = [latest_epoch, latest_train_loss, latest_valid_loss,
-                  latest_train_mae, latest_valid_mae, self.best_train_loss,
-                  self.best_valid_loss, self.best_train_mae, self.best_valid_mae]
+        values = [latest_epoch, latest_train_loss, latest_validation_loss,
+                  latest_train_mae, latest_validation_mae, self.best_train_loss,
+                  self.best_validation_loss, self.best_train_mae, self.best_validation_mae]
 
         update_experiment(self.service, self.spreadsheet_id, self.param_dict,
-                          'X', 'AF', values, 'embedding_approx_mse')
+                          'V', 'AD', values, 'embedding_approx_mse')
 
 
 class TimeHistory(keras.callbacks.Callback):

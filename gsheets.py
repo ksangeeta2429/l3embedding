@@ -8,11 +8,11 @@ from googleapiclient import discovery
 # TODO: Implement initializing spreadsheet
 EMBEDDING_APPROX_FIELD_NAMES =[
     'username',
+    'model_dir',
     'train_data_dir',
     'validation_data_dir',
     'reduced_emb_train_dir',
     'reduced_emb_valid_dir',
-    'output_dir',
     'approx_mode',
     'neighbors',
     'min_dist',
@@ -296,7 +296,7 @@ def request_with_retry(request, num_retries=50):
 
 
 def get_row(service, spreadsheet_id, param_dict, sheet_name, id_field='model_dir'):
-    range_ = '{}!C:C'.format(sheet_name)
+    range_ = '{}!B:B'.format(sheet_name)
     major_dimension = 'COLUMNS'
 
     request = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id,
@@ -313,6 +313,7 @@ def get_row(service, spreadsheet_id, param_dict, sheet_name, id_field='model_dir
 
 def update_experiment(service, spreadsheet_id, param_dict, start_col, end_col, values, sheet_name):
     row_num = get_row(service, spreadsheet_id, param_dict, sheet_name)
+    print(row_num)
     value_input_option = 'USER_ENTERED'
     range_ = '{0}!{2}{1}:{3}{1}'.format(sheet_name, row_num, start_col, end_col)
     value_range_body = {

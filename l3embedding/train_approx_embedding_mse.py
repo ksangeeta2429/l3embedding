@@ -152,13 +152,9 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
                 batch = None
 
 
-def single_epoch_data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap', neighbors=10,\
-                                min_dist=0.5, metric='euclidean', tsne_iter=500, \
-                                batch_size=512, student_asr=48000, **kwargs):
+def single_epoch_data_generator(data_dir, emb_dir, epoch_size, **kwargs):
     while True:
-        data_gen = data_generator(data_dir, emb_dir, student_emb_length=student_emb_length, \
-                                  approx_mode=approx_mode, neighbors=neighbors, min_dist=min_dist, \
-                                  metric=metric, tsne_iter=tsne_iter, batch_size=batch_size, student_asr=student_asr, **kwargs)
+        data_gen = data_generator(data_dir, emb_dir, **kwargs)
 
         for idx, item in enumerate(data_gen):
             yield item
@@ -189,9 +185,9 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
     if approx_mode == 'umap':
         if min_dist is None:
             min_dist = 0.5
-        model_attribute = 'emb_approx_umap_k_' + str(neighbors) + '_dist_' + str(min_dist) + '_metric_' + metric
+        model_attribute = 'umap_k_' + str(neighbors) + '_dist_' + str(min_dist) + '_metric_' + metric
     if approx_mode == 'tsne':
-        model_attribute = 'emb_approx_tsne_k_' + str(neighbors)
+        model_attribute = 'tsne_k_' + str(neighbors) + '_metric_' + metric
 
     # Make sure the directories we need exist
     if continue_model_dir:
@@ -226,11 +222,11 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
 
     param_dict = {
         'username': getpass.getuser(),
+        'model_dir': model_dir,
         'train_data_dir': train_data_dir,
         'validation_data_dir': validation_data_dir,
         'reduced_emb_train_dir': emb_train_dir,
         'reduced_emb_valid_dir': emb_valid_dir,
-        'output_dir': output_dir,
         'approx_mode': approx_mode,
         'neighbors': neighbors,
         'min_dist': min_dist,
@@ -261,7 +257,6 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
     #Convert the base (single-GPU) model to Multi-GPU model
     model = multi_gpu_model(student_base_model, gpus=gpus)
 
-    param_dict['model_dir'] = model_dir
     train_config_path = os.path.join(model_dir, 'config.json')
     with open(train_config_path, 'w') as fd:
         json.dump(param_dict, fd, indent=2)
@@ -354,6 +349,7 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
 
     val_gen = single_epoch_data_generator(validation_data_dir,
                                           emb_valid_dir,
+                                          validation_epoch_size,
                                           approx_mode=approx_mode,
                                           neighbors=neighbors,
                                           min_dist=min_dist,
