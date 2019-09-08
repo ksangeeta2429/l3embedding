@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-#SBATCH --job-name=gen-reduced-embedding
+#SBATCH --job-name=gen-reduced-embedding-valid
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=32GB
-#SBATCH --time=7-0
+#SBATCH --mem=16GB
+#SBATCH --time=5-0
 #SBATCH --mail-type=ALL
-#SBATCH --output="gen-reduced-embedding-neighbor-%j.out"
-#SBATCH --err="gen-reduced-embedding-neighbor-%j.err"
+#SBATCH --output="gen-reduced-embedding-valid-batch-4096-%j.out"
+#SBATCH --err="gen-reduced-embedding-valid-batch-4096-%j.err"
 
 source ~/.bashrc
 source activate l3embedding-cpu
@@ -21,23 +21,22 @@ BATCH_SIZE=$2
 EMB_LEN=$3
 
 APPROX_MODE="umap"
-NEIGHBORS_LIST=( 10 20 30 )
+NEIGHBORS_LIST=( 5 10 20 30 )
 METRIC_LIST=( 'correlation' ) 
 MIN_DIST_LIST=( 0.3 0.5 )
-#TSNE_ITER_LIST=( 500 )
 
 if ([ "$DATASET" = "train" ]); then
    DATA_DIR=$SCRATCH/orig_l3_embeddings/music_train
-   OUTPUT_DIR=$SCRATCH/reduced_embeddings/music_train_${BATCH_SIZE}_${NEIGHBORS_LIST[*]}
+   OUTPUT_DIR=$SCRATCH/reduced_embeddings/music_train_${BATCH_SIZE}
    #For testing
    #DATA_DIR=$SCRATCH/temp_data
    #OUTPUT_DIR=$SCRATCH/reduced_embeddings
    echo $OUTPUT_DIR
-   exit
 
 elif([ "$DATASET" = "valid" ]); then
+   echo "Validation Data!"
    DATA_DIR=$SCRATCH/orig_l3_embeddings/music_valid
-   OUTPUT_DIR=$SCRATCH/reduced_embeddings/music_valid_${BATCH_SIZE}_${NEIGHBORS_LIST[*]}
+   OUTPUT_DIR=$SCRATCH/reduced_embeddings/music_valid_${BATCH_SIZE}
 
 else
    echo "First argument can only be train/valid"
@@ -47,7 +46,7 @@ fi
 #alias nogpu='export CUDA_VISIBLE_DEVICES=-1;'
 
 if ([ "$APPROX_MODE" = "umap" ]); then
-  echo "UMAP Approximation"
+  echo "UMAP Approximation!"
   python $SRCDIR/02_generate_save_reduced_emb.py \
       --batch-size $BATCH_SIZE \
       --approx-mode $APPROX_MODE \

@@ -133,9 +133,9 @@ class GSheetLogger(keras.callbacks.Callback):
         if logs is None:
             logs = {}
         self.best_train_loss = float('inf')
-        self.best_valid_loss = float('inf')
+        self.best_validation_loss = float('inf')
         self.best_train_mae = float('-inf')
-        self.best_valid_mae = float('-inf')
+        self.best_validation_mae = float('-inf')
 
     # def on_batch_end(self, batch, logs={}):
     def on_epoch_end(self, epoch, logs=None):
@@ -143,18 +143,18 @@ class GSheetLogger(keras.callbacks.Callback):
             logs = {}
         latest_epoch = epoch
         latest_train_loss = logs.get('loss')
-        latest_valid_loss = logs.get('val_loss')
+        latest_validation_loss = logs.get('val_loss')
         latest_train_mae = logs.get('mean_absolute_error')
-        latest_valid_mae = logs.get('val_mean_absolute_error')
+        latest_validation_mae = logs.get('val_mean_absolute_error')
 
         if latest_train_loss < self.best_train_loss:
             self.best_train_loss = latest_train_loss
-        if latest_valid_loss < self.best_valid_loss:
-            self.best_valid_loss = latest_valid_loss
+        if latest_validation_loss < self.best_validation_loss:
+            self.best_validation_loss = latest_validation_loss
         if latest_train_acc > self.best_train_acc:
             self.best_train_mae = latest_train_mae
-        if latest_valid_mae > self.best_valid_mae:
-            self.best_valid_mae = latest_valid_mae
+        if latest_validation_mae > self.best_validation_mae:
+            self.best_validation_mae = latest_validation_mae
 
         values = [latest_epoch, latest_train_loss, latest_valid_loss,
                   latest_train_mae, latest_valid_mae, self.best_train_loss,

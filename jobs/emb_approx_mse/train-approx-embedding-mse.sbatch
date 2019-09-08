@@ -16,21 +16,22 @@ cd `git rev-parse --show-toplevel`
 
 SRCDIR=. #/home/sk7898/l3embedding
 WEIGHT_DIR=$SCRATCH/l3pruning/embedding/fixed/reduced_input
-#TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples/music_train
-TRAIN_DATA_DIR=$SCRATCH/temp_data
-#VAL_DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
-VAL_DATA_DIR=$SCRATCH/temp_data
+#TRAIN_DATA_DIR=$SCRATCH/temp_data
+#VAL_DATA_DIR=$SCRATCH/temp_data
+TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples/music_train
+VAL_DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
 
-EMBEDDING_DIR=$SCRATCH/temp_emb
+EMBEDDING_TRAIN_DIR=$SCRATCH/orig_l3_embeddings/music_train
+EMBEDDING_VALID_DIR=$SCRATCH/orig_l3_embeddings/music_valid
 OUTPUT_DIR=$SCRATCH/l3pruning/embedding_approx_mse
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
 
 STUDENT_WEIGHT_PATH=$WEIGHT_DIR/$1 #l3_audio_20190723135620_8000_128_64_256_half_fmax_3500.h5
-APPROX_MODE=$2
-NEIGHBORS=$3
-METRIC=$4
+NEIGHBORS=$2
+METRIC='correlation'
+APPROX_MODE='umap'
 
 #Sample command:
 #sbatch emb_approx_mse.sbatch l3_audio_20190723135620_8000_128_64_256_half_fmax_3500.h5 umap 20 correlation 0.3
@@ -42,23 +43,22 @@ else
   module load cudnn/9.0v7.3.0.29
 fi
 
-
-if ([ "$2" = "umap" ]); then
+if ([ "$APPROX_MODE" = "umap" ]); then
   echo "UMAP Approximation"
-  MIN_DIST=$5
-  python $SRCDIR/03_train_embedding_approx_mse.py \
+  MIN_DIST=$3
+  python $SRCDIR/03_train_approx_embedding_mse.py \
 	  --num-epochs 1 \
-	  --train-epoch-size 2048 \
-	  --train-batch-size 1024 \
+	  --train-epoch-size 4096\
+	  --train-batch-size 64 \
 	  --model-type cnn_L3_melspec2 \
 	  --validation-epoch-size 1024 \
-	  --validation-batch-size 512 \
+	  --validation-batch-size 64 \
 	  --checkpoint-interval 10 \
 	  --gpus $NUM_GPUS \
 	  --approx-mode $APPROX_MODE \
-	  --neighbors $NEIGHBORS \
-	  --min-dist $MIN_DIST \
-	  --metric $METRIC\
+          --neighbors $NEIGHBORS \
+          --min-dist $MIN_DIST \
+	  --metric $METRIC \
 	  --student-weight-path $STUDENT_WEIGHT_PATH \
 	  --learning-rate 0.00001 \
 	  --random-state 20180216 \
@@ -67,17 +67,18 @@ if ([ "$2" = "umap" ]); then
 	  --verbose \
 	  $TRAIN_DATA_DIR \
 	  $VAL_DATA_DIR \
-	  $EMBEDDING_DIR \
+	  $EMBEDDING_TRAIN_DIR \
+          $EMBEDDING_VALID_DIR \
 	  $OUTPUT_DIR
   
-elif ([ "$2" = "tsne" ]); then
+elif ([ "$APPROX_MODE" = "tsne" ]); then
     python $SRCDIR/03_train_embedding_approx_mse.py \
 	--num-epochs 1 \
-	--train-epoch-size 8192 \
-	--train-batch-size 1024 \
+	--train-epoch-size 4096 \
+	--train-batch-size 64 \
 	--model-type cnn_L3_melspec2 \
 	--validation-epoch-size 1024 \
-	--validation-batch-size 1024 \
+	--validation-batch-size 64 \
 	--checkpoint-interval 10 \
 	--gpus $NUM_GPUS \
 	--approx-mode $APPROX_MODE \
@@ -91,6 +92,7 @@ elif ([ "$2" = "tsne" ]); then
 	--verbose \
 	$TRAIN_DATA_DIR \
 	$VAL_DATA_DIR \
-	$EMBEDDING_DIR \
+	$EMBEDDING_TRAIN_DIR \
+	$EMBEDDING_VALID_DIR \
 	$OUTPUT_DIR
 fi

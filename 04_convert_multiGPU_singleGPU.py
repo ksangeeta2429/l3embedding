@@ -84,6 +84,13 @@ def parse_arguments():
                         default=False,
                         help='Use half the number of conv. filters as in the original audio model?')
 
+    parser.add_argument('-melSpec',
+                        '--melSpec',
+                        dest='melSpec',
+                        action='store_true',
+                        default=False,
+                        help='Set to True is Melspec is included in the model')
+
     parser.add_argument('output_dir',
                         action='store',
                         type=str,
@@ -204,6 +211,7 @@ if __name__ == '__main__':
     weight_dir = args['multiGPU_weight_dir']
     output_dir = args['output_dir']
     halved_convs = args['halved_convs']
+    melSpec = args['melSpec']
     
     model_id = weight_dir.split('/')[-1]
     mt = os.path.basename(os.path.dirname(weight_dir))
@@ -228,7 +236,7 @@ if __name__ == '__main__':
                                     n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, halved_convs=halved_convs, fmax=fmax, asr=samp_rate)
     _, x_a = inputs
 
-    if args['only_audio']:
+    if args['only_audio'] and not melSpec:
         model_output_path = os.path.join(output_dir, 'l3_audio_{}_{}.h5'.format(model_id, input_repr))
         audio_model_output = m.get_layer('audio_model').get_layer('audio_embedding_layer').output
         audio_embed_model = Model(inputs=x_a, outputs=audio_model_output)
@@ -240,6 +248,11 @@ if __name__ == '__main__':
                                                                             halved_convs=halved_convs, asr=samp_rate)
         audio_spec_embed_model.set_weights(weights)
         audio_spec_embed_model.save(model_output_path)
+    
+    elif args['only_audio'] and melSpec:
+        model_output_path = os.path.join(output_dir, 'l3_audio_melSpec_{}_{}.h5'.format(model_id, input_repr))
+        audio_model = m.get_layer('audio_model')
+        audio_model.save(model_output_path)
 
     else:
         model_output_path = os.path.join(output_dir, 'l3_full_{}_{}.h5'.format(model_id, input_repr))

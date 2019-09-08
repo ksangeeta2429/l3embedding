@@ -1,12 +1,43 @@
 import httplib2
 import os
-
 from oauth2client import client
 from oauth2client import tools
 from oauth2client.file import Storage
 from googleapiclient import discovery
 
 # TODO: Implement initializing spreadsheet
+EMBEDDING_APPROX_FIELD_NAMES =[
+    'username',
+    'train_data_dir',
+    'validation_data_dir',
+    'reduced_emb_train_dir',
+    'reduced_emb_valid_dir',
+    'output_dir',
+    'approx_mode',
+    'neighbors',
+    'min_dist',
+    'metric',
+    'student_model_repr',
+    'student_emb_len',
+    'num_epochs',
+    'train_epoch_size',
+    'validation_epoch_size',
+    'train_batch_size',
+    'validation_batch_size',
+    'random_state',
+    'learning_rate',
+    'gpus',
+    'checkpoint_interval',
+    'latest_epoch',
+    'latest_train_loss',
+    'latest_validation_loss',
+    'latest_train_mae',
+    'latest_validation_mae',
+    'best_train_loss',
+    'best_validation_loss',
+    'best_train_mae',
+    'best_validation_mae'
+]
 
 PRUNED_EMBEDDING_FIELD_NAMES = [
     'username',
@@ -175,6 +206,8 @@ CLASSIFIER_FIELD_NAMES = [
 ]
 
 
+
+
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/sheets.googleapis.com-python-quickstart.json
 SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
@@ -220,6 +253,8 @@ def append_row(service, spreadsheet_id, param_dict, sheet_name):
         field_names = PRUNED_EMBEDDING_FIELD_NAMES
     elif sheet_name == 'distillation':
         field_names = DISTILLATION_FIELD_NAMES
+    elif sheet_name == 'embedding_approx_mse':
+        field_names = EMBEDDING_APPROX_FIELD_NAMES
     else:
         raise ValueError('Unknown spreadsheet sheet name: {}'.format(sheet_name))
 

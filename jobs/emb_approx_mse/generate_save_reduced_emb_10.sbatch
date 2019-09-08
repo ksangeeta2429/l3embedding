@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 #SBATCH --job-name=gen-reduced-embedding
+#SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=16GB
 #SBATCH --time=7-0
@@ -34,6 +35,7 @@ if ([ "$DATASET" = "train" ]); then
    echo $OUTPUT_DIR
 
 elif([ "$DATASET" = "valid" ]); then
+   echo "Validation Data!"
    DATA_DIR=$SCRATCH/orig_l3_embeddings/music_valid
    OUTPUT_DIR=$SCRATCH/reduced_embeddings/music_valid_${BATCH_SIZE}_${NEIGHBORS_LIST[0]}
 
@@ -45,7 +47,7 @@ fi
 #alias nogpu='export CUDA_VISIBLE_DEVICES=-1;'
 
 if ([ "$APPROX_MODE" = "umap" ]); then
-  echo "UMAP Approximation"
+  echo "UMAP Approximation!"
   python $SRCDIR/02_generate_save_reduced_emb.py \
       --batch-size $BATCH_SIZE \
       --approx-mode $APPROX_MODE \
