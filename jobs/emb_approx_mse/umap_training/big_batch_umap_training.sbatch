@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-#SBATCH --job-name=big-batch-gen-reduced-embedding
+#SBATCH --job-name=big-batch-train-embedding
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=250GB
+#SBATCH --mem=500GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=FAIL
-#SBATCH --output="big-batch-gen-reduced-embedding-neighbor-5-%j.out"
-#SBATCH --err="big-batch-gen-reduced-embedding-neighbor-5-%j.err"
+#SBATCH --output="big-batch-train-embedding-%j.out"
+#SBATCH --err="big-batch-train-embedding-5-%j.err"
 
 source ~/.bashrc
 source activate l3embedding-cpu
