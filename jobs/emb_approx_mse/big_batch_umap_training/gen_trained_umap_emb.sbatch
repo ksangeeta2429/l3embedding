@@ -34,7 +34,7 @@ if ([ "$DATASET" = "train" ]); then
 elif([ "$DATASET" = "valid" ]); then
    echo "Validation Data!"
    DATA_DIR=/scratch/sk7898/orig_l3_embeddings/music_valid
-   OUTPUT_DIR=$SCRATCH/reduced_embeddings/$OUT_DIR/music_valid
+   OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/$OUT_DIR/music_valid
    echo OUTPUT_DIR=$OUTPUT_DIR
 else
    echo "First argument can only be train/valid"
