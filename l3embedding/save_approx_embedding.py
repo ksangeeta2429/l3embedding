@@ -161,8 +161,11 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
     
     print('Embedding Blob Keys: {}'.format(blob_keys))
     
-    f_idx = 0    
-    for fname in os.listdir(data_dir):
+    f_idx = 0
+    list_files = os.listdir(data_dir)
+    last_file = list_files[-1]
+    print('Last file on the list: ', last_file)
+    for fname in list_files:
         batch_path = os.path.join(data_dir, fname)
         blob_start_idx = 0
 
@@ -189,7 +192,7 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
             if blob_end_idx == blob_size:
                 blob.close()
 
-            if curr_batch_size == batch_size:
+            if curr_batch_size == batch_size or (fname == last_file and blob_end_idx == blob_size):
                 read_end = time.time()
                 print('Batch reading: {} seconds'.format((read_end - read_start)))
                 # If we are starting from a particular batch, skip yielding all
@@ -254,6 +257,8 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                 read_start = time.time()
 
 
+
+
 def train_umap_embedding(data_dir, output_dir, reduced_emb_len, neighbors=5,
                     metric='euclidean', min_dist=0.3, batch_size=1024, random_state=20180123, start_batch_idx=None):
     if data_dir == output_dir:
@@ -304,7 +309,7 @@ def train_umap_embedding(data_dir, output_dir, reduced_emb_len, neighbors=5,
                 if start_batch_idx is None or batch_idx >= start_batch_idx:
                     teacher_embedding = batch['l3_embedding']  # get_teacher_embedding(batch['audio'])
                     reducer = umap.UMAP(n_neighbors=neighbors, min_dist=min_dist,
-                                        metric=metric,n_components=reduced_emb_len)
+                                        metric=metric,n_components=reduced_emb_len, verbose=True)
 
                     print('Starting UMAP training: training_size={}, num_neighbors={},'
                           'min_dist={}, metric={}, reduced_emb_len={}'.format(curr_batch_size, neighbors,
