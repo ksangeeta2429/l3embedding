@@ -1,5 +1,3 @@
-# Added from https://github.com/sonyc-project/urban-sound-tagging-baseline
-
 import numpy as np
 import oyaml as yaml
 import pandas as pd
@@ -224,28 +222,230 @@ def confusion_matrix_coarse(y_true, y_pred):
         Number of false negatives.
     """
     cm = confusion_matrix(y_true, y_pred)
-    FP = cm[0, 1]
-    FN = cm[1, 0]
-    TP = cm[1, 1]
+
+    if cm.shape == (2,2):
+        FP = cm[0, 1]
+        FN = cm[1, 0]
+        TP = cm[1, 1]
+    else:
+        FP = 0
+        FN = 0
+        if y_true[0][0] == 1:
+            TP = y_true.shape[0]
+        else:
+            TP = 0
+
     return TP, FP, FN
 
 
-def evaluate(prediction_path, annotation_path, yaml_path, mode):
-    # Set minimum threshold.
-    min_threshold = 0.01
+def get_aggregate_proximity(annotation_path, valid_sensor_id=None, split_path=None):
+    ann_df = pd.read_csv(annotation_path)
 
+    # Aggregate proximity
+    gt_df = filter_ground_truth_split(ann_df,
+                                      aggregate=True,
+                                      valid_sensor_id=valid_sensor_id,
+                                      split_path=split_path)
+    gt_df_raw = filter_ground_truth_split(ann_df,
+                                          aggregate=False,
+                                          valid_sensor_id=valid_sensor_id,
+                                          split_path=split_path)
+
+    fine_names = [x.replace('_presence', '')
+                  for x in gt_df_raw.keys()
+                  if 'presence' in x and '-' in x.split('_')[0]]
+
+    prox_keys = [x for x in gt_df_raw.keys()
+                 if 'proximity' in x and '-' in x.split('_')[0]]
+    pres_keys = [x for x in gt_df_raw.keys()
+                 if 'presence' in x and '-' in x.split('_')[0]]
+
+    # Updating in batch is much faster
+    prox_updates = {k: [] for k in prox_keys}
+
+    for file_idx, (audio_filename, sub_df) in enumerate(gt_df_raw.groupby("audio_filename")):
+        for fine_name, pres_key, prox_key in zip(fine_names, pres_keys, prox_keys):
+            prox_mode = sub_df[prox_key][sub_df[pres_key] > 0].mode()
+            if len(prox_mode) == 1:
+                prox_updates[prox_key].append(prox_mode[0])
+            else:
+                prox_updates[prox_key].append('-1')
+
+    for k, update_list in prox_updates.items():
+        gt_df.loc[:, k] = update_list
+
+    # Get majority vote of proximity annotations
+    gt_prox_df = gt_df[['audio_filename'] + prox_keys]
+    gt_prox_df.reset_index(inplace=True)
+    if 'index' in gt_prox_df.keys():
+        gt_prox_df = gt_prox_df.drop(columns=['index'])
+
+    return gt_prox_df
+
+
+def filter_dataframe_by_proximity(annotation_path, gt_df, pred_df, yaml_dict,
+                                  valid_sensor_id=None, split_path=None):
+
+    gt_prox_df = get_aggregate_proximity(annotation_path,
+                                         valid_sensor_id=valid_sensor_id,
+                                         split_path=split_path)
+
+    # Make copies of each dataframe for near and far
+    gt_near_df = gt_df.copy()
+    gt_far_df = gt_df.copy()
+    gt_unsure_df = gt_df.copy()
+    pred_near_df = pred_df.copy()
+    pred_far_df = pred_df.copy()
+    pred_unsure_df = pred_df.copy()
+
+    gt_near_df.reset_index(inplace=True)
+    if 'index' in gt_near_df.keys():
+        gt_near_df = gt_near_df.drop(columns=['index'])
+    gt_far_df.reset_index(inplace=True)
+    if 'index' in gt_far_df.keys():
+        gt_far_df = gt_far_df.drop(columns=['index'])
+    gt_unsure_df.reset_index(inplace=True)
+    if 'index' in gt_unsure_df.keys():
+        gt_unsure_df = gt_unsure_df.drop(columns=['index'])
+    pred_near_df.reset_index(inplace=True)
+    if 'index' in pred_near_df.keys():
+        pred_near_df = pred_near_df.drop(columns=['index'])
+    pred_far_df.reset_index(inplace=True)
+    if 'index' in pred_far_df.keys():
+        pred_far_df = pred_far_df.drop(columns=['index'])
+    pred_unsure_df.reset_index(inplace=True)
+    if 'index' in pred_unsure_df.keys():
+        pred_unsure_df = pred_unsure_df.drop(columns=['index'])
+
+    for coarse_idx, label_name in yaml_dict['coarse'].items():
+        coarse_pres_key = str(coarse_idx)
+        fine_ids = ['{}-{}_{}'.format(coarse_idx, fine_idx, fine_name)
+                    for fine_idx, fine_name in yaml_dict['fine'][coarse_idx].items()]
+        for ex_idx, row in gt_prox_df.iterrows():
+
+            coarse_near = False
+            coarse_far = False
+
+            for fine_idx, fine_name in yaml_dict['fine'][coarse_idx].items():
+                fine_prox_key = '{}-{}_{}_proximity'.format(coarse_idx, fine_idx, fine_name)
+                fine_pres_key = '{}-{}'.format(coarse_idx, fine_idx)
+
+                fine_prox = row[fine_prox_key]
+
+                fine_near = not isinstance(fine_prox, np.ndarray) and (fine_prox == 'near')
+                fine_far = not isinstance(fine_prox, np.ndarray) and (fine_prox == 'far')
+
+                if not fine_near:
+                    # If this isn't a "near" event, mask it out in the ground truth and prediction
+                    gt_near_df.loc[ex_idx, fine_pres_key] = 0.0
+                    if fine_pres_key in pred_df.keys():
+                        pred_near_df.loc[ex_idx, fine_pres_key] = 0.0
+                else:
+                    # If there is a "near" event at the fine level, count it for the coarse level
+                    coarse_near = True
+
+                    # Mask out the ground truth and prediction for "unsure" events
+                    gt_unsure_df.loc[ex_idx, fine_pres_key] = 0.0
+                    if fine_pres_key in pred_df.keys():
+                        pred_unsure_df.loc[ex_idx, fine_pres_key] = 0.0
+
+                if not fine_far:
+                    # If this isn't a "far" event, mask it out in the ground truth and prediction
+                    gt_far_df.loc[ex_idx, fine_pres_key] = 0.0
+                    if fine_pres_key in pred_df.keys():
+                        pred_far_df.loc[ex_idx, fine_pres_key] = 0.0
+                else:
+                    # If there is a "far" event at the fine level, count it for the coarse level
+                    coarse_far = True
+
+                    # Mask out the ground truth and prediction for "unsure" events
+                    gt_unsure_df.loc[ex_idx, fine_pres_key] = 0.0
+                    if fine_pres_key in pred_df.keys():
+                        pred_unsure_df.loc[ex_idx, fine_pres_key] = 0.0
+
+
+            if (not coarse_near) or coarse_far:
+                # If this isn't only a "near" event, mask it out in the ground truth and prediction
+                gt_near_df.loc[ex_idx, coarse_pres_key] = 0.0
+                if coarse_pres_key in pred_df.keys():
+                    pred_near_df.loc[ex_idx, coarse_pres_key] = 0.0
+            else:
+                # If this is only a "near" event, mask it out the ground truth predictions corresponding
+                # to "unsure"
+                gt_unsure_df.loc[ex_idx, coarse_pres_key] = 0.0
+                if coarse_pres_key in pred_df.keys():
+                    pred_unsure_df.loc[ex_idx, coarse_pres_key] = 0.0
+
+            if (not coarse_far) or coarse_near:
+                # If this isn't only a "far" event, mask it out in the ground truth and prediction
+                gt_far_df.loc[ex_idx, coarse_pres_key] = 0.0
+                if coarse_pres_key in pred_df.keys():
+                    pred_far_df.loc[ex_idx, coarse_pres_key] = 0.0
+            else:
+                # If this is only a "near" event, mask it out the ground truth predictions corresponding
+                # to "unsure"
+                gt_unsure_df.loc[ex_idx, coarse_pres_key] = 0.0
+                if coarse_pres_key in pred_df.keys():
+                    pred_unsure_df.loc[ex_idx, coarse_pres_key] = 0.0
+
+    return gt_near_df, gt_far_df, gt_unsure_df, pred_near_df, pred_far_df, pred_unsure_df
+
+
+def evaluate(prediction_path, annotation_path, yaml_path, mode, valid_sensor_id=None,
+             split_path=None):
     # Create dictionary to parse tags
     with open(yaml_path, 'r') as stream:
         yaml_dict = yaml.load(stream, Loader=yaml.Loader)
 
     # Parse ground truth.
-    gt_df = parse_ground_truth(annotation_path, yaml_path)
+    gt_df = parse_ground_truth(annotation_path, yaml_path,
+                               valid_sensor_id=valid_sensor_id,
+                               split_path=split_path)
 
     # Parse predictions.
     if mode == "fine":
         pred_df = parse_fine_prediction(prediction_path, yaml_path)
     elif mode == "coarse":
         pred_df = parse_coarse_prediction(prediction_path, yaml_path)
+
+    return evaluate_df(gt_df, pred_df, mode, yaml_dict)
+
+
+def evaluate_proximity(prediction_path, annotation_path, yaml_path, mode,
+                       valid_sensor_id=None, split_path=None):
+    # Create dictionary to parse tags
+    with open(yaml_path, 'r') as stream:
+        yaml_dict = yaml.load(stream, Loader=yaml.Loader)
+
+    # Parse ground truth.
+    gt_df = parse_ground_truth(annotation_path, yaml_path,
+                               valid_sensor_id=valid_sensor_id,
+                               split_path=split_path)
+
+    # Parse predictions.
+    if mode == "fine":
+        pred_df = parse_fine_prediction(prediction_path, yaml_path)
+    elif mode == "coarse":
+        pred_df = parse_coarse_prediction(prediction_path, yaml_path)
+
+    gt_near_df, gt_far_df, gt_unsure_df, pred_near_df, pred_far_df, pred_unsure_df = \
+        filter_dataframe_by_proximity(annotation_path, gt_df, pred_df, yaml_dict,
+                                      valid_sensor_id=valid_sensor_id,
+                                      split_path=split_path)
+
+
+    near_df_dict = evaluate_df(gt_near_df, pred_near_df, mode, yaml_dict)
+    far_df_dict = evaluate_df(gt_far_df, pred_far_df, mode, yaml_dict)
+    unsure_df_dict = evaluate_df(gt_unsure_df, pred_unsure_df, mode, yaml_dict)
+
+    return near_df_dict, far_df_dict, unsure_df_dict
+
+
+def evaluate_df(gt_df, pred_df, mode, yaml_dict):
+    # NOTE: Make sure mode matches pred_df!
+
+    # Set minimum threshold.
+    min_threshold = 0.01
 
     # Check consistency between ground truth and predictions.
     # Make sure the files evaluated in both tables match.
@@ -284,10 +484,10 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
         columns.sort()
 
         # Restrict prediction to columns of interest.
-        restricted_pred_df = pred_df[columns]
+        restricted_pred_df = np.clip(pred_df[columns], 0.0, 1.0)
 
         # Restrict ground truth to columns of interest.
-        restricted_gt_df = gt_df[columns]
+        restricted_gt_df = np.clip(gt_df[columns], 0.0, 1.0)
 
         # Aggregate all prediction values into a "raveled" vector.
         # We make an explicit numpy, so that the original DataFrame
@@ -551,9 +751,14 @@ def parse_coarse_prediction(pred_csv_path, yaml_path):
     # Build a new Pandas DataFrame with coarse keys as column names.
     pred_coarse_df = pd.DataFrame.from_dict(pred_coarse_dict)
 
+    pred_coarse_df.sort_values('audio_filename')
+    pred_coarse_df.reset_index(inplace=True)
+    if 'index' in pred_coarse_df.keys():
+        pred_coarse_df = pred_coarse_df.drop(columns=['index'])
+
     # Return output in DataFrame format.
     # The column names are of the form 1, 2, 3, etc.
-    return pred_coarse_df.sort_values('audio_filename')
+    return pred_coarse_df
 
 
 def parse_fine_prediction(pred_csv_path, yaml_path):
@@ -632,12 +837,52 @@ def parse_fine_prediction(pred_csv_path, yaml_path):
     # Build a new Pandas DataFrame with mixed keys as column names.
     pred_fine_df = pd.DataFrame.from_dict(pred_fine_dict)
 
+    pred_fine_df.sort_values('audio_filename')
+    pred_fine_df.reset_index(inplace=True)
+    if 'index' in pred_fine_df.keys():
+        pred_fine_df = pred_fine_df.drop(columns=['index'])
+
     # Return output in DataFrame format.
     # Column names are 1-1, 1-2, 1-3 ... 1-X, 2-1, 2-2, 2-3 ... 2-X, 3-1, etc.
-    return pred_fine_df.sort_values('audio_filename')
+    return pred_fine_df
 
 
-def parse_ground_truth(annotation_path, yaml_path):
+def filter_ground_truth_split(ann_df, aggregate=True, valid_sensor_id=None, split_path=None):
+    if split_path:
+        split_df = pd.read_csv(split_path)
+        valid_sensor_ids = []
+        for _, row in split_df.iterrows():
+            if row['split'] == 'validate':
+                valid_sensor_ids.append(row['sensor_id'])
+
+        gt_df = ann_df[
+            (ann_df["annotator_id"] > 0) & (ann_df["sensor_id"].isin(valid_sensor_ids))]
+        if aggregate:
+            gt_df = gt_df.groupby("audio_filename", group_keys=False).max()
+
+
+    elif valid_sensor_id is not None:
+        gt_df = ann_df[
+            (ann_df["annotator_id"] > 0) & (ann_df["sensor_id"] == int(valid_sensor_id))]
+        if aggregate:
+            gt_df = gt_df.groupby("audio_filename", group_keys=False).max()
+
+    else:
+        # Restrict to ground truth ("annotator zero").
+        if aggregate:
+            gt_df = ann_df[
+                (ann_df["annotator_id"]==0) & (ann_df["split"]=="validate")]
+        else:
+            gt_df = ann_df[
+                (ann_df["annotator_id"] > 0) & (ann_df["split"]=="validate")]
+
+    gt_df.reset_index(inplace=True)
+    if 'index' in gt_df.keys():
+        gt_df = gt_df.drop(columns=['index'])
+    return gt_df
+
+
+def parse_ground_truth(annotation_path, yaml_path, valid_sensor_id=None, split_path=None):
     """
     Parse ground truth annotations from a CSV file containing both fine-level
     and coarse-level predictions (and possibly additional metadata).
@@ -653,6 +898,11 @@ def parse_ground_truth(annotation_path, yaml_path):
     yaml_path: string
         Path to the YAML file containing coarse taxonomy.
 
+    valid_sensor_id: string or None
+
+    split_path: string or None
+
+
 
     Returns
     -------
@@ -665,10 +915,9 @@ def parse_ground_truth(annotation_path, yaml_path):
 
     # Load CSV file into a Pandas DataFrame.
     ann_df = pd.read_csv(annotation_path)
-
-    # Restrict to ground truth ("annotator zero").
-    gt_df = ann_df[
-        (ann_df["annotator_id"]==0) & (ann_df["split"]=="validate")]
+    gt_df = filter_ground_truth_split(ann_df,
+                                      valid_sensor_id=valid_sensor_id,
+                                      split_path=split_path)
 
     # Rename coarse columns.
     coarse_dict = yaml_dict["coarse"]
@@ -704,5 +953,13 @@ def parse_ground_truth(annotation_path, yaml_path):
         if incomplete_tag not in gt_df.columns:
             gt_df[incomplete_tag] = np.zeros((n_samples,)).astype('int')
 
+
+    gt_df = gt_df.sort_values('audio_filename')
+
+    gt_df.reset_index(inplace=True)
+    if 'index' in gt_df.keys():
+        gt_df = gt_df.drop(columns=['index'])
+
     # Return output in DataFrame format.
-    return gt_df.sort_values('audio_filename')
+    return gt_df
+
