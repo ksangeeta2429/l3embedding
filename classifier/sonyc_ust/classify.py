@@ -345,8 +345,8 @@ def construct_mlp_framewise(emb_size, num_classes, sensor_factor=True,
     return m
 
 
-def construct_mlp_mil(num_frames, emb_size, num_classes, sensor_factor=True,
-                      num_sensors=None, proximity_factor=True, num_proximity_classes=None,
+def construct_mlp_mil(num_frames, emb_size, num_classes, sensor_factor=False,
+                      num_sensors=None, proximity_factor=False, num_proximity_classes=None,
                       hidden_layer_size=128, num_hidden_layers=0, l2_reg=1e-5):
     """
     Construct a 2-hidden-layer MLP model for MIL processing
