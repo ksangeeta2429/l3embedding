@@ -35,6 +35,14 @@ from kapre.time_frequency import Spectrogram, Melspectrogram
 from resampy import resample
 from sklearn.manifold import TSNE
 
+# Do not allocate all the memory for visible GPU
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3"
+config = tf.ConfigProto()
+config.gpu_options.allow_growth=True
+sess = tf.Session(config=config)
+K.set_session(sess)
+
 
 LOGGER = logging.getLogger('embedding_approx_mse')
 LOGGER.setLevel(logging.DEBUG)
