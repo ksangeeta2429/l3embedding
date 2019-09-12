@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:4
-#SBATCH --job-name=l3embedding-train-melspec2-reduced-input-Sangeeta
+#SBATCH --job-name=l3embedding-train-embedding-approx-mse
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=ALL
-#SBATCH --output="l3embedding-train-melspec2-reduced-input-%j.out"
-#SBATCH --err="l3embedding-train-melspec2-reduced-input-%j.err"
+#SBATCH --output="l3embedding-train-embedding-approx-mse-%j.out"
+#SBATCH --err="l3embedding-train-embedding-approx-mse-%j.err"
 
 source ~/.bashrc
 source activate l3embedding-new-cpu
@@ -60,11 +60,11 @@ if ([ "$APPROX_MODE" = "umap" ]); then
       MIN_DIST=0.0
   fi
   python $SRCDIR/03_train_approx_embedding_mse.py \
-	  --num-epochs 1 \
-	  --train-epoch-size 1 \
+	  --num-epochs 300 \
+	  --train-epoch-size 4096 \
 	  --train-batch-size 64 \
 	  --model-type cnn_L3_melspec2 \
-	  --validation-epoch-size 1 \
+	  --validation-epoch-size 1024 \
 	  --validation-batch-size 64 \
 	  --checkpoint-interval 10 \
 	  --gpus $NUM_GPUS \
@@ -73,7 +73,7 @@ if ([ "$APPROX_MODE" = "umap" ]); then
           --min-dist $MIN_DIST \
 	  --metric $METRIC \
 	  --student-weight-path $STUDENT_WEIGHT_PATH \
-	  --learning-rate 0.0001 \
+	  --learning-rate 0.00001 \
 	  --random-state 20180216 \
 	  --gsheet-id $GSHEET_ID \
 	  --google-dev-app-name $GOOGLE_DEV_APP_NAME \
