@@ -30,11 +30,11 @@ NUM_GPUS=4
 
 STUDENT_WEIGHT_PATH=$WEIGHT_DIR/$1 #l3_audio_20190723135620_8000_128_64_256_half_fmax_3500.h5
 NEIGHBORS=$2
-METRIC='correlation'
+METRIC=$3
 APPROX_MODE='umap'
 
 #Sample command:
-#sbatch emb_approx_mse.sbatch l3_audio_20190723135620_8000_128_64_256_half_fmax_3500.h5 umap 20 correlation 0.3
+#sbatch emb_approx_mse.sbatch l3_audio_20190723135620_8000_128_64_256_half_fmax_3500.h5 20 correlation 0.3
 module purge
 if [ $USER == "sk7898" ]; then
   module load cuda/8.0.44
@@ -43,15 +43,28 @@ else
   module load cudnn/9.0v7.3.0.29
 fi
 
+# CHOICE of learning-rate, train-epoch-size/steps-per-epoch and batch size
+# Smaller learning rates will require more training epochs. Conversely, larger learning rates will require fewer training epochs.
+# Smaller batch sizes are better suited to smaller learning rates given the noisy estimate of the error gradient.
+
+# Typically, a grid search involves picking values approximately on a logarithmic scale, 
+# e.g., a learning rate taken within the set {.1, .01, 10−3, 10−4 , 10−5}
+
 if ([ "$APPROX_MODE" = "umap" ]); then
   echo "UMAP Approximation"
-  MIN_DIST=$3
+  MIN_DIST=$4
+  if [ $# -eq 1 ]; then
+      APPROX_MODE='mse'
+      NEIGHBORS=0
+      METRIC='mse'
+      MIN_DIST=0.0
+  fi
   python $SRCDIR/03_train_approx_embedding_mse.py \
 	  --num-epochs 1 \
-	  --train-epoch-size 64\
+	  --train-epoch-size 1 \
 	  --train-batch-size 64 \
 	  --model-type cnn_L3_melspec2 \
-	  --validation-epoch-size 64 \
+	  --validation-epoch-size 1 \
 	  --validation-batch-size 64 \
 	  --checkpoint-interval 10 \
 	  --gpus $NUM_GPUS \
@@ -60,7 +73,7 @@ if ([ "$APPROX_MODE" = "umap" ]); then
           --min-dist $MIN_DIST \
 	  --metric $METRIC \
 	  --student-weight-path $STUDENT_WEIGHT_PATH \
-	  --learning-rate 0.00001 \
+	  --learning-rate 0.0001 \
 	  --random-state 20180216 \
 	  --gsheet-id $GSHEET_ID \
 	  --google-dev-app-name $GOOGLE_DEV_APP_NAME \

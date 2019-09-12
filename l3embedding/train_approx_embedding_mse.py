@@ -186,8 +186,13 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
         if min_dist is None:
             min_dist = 0.5
         model_attribute = 'umap_k_' + str(neighbors) + '_dist_' + str(min_dist) + '_metric_' + metric
-    if approx_mode == 'tsne':
+    elif approx_mode == 'tsne':
         model_attribute = 'tsne_k_' + str(neighbors) + '_metric_' + metric
+    elif approx_mode == 'mse':
+        model_attribute = 'mse_original'
+    else:
+        raise ValueError('Invalid approximation mode: {}'.format(approx_mode))
+    
 
     # Make sure the directories we need exist
     if continue_model_dir:
@@ -281,6 +286,7 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
     })
 
     latest_weight_path = os.path.join(model_dir, 'model_latest.h5')
+    best_valid_mae_weight_path = os.path.join(model_dir, 'model_best_valid_mae.h5')
     best_valid_loss_weight_path = os.path.join(model_dir, 'model_best_valid_loss.h5')
     checkpoint_weight_path = os.path.join(model_dir, 'model_checkpoint.{epoch:02d}.h5')
 
@@ -296,9 +302,19 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
                                          save_weights_only=False,
                                          verbose=1))
 
+    best_val_mae_cb = MultiGPUCheckpointCallback(best_valid_mae_weight_path,
+                                                 student_base_model,
+                                                 save_weights_only=False,\
+                                                 save_best_only=True,\
+                                                 verbose=1,\
+                                                 monitor='val_mean_absolute_error')
+    if continue_model_dir is not None:
+        best_val_mae_cb.best = last_val_mae
+    cb.append(best_val_mae_cb)
+
     best_val_loss_cb = MultiGPUCheckpointCallback(best_valid_loss_weight_path,
                                                   student_base_model,
-                                                  save_weights_only=True,
+                                                  save_weights_only=False,
                                                   save_best_only=True,
                                                   verbose=1,
                                                   monitor='val_loss')
