@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-##SBATCH --gres=gpu:1
-##SBATCH --job-name=classify-ust-loso
-##SBATCH --nodes=1
-##SBATCH --cpus-per-task=1
-##SBATCH --mem=20GB
-##SBATCH --time=1-0
-##SBATCH --mail-type=FAIL
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=classify-ust-loso
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=20GB
+#SBATCH --time=1-0
+#SBATCH --mail-type=FAIL
 #SBATCH --output="classify-ust-loso-%j.out"
 
 source ~/.bashrc
@@ -20,7 +20,7 @@ SRCDIR=.
 ANNPATH=/beegfs/jtc440/sonyc_ust/data/annotations.csv
 TAXPATH=/beegfs/jtc440/sonyc_ust/data/dcase-ust-taxonomy.yaml
 EMBDIR=$SCRATCH/embeddings/features/sonyc_ust/l3/reduced_input/$1
-OUTDIR=$SCRATCH/sensor_embedding_output/downstream_models/loso
+OUTDIR=$SCRATCH/sensor_embedding_output/downstream_models/mil
 
 EXPDIR=$OUTDIR/$1
 OUTPUTDIR=$EXPDIR/results
@@ -32,7 +32,7 @@ OUTPUTDIR=$EXPDIR/results
 
 cd $SRCDIR/classifier/sonyc_ust
 
-python classify_loso.py $ANNPATH $TAXPATH $EMBDIR $EXPDIR results \
+python classify.py $ANNPATH $TAXPATH $EMBDIR $EXPDIR results \
     --hidden_layer_size 0 \
     --num_hidden_layers 0 \
     --batch_size 64 \
@@ -41,5 +41,6 @@ python classify_loso.py $ANNPATH $TAXPATH $EMBDIR $EXPDIR results \
     --label_mode coarse \
     --target_mode mil \
     --no_timestamp \
+    --optimizer adam
 
-python evaluate_loso.py $OUTPUTDIR $ANNPATH $TAXPATH
+python evaluate_predictions.py $OUTPUTDIR/output.csv $ANNPATH $TAXPATH $OUTPUTDIR
