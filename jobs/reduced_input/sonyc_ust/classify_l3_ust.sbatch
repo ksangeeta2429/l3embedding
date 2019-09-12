@@ -17,8 +17,8 @@ module purge
 module load cudnn/9.0v7.3.0.29
 
 SRCDIR=.
-ANNPATH=/beegfs/jtc440/urban_sound_tagging_final/annotations.csv
-TAXPATH=/beegfs/jtc440/urban_sound_tagging_final/dcase-ust-taxonomy.yaml
+ANNPATH=/beegfs/jtc440/sonyc_ust/data/annotations.csv
+TAXPATH=/beegfs/jtc440/sonyc_ust/data/dcase-ust-taxonomy.yaml
 EMBDIR=$SCRATCH/embeddings/features/sonyc_ust/l3/reduced_input/$1
 OUTDIR=$SCRATCH/sensor_embedding_output/downstream_models/loso
 
