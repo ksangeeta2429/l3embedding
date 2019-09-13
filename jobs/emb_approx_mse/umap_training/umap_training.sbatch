@@ -49,7 +49,7 @@ fi
 
 #alias nogpu='export CUDA_VISIBLE_DEVICES=-1;'
 
-python $SRCDIR/02_train_umap_emb.py \
+python -u $SRCDIR/02_train_umap_emb.py \
   --batch-size $BATCH_SIZE \
   --neighbors $NEIGHBORS \
   --min-dist $MIN_DIST \

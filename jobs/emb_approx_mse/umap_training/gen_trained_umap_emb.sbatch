@@ -43,7 +43,7 @@ fi
 
 #alias nogpu='export CUDA_VISIBLE_DEVICES=-1;'
 
-python $SRCDIR/02_extract_trained_umap_emb.py \
+python -u $SRCDIR/02_extract_trained_umap_emb.py \
   --random-state 20180216 \
   --batch-size $BATCH_SIZE \
   $MODEL_PATH \

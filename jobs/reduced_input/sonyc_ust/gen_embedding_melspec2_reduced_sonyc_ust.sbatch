@@ -55,7 +55,7 @@ then
     FMAX=$6
     echo "FMAX=$FMAX"
 
-    python $SRCDIR/05_generate_embedding_samples.py \
+    python -u $SRCDIR/05_generate_embedding_samples.py \
         --random-state 20180302 \
         --verbose \
         --features 'l3' \

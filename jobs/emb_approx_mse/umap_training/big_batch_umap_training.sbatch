@@ -7,7 +7,7 @@
 #SBATCH --time=7-0
 #SBATCH --mail-type=FAIL
 #SBATCH --output="big-batch-train-embedding-%j.out"
-#SBATCH --err="big-batch-train-embedding-5-%j.err"
+#SBATCH --err="big-batch-train-embedding-%j.err"
 
 source ~/.bashrc
 source activate l3embedding-cpu
@@ -49,7 +49,7 @@ fi
 
 #alias nogpu='export CUDA_VISIBLE_DEVICES=-1;'
 
-python $SRCDIR/02_train_umap_emb.py \
+python -u $SRCDIR/02_train_umap_emb.py \
   --batch-size $BATCH_SIZE \
   --neighbors $NEIGHBORS \
   --min-dist $MIN_DIST \
