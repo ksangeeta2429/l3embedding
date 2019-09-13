@@ -3,3 +3,5 @@
 sbatch classify_l3_ust.sbatch 20190723135600_16000_128_128_512_half
 sleep 10
 sbatch classify_l3_ust.sbatch 20190723135620_8000_128_64_256_half_fmax_3500
+sleep 10
+sbatch classify_l3_ust.sbatch 20190710131207_16000_64_160_1024
