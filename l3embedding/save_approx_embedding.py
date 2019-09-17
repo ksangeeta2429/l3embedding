@@ -9,6 +9,7 @@ import time
 import multiprocessing
 from joblib import Parallel, delayed, dump, load
 import re
+import glob
 
 
 def get_teacher_embedding(audio_batch):
@@ -109,6 +110,7 @@ def get_blob_keys(method, batch_size, emb_len, neighbors_list=None, metric_list=
         for neighbors in neighbors_list for metric in metric_list for iteration in tsne_iter_list]
 
     return blob_keys
+
 
 def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap', umap_estimator_path=None, neighbors_list=None, \
                         metric_list=None, min_dist_list=None, tsne_iter_list=[500], \
@@ -257,6 +259,86 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                 read_start = time.time()
 
 
+def save_umap_training_points(data_dir, output_dir, batch_size, random_state=20180123):
+    if data_dir == output_dir:
+        raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
+
+    random.seed(random_state)
+
+    os.chdir(data_dir)
+    if 'music' in data_dir:
+        all_files = glob.glob('*.h5')
+    elif 'sonyc' in data_dir:
+        all_files = glob.glob('*/*.h5')
+    else:
+        raise NotImplementedError('Invalid data directory: {}; can only be music or sonyc'.format(data_dir))
+
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+
+    # Find number of points in first pass
+    num_points = 0
+    for fname in all_files:
+        f = h5py.File(fname, 'r')
+        num_points += len(f['l3_embedding'])
+
+    # Generate random numbers of training size
+    indices = np.random.randint(0, num_points, batch_size)
+
+    training_pts = []
+
+    for fname in all_files:
+        batch_path = os.path.join(data_dir, fname)
+        blob_start_idx = 0
+
+        blob = h5py.File(batch_path, 'r')
+        blob_size = len(blob['l3_embedding'])
+
+        while blob_start_idx < blob_size:
+            blob_end_idx = min(blob_start_idx + batch_size - curr_batch_size, blob_size)
+
+            # If we are starting from a particular batch, skip computing all of
+            # the prior batches
+            if start_batch_idx is None or batch_idx >= start_batch_idx:
+                if batch is None:
+                    batch = {'l3_embedding': blob['l3_embedding'][blob_start_idx:blob_end_idx]}
+                else:
+                    batch['l3_embedding'] = np.concatenate(
+                        [batch['l3_embedding'], blob['l3_embedding'][blob_start_idx:blob_end_idx]])
+
+            curr_batch_size += blob_end_idx - blob_start_idx
+            blob_start_idx = blob_end_idx
+
+            if blob_end_idx == blob_size:
+                blob.close()
+
+            # Use only the first full batch for training
+            if curr_batch_size == batch_size:
+                # If we are starting from a particular batch, skip yielding all
+                # of the prior batches
+                if start_batch_idx is None or batch_idx >= start_batch_idx:
+                    teacher_embedding = batch['l3_embedding']  # get_teacher_embedding(batch['audio'])
+                    reducer = umap.UMAP(n_neighbors=neighbors, min_dist=min_dist,
+                                        metric=metric, n_components=reduced_emb_len, verbose=True)
+
+                    print('Starting UMAP training: training_size={}, num_neighbors={},'
+                          'min_dist={}, metric={}, reduced_emb_len={}'.format(curr_batch_size, neighbors,
+                                                                              min_dist, metric, reduced_emb_len))
+
+                    start_time = time.time()
+                    embedding = reducer.fit_transform(teacher_embedding)
+                    end_time = time.time()
+
+                    print('UMAP training finished: took {} hours'.format((end_time - start_time) / 3600))
+
+                    # Diagnostic
+                    print('Train embedding shape: ', embedding.shape)
+
+                    # Save pickled model
+                    dump(reducer, out_file_name)
+                    print('UMAP model saved at ', out_file_name)
+
+                    return
 
 
 def train_umap_embedding(data_dir, output_dir, reduced_emb_len, neighbors=5,
