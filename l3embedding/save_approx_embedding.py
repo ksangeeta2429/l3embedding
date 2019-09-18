@@ -405,7 +405,7 @@ def train_umap_embedding(data_dir, output_dir, reduced_emb_len, neighbors=5,
                 # of the prior batches
                 if start_batch_idx is None or batch_idx >= start_batch_idx:
                     teacher_embedding = batch['l3_embedding']  # get_teacher_embedding(batch['audio'])
-                    print('Collected data; shape'.format(teacher_embedding.shape))
+                    print('Collected data; shape: {}'.format(teacher_embedding.shape))
                     np.random.shuffle(teacher_embedding)
                     reducer = umap.UMAP(n_neighbors=neighbors, min_dist=min_dist,
                                         metric=metric,n_components=reduced_emb_len, verbose=True)

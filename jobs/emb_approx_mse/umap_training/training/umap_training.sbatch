@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=250GB
-#SBATCH --time=10-0
+#SBATCH --time=7-0
 #SBATCH --mail-type=ALL
 #SBATCH --output="train-embedding-%j.out"
 #SBATCH --err="train-embedding-%j.err"
@@ -26,7 +26,7 @@ echo DATASET=$DATASET
 echo BATCH_SIZE=$BATCH_SIZE
 echo EMB_LEN=$EMB_LEN
 echo NEIGHBORS=$NEIGHBORS
-echo METRIC=$METRIC
+echo METRIC=euclidean
 echo MIN_DIST=$MIN_DIST
 
 if ([ "$DATASET" = "music" ]); then
