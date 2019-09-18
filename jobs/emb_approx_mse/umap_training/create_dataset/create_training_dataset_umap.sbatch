@@ -2,9 +2,9 @@
 
 #SBATCH --job-name=create-umap-dataset
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=250GB
-#SBATCH --time=1-0
+#SBATCH --cpus-per-task=10
+#SBATCH --mem=100GB
+#SBATCH --time=7-0
 #SBATCH --mail-type=FAIL
 #SBATCH --output="create-umap-dataset-%j.out"
 #SBATCH --err="create-umap-dataset-%j.err"
@@ -24,7 +24,7 @@ echo TRAINING_SIZE=$TRAINING_SIZE
 
 if ([ "$DATASET" = "music" ]); then
    DATA_DIR=/scratch/sk7898/orig_l3_embeddings/music_train
-   OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/training_data/music
+   OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/training_data/music/umap_training_ndata=$TRAINING_SIZE
    #For testing
    #DATA_DIR=/scratch/sk7898/temp_data
    #OUTPUT_DIR=/scratch/sk7898/reduced_embeddings

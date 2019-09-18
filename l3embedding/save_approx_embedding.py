@@ -1,4 +1,5 @@
 import os
+import math
 import random
 import numpy as np
 import h5py
@@ -259,6 +260,65 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
 
 
 def create_umap_training_dataset(data_dir, output_dir, training_size, random_state=20180123):
+    def divide_chunks(l, n):
+        # looping till length l
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
+
+    def process_partition(list_files, training_size, outfilename):
+        # Find number of points in first pass
+        num_points = 0
+        for fname in list_files:
+            f = h5py.File(fname, 'r')
+            num_points += len(f['l3_embedding'])
+
+        print(multiprocessing.current_process(), 'Number of files in chunk', len(list_files))
+        print(multiprocessing.current_process(), 'Total number of points in chunk', num_points)
+        print(multiprocessing.current_process(), 'Training size in chunk', training_size)
+        print(multiprocessing.current_process(), 'Output file', outfilename)
+
+        assert num_points >= training_size
+
+        # Generate random numbers of training size
+        indices = random.sample(range(num_points), training_size)
+        indices.sort()
+        training_pts = []
+        running_index = 0
+
+        next_sampled_index, indices = indices[0], indices[1:]
+        for fname in list_files:
+            batch_path = os.path.join(data_dir, fname)
+
+            blob = h5py.File(batch_path, 'r')
+            blob_size = len(blob['l3_embedding'])
+
+            cur_file_start_index = running_index
+            next_file_start_index = cur_file_start_index + blob_size
+
+            # Populate training point(s)
+            while running_index <= next_sampled_index < next_file_start_index:
+                # Add training point to list
+                training_pts.append(blob['l3_embedding'][next_sampled_index - cur_file_start_index])
+
+                # Update current index
+                running_index = next_sampled_index + 1
+
+                # Pop next index to sample
+                try:
+                    next_sampled_index, indices = indices[0], indices[1:]
+                    #print('Next index to be sampled', next_sampled_index)
+                except IndexError:
+                    print(multiprocessing.current_process(), 'Creating UMAP training dataset')
+                    outfile = h5py.File(outfilename, 'w')
+                    outfile.create_dataset('l3_embedding', data=np.array(training_pts))
+                    # Save dataset and exit when all indices have been sampled
+                    blob.close()
+                    return
+
+            # Close blob
+            running_index = next_file_start_index
+            blob.close()
+
     if data_dir == output_dir:
         raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
 
@@ -269,6 +329,7 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
     os.chdir(data_dir)
     if 'music' in data_dir:
         all_files = glob.glob('*.h5')
+        num_files = len(all_files)
     elif 'sonyc' in data_dir:
         all_files = glob.glob('*/*.h5')
     else:
@@ -277,58 +338,20 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
-    # Create output filename
-    outfilename = os.path.join(output_dir, 'umap_training_ndata={}.h5'.format(training_size))
+    print('Number of CPUs: {}'.format(multiprocessing.cpu_count()))
+    training_size_per_chunk = training_size // multiprocessing.cpu_count()
+    print('Training size per chunk: {}'.format(training_size_per_chunk))
 
-    # Find number of points in first pass
-    print('Finding number of training points')
-    num_points = 0
-    for fname in all_files:
-        f = h5py.File(fname, 'r')
-        num_points += len(f['l3_embedding'])
+    # Split file list into chunks
+    all_files = list(divide_chunks(all_files, math.ceil(num_files/multiprocessing.cpu_count())))
 
-    print('Num of training points', num_points)
-
-    # Generate random numbers of training size
-    indices = random.sample(range(num_points), training_size)
-    indices.sort()
-    training_pts = []
-    running_index = 0
-
-    next_sampled_index, indices = indices[0], indices[1:]
-    print('Next index to be sampled', next_sampled_index)
-    for fname in all_files:
-        batch_path = os.path.join(data_dir, fname)
-
-        blob = h5py.File(batch_path, 'r')
-        blob_size = len(blob['l3_embedding'])
-
-        cur_file_start_index = running_index
-        next_file_start_index = cur_file_start_index +  blob_size
-
-        # Populate training point(s)
-        while running_index <= next_sampled_index < next_file_start_index:
-            # Add training point to list
-            training_pts.append(blob['l3_embedding'][next_sampled_index - cur_file_start_index])
-
-            # Update current index
-            running_index = next_sampled_index + 1
-
-            # Pop next index to sample
-            try:
-                next_sampled_index, indices = indices[0], indices[1:]
-                print('Next index to be sampled', next_sampled_index)
-            except IndexError:
-                print('Creating UMAP training dataset')
-                outfile = h5py.File(outfilename, 'w')
-                outfile.create_dataset('l3_embedding', data=np.array(training_pts))
-                # Save dataset and exit when all indices have been sampled
-                blob.close()
-                exit(0)
-
-        # Close blob
-        running_index = next_file_start_index
-        blob.close()
+    # Begin parallel jobs
+    Parallel(n_jobs=multiprocessing.cpu_count())(delayed(process_partition)
+                                                 (list_files,
+                                                  training_size_per_chunk,
+                                                  os.path.join(output_dir, 'umap_training_ndata={}_{}.h5'
+                                                               .format(training_size, index)))
+                                                 for index, list_files in enumerate(all_files, 1))
 
 
 def train_umap_embedding(data_dir, output_dir, reduced_emb_len, neighbors=5,
