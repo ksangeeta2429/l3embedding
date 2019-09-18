@@ -365,6 +365,8 @@ def train_umap_embedding(data_dir, output_dir, reduced_emb_len, neighbors=5,
                                  'umap_ndata={}_emb={}_nbrs={}_mindist={}_mtrc={}.sav'.
                                  format(batch_size, reduced_emb_len, neighbors, min_dist, metric))
 
+    print('Model out filename:', out_file_name)
+
     batch = None
     curr_batch_size = 0
     batch_idx = 0
@@ -403,6 +405,9 @@ def train_umap_embedding(data_dir, output_dir, reduced_emb_len, neighbors=5,
                 # of the prior batches
                 if start_batch_idx is None or batch_idx >= start_batch_idx:
                     teacher_embedding = batch['l3_embedding']  # get_teacher_embedding(batch['audio'])
+                    print('Collected data; top row: {}'.format(teacher_embedding[0]))
+                    np.random.shuffle(teacher_embedding)
+                    print('Shuffled data; top row: {}'.format(teacher_embedding[0]))
                     reducer = umap.UMAP(n_neighbors=neighbors, min_dist=min_dist,
                                         metric=metric,n_components=reduced_emb_len, verbose=True)
 

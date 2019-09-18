@@ -4,8 +4,8 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=500GB
-#SBATCH --time=7-0
-#SBATCH --mail-type=FAIL
+#SBATCH --time=10-0
+#SBATCH --mail-type=ALL
 #SBATCH --output="big-batch-train-embedding-%j.out"
 #SBATCH --err="big-batch-train-embedding-%j.err"
 
@@ -21,7 +21,6 @@ BATCH_SIZE=$2
 EMB_LEN=$3
 NEIGHBORS=$4
 MIN_DIST=$5
-METRIC=$6
 
 echo DATASET=$DATASET
 echo BATCH_SIZE=$BATCH_SIZE
@@ -31,14 +30,15 @@ echo METRIC=$METRIC
 echo MIN_DIST=$MIN_DIST
 
 if ([ "$DATASET" = "music" ]); then
-   DATA_DIR=/scratch/sk7898/orig_l3_embeddings/music_train
-   OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/models
+   DATA_DIR=/scratch/dr2915/reduced_embeddings/umap/training_data/music/umap_training_ndata=$BATCH_SIZE
+   OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/models/music
    #For testing
    #DATA_DIR=/scratch/sk7898/temp_data
    #OUTPUT_DIR=/scratch/sk7898/reduced_embeddings
    echo OUTPUT_DIR=$OUTPUT_DIR
 
 elif([ "$DATASET" = "sonyc" ]); then
+    exit
    DATA_DIR=/scratch/sk7898/orig_l3_embeddings/sonyc_train
    OUTPUT_DIR=OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/models
 
@@ -53,7 +53,6 @@ python -u $SRCDIR/02_train_umap_emb.py \
   --batch-size $BATCH_SIZE \
   --neighbors $NEIGHBORS \
   --min-dist $MIN_DIST \
-  --metric $METRIC \
   --random-state 20180216 \
   $DATA_DIR \
   $OUTPUT_DIR \
