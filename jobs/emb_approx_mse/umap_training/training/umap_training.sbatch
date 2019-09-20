@@ -3,7 +3,7 @@
 #SBATCH --job-name=train-embedding
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=250GB
+#SBATCH --mem=200GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=ALL
 #SBATCH --output="train-embedding-%j.out"

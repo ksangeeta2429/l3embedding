@@ -7,8 +7,8 @@
 #sbatch big_batch_umap_training.sbatch music 10000000 256 5 0.3 correlation
 
 # Euclidean -- music dataset
-sbatch big_batch_umap_training.sbatch music 3072000 256 5 0.3
-sbatch big_batch_umap_training.sbatch music 3072000 256 10 0.3
-sbatch big_batch_umap_training.sbatch music 3072000 256 20 0.3
-sbatch big_batch_umap_training.sbatch music 3072000 256 30 0.3
+sbatch umap_training.sbatch music 2048000 256 5 0.3
+sbatch umap_training.sbatch music 2048000 256 10 0.3
+sbatch umap_training.sbatch music 2048000 256 20 0.3
+sbatch umap_training.sbatch music 2048000 256 30 0.3
 

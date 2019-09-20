@@ -338,15 +338,17 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
-    print('Number of CPUs: {}'.format(multiprocessing.cpu_count()))
-    training_size_per_chunk = training_size // multiprocessing.cpu_count()
+    num_jobs = min(multiprocessing.cpu_count(), 20)
+
+    print('Number of jobs: {}'.format(num_jobs))
+    training_size_per_chunk = training_size // num_jobs
     print('Training size per chunk: {}'.format(training_size_per_chunk))
 
     # Split file list into chunks
-    all_files = list(divide_chunks(all_files, math.ceil(num_files/multiprocessing.cpu_count())))
+    all_files = list(divide_chunks(all_files, math.ceil(num_files/num_jobs)))
 
     # Begin parallel jobs
-    Parallel(n_jobs=multiprocessing.cpu_count())(delayed(process_partition)
+    Parallel(n_jobs=num_jobs)(delayed(process_partition)
                                                  (list_files,
                                                   training_size_per_chunk,
                                                   os.path.join(output_dir, 'umap_training_ndata={}_{}.h5'
