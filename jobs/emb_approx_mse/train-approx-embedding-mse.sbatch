@@ -11,8 +11,15 @@
 #SBATCH --err="l3embedding-train-embedding-approx-mse-%j.err"
 
 source ~/.bashrc
-source activate l3embedding-new-cpu
 cd `git rev-parse --show-toplevel`
+
+module purge
+module load cudnn/9.0v7.3.0.29
+if [ $USER == "sk7898" ]; then
+    source activate l3embedding-tf-12
+else
+    source activate l3embedding-new-cpu
+fi
 
 SRCDIR=. #/home/sk7898/l3embedding
 WEIGHT_DIR=$SCRATCH/l3pruning/embedding/fixed/reduced_input
@@ -20,28 +27,32 @@ WEIGHT_DIR=$SCRATCH/l3pruning/embedding/fixed/reduced_input
 #VAL_DATA_DIR=$SCRATCH/temp_data
 TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples/music_train
 VAL_DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
-
-EMBEDDING_TRAIN_DIR=$SCRATCH/orig_l3_embeddings/music_train
-EMBEDDING_VALID_DIR=$SCRATCH/orig_l3_embeddings/music_valid
 OUTPUT_DIR=$SCRATCH/l3pruning/embedding_approx_mse
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
 
 STUDENT_WEIGHT_PATH=$WEIGHT_DIR/$1 #l3_audio_20190723135620_8000_128_64_256_half_fmax_3500.h5
-NEIGHBORS=$2
-METRIC=$3
-APPROX_MODE='umap'
+EMBEDDING_DIR=$2
 
-#Sample command:
-#sbatch emb_approx_mse.sbatch l3_audio_20190723135620_8000_128_64_256_half_fmax_3500.h5 20 correlation 0.3
-module purge
-if [ $USER == "sk7898" ]; then
-  module load cuda/8.0.44
-  module load cudnn/8.0v6.0
-else
-  module load cudnn/9.0v7.3.0.29
-fi
+EMBEDDING_BASE=${EMBEDDING_DIR##*/}
+IFS='_' 
+read -ra SPLITS <<< "$EMBEDDING_BASE" 
+APPROX_MODE='umap'
+APPROX_TRAIN_SIZE="$(cut -d'=' -f2 <<<"${SPLITS[1]}")" 
+NEIGHBORS="$(cut -d'=' -f2 <<<"${SPLITS[3]}")"
+MIN_DIST="$(cut -d'=' -f2 <<<"${SPLITS[4]}")"
+METRIC="$(cut -d'=' -f2 <<<"${SPLITS[5]}")"
+IFS=' '
+
+echo "APPROXIMATION=${APPROX_MODE}"
+echo "UMAP_TRAIN_DATA=${APPROX_TRAIN_SIZE}"
+echo "NEIGHBORS=${NEIGHBORS}"
+echo "MIN_DIST=${MIN_DIST}"
+echo "METRIC=${METRIC}"
+
+EMBEDDING_TRAIN_DIR=${EMBEDDING_DIR}/music_train
+EMBEDDING_VALID_DIR=${EMBEDDING_DIR}/music_valid
 
 # CHOICE of learning-rate, train-epoch-size/steps-per-epoch and batch size
 # Smaller learning rates will require more training epochs. Conversely, larger learning rates will require fewer training epochs.
@@ -51,8 +62,6 @@ fi
 # e.g., a learning rate taken within the set {.1, .01, 10−3, 10−4 , 10−5}
 
 if ([ "$APPROX_MODE" = "umap" ]); then
-  echo "UMAP Approximation"
-  MIN_DIST=$4
   if [ $# -eq 1 ]; then
       APPROX_MODE='mse'
       NEIGHBORS=0
@@ -69,6 +78,7 @@ if ([ "$APPROX_MODE" = "umap" ]); then
 	  --checkpoint-interval 10 \
 	  --gpus $NUM_GPUS \
 	  --approx-mode $APPROX_MODE \
+          --approx-train-size $APPROX_TRAIN_SIZE \
           --neighbors $NEIGHBORS \
           --min-dist $MIN_DIST \
 	  --metric $METRIC \
@@ -86,7 +96,7 @@ if ([ "$APPROX_MODE" = "umap" ]); then
   
 elif ([ "$APPROX_MODE" = "tsne" ]); then
     python $SRCDIR/03_train_embedding_approx_mse.py \
-	--num-epochs 1 \
+	--num-epochs 300 \
 	--train-epoch-size 4096 \
 	--train-batch-size 64 \
 	--model-type cnn_L3_melspec2 \
@@ -95,6 +105,7 @@ elif ([ "$APPROX_MODE" = "tsne" ]); then
 	--checkpoint-interval 10 \
 	--gpus $NUM_GPUS \
 	--approx-mode $APPROX_MODE \
+        --approx-train-size $APPROX_TRAIN_SIZE \
 	--neighbors $NEIGHBORS \
 	--metric $METRIC \
 	--student-weight-path $STUDENT_WEIGHT_PATH \

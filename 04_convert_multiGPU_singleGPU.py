@@ -214,7 +214,7 @@ if __name__ == '__main__':
     melSpec = args['melSpec']
     
     model_id = weight_dir.split('/')[-1]
-    mt = os.path.basename(os.path.dirname(weight_dir))
+    mt = os.path.basename(os.path.dirname(weight_dir)) #'cnn_L3_melspec2'
     
     if halved_convs:
         input_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_half'

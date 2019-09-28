@@ -40,7 +40,7 @@ def load_us8k_metadata(path):
 
 
 
-def generate_us8k_folds(metadata_path, data_dir, output_dir, l3embedding_model=None,
+def generate_us8k_folds(metadata_path, data_dir, output_dir, l3embedding_model=None, model_type='keras',
                         features='l3', random_state=12345678, **feature_args):
     """
     Generate all of the data for each fold
@@ -69,11 +69,12 @@ def generate_us8k_folds(metadata_path, data_dir, output_dir, l3embedding_model=N
     for fold_idx in range(NUM_FOLDS):
         generate_us8k_fold_data(metadata, data_dir, fold_idx, output_dir,
                                 l3embedding_model=l3embedding_model,
+                                model_type=model_type,
                                 features=features, random_state=random_state,
                                 **feature_args)
 
 
-def generate_us8k_fold_data(metadata, data_dir, fold_idx, output_dir, l3embedding_model=None,
+def generate_us8k_fold_data(metadata, data_dir, fold_idx, output_dir, l3embedding_model=None, model_type='keras',
                             features='l3', random_state=12345678, **feature_args):
     """
     Generate all of the data for a specific fold
@@ -134,12 +135,12 @@ def generate_us8k_fold_data(metadata, data_dir, fold_idx, output_dir, l3embeddin
                 with LogTimer(LOGGER, desc, log_level=logging.DEBUG):
                     generate_us8k_file_data(var_fname, example_metadata, audio_dir,
                                             output_fold_dir, features,
-                                            l3embedding_model, **feature_args)
+                                            l3embedding_model, model_type, **feature_args)
 
 
 def generate_us8k_file_data(fname, example_metadata, audio_fold_dir,
                             output_fold_dir, features,
-                            l3embedding_model, **feature_args):
+                            l3embedding_model, model_type, **feature_args):
     audio_path = os.path.join(audio_fold_dir, fname)
 
     basename, _ = os.path.splitext(fname)
@@ -149,7 +150,8 @@ def generate_us8k_file_data(fname, example_metadata, audio_fold_dir,
         LOGGER.info('File {} already exists'.format(output_path))
         return
 
-    X = cls_features.compute_file_features(audio_path, features, l3embedding_model=l3embedding_model, **feature_args)
+    X = cls_features.compute_file_features(audio_path, features, l3embedding_model=l3embedding_model,\
+                                           model_type=model_type, **feature_args)
 
     # If we were not able to compute the features, skip this file
     if X is None:

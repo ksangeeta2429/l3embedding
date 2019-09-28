@@ -11,19 +11,19 @@
 #SBATCH --err="l3embedding-convert-multiGPU-singleGPU-audio-%j.err"
 
 source ~/.bashrc
-source activate l3embedding-new-cpu
 cd `git rev-parse --show-toplevel`
 
 SRCDIR=.
 
 module purge
+echo 'Using tensorflow 1.12'
+module load cudnn/9.0v7.3.0.29
+    
 if [ $USER == "sk7898" ]; then
-  module load cuda/8.0.44
-  module load cudnn/8.0v6.0
+  source activate l3embedding-tf-12
 else
-  module load cudnn/9.0v7.3.0.29
+  source activate l3embedding-new-cpu
 fi
-
 MODEL_PATH=$1
 SAMPLING_RATE=$2
 NUM_MELS=$3

@@ -83,6 +83,14 @@ def parse_arguments():
                         default='umap',
                         help='Type of reduction: `umap` or `tsne`')
 
+    parser.add_argument('-ats',
+                        '--approx-train-size',
+                        dest='approx_train_size',
+                        action='store',
+                        type=int,
+                        default=2000000,
+                        help='Number of examples used to train the approximated method')
+    
     parser.add_argument('-neighbors',
                         '--neighbors',
                         dest='neighbors',

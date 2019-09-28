@@ -3,6 +3,7 @@ import logging
 import os
 import keras
 import json
+import tensorflow as tf
 from keras.optimizers import Adam
 from kapre.time_frequency import Melspectrogram
 from l3embedding.model import load_embedding
@@ -216,6 +217,42 @@ def parse_arguments():
 
     return vars(parser.parse_args())
 
+
+def get_l3model(model_path, saved_model_type='keras'):
+    
+    if saved_model_type == 'keras':        
+        # Load L3 embedding model if using L3 features
+        LOGGER.info('Loading keras audio embedding model.....')        
+        model = keras.models.load_model(model_path, custom_objects={'Melspectrogram': Melspectrogram})
+        embed_layer = model.get_layer('audio_embedding_layer')
+        pool_size = tuple(embed_layer.get_output_shape_at(0)[1:3])
+        y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(model.output)
+        y_a = keras.layers.Flatten()(y_a)
+        l3embedding_model = keras.models.Model(inputs=model.input, outputs=y_a)
+        
+    else:
+        LOGGER.info('Loading tflite audio embedding interpreter.....')
+        tflite_model_file = model_path
+        l3embedding_model = tf.lite.Interpreter(model_path=str(tflite_model_file))
+        
+    return l3embedding_model
+
+def get_output_dir(model_path, output_dir, dataset_name, saved_model_type='keras'):
+    if saved_model_type == 'keras': 
+        if 'reduced_input' in model_path:
+            model_type = 'reduced_input'
+        else:
+            model_type = ''
+
+        model_desc = os.path.splitext(os.path.basename(model_path))[0]
+        model_desc_str = model_desc[model_desc.rindex('l3_audio_')+9:]
+        dataset_output_dir = os.path.join(output_dir, 'features', dataset_name, 'l3', model_type, model_desc_str)
+    else:
+        dataset_output_dir = output_dir
+        
+    LOGGER.info('Output directory: {}'.format(dataset_output_dir))
+    return dataset_output_dir
+    
 if __name__ == '__main__':
     args = parse_arguments()
 
@@ -247,7 +284,7 @@ if __name__ == '__main__':
     n_dft = args['n_dft']
     fmax = args['fmax']
     annotation_path = args['annotation_path']
-
+    saved_model_type = 'keras'
 
     LOGGER.info('Configuration: {}'.format(str(args)))
     
@@ -294,26 +331,11 @@ if __name__ == '__main__':
                                            n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, fmax=fmax, asr=samp_rate, with_melSpec=with_melSpec)
 
     elif is_l3_feature:
-        # Get output dir
-        if 'reduced_input' in model_path:
-            model_type = 'reduced_input'
-        else:
-            model_type = ''
-            
-        model_desc = os.path.splitext(os.path.basename(model_path))[0]
-        model_desc_str = model_desc[model_desc.rindex('l3_audio_')+9:]
-        dataset_output_dir = os.path.join(output_dir, 'features', dataset_name, 'l3', model_type, model_desc_str)
-        print('Output directory:',dataset_output_dir)
+        _, model_ext = os.path.splitext(os.path.basename(model_path))
+        saved_model_type = 'tflite' if model_ext == '.tflite' else 'keras'
         
-        # Load L3 embedding model if using L3 features
-        LOGGER.info('Loading embedding model...')        
-        model = keras.models.load_model(model_path, custom_objects={'Melspectrogram': Melspectrogram})
-        embed_layer = model.get_layer('audio_embedding_layer')
-        pool_size = tuple(embed_layer.get_output_shape_at(0)[1:3])
-        y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(model.output)
-        y_a = keras.layers.Flatten()(y_a)
-        l3embedding_model = keras.models.Model(inputs=model.input, outputs=y_a)
-       
+        dataset_output_dir = get_output_dir(model_path, output_dir, dataset_name, saved_model_type=saved_model_type)
+        l3embedding_model = get_l3model(model_path, saved_model_type=saved_model_type)
     else:
         # Get output dir
         dataset_output_dir = os.path.join(output_dir, 'features', dataset_name, features)
@@ -341,7 +363,7 @@ if __name__ == '__main__':
         if fold_num is not None:
             # Generate a single fold if a fold was specified
             generate_us8k_fold_data(metadata_path, data_dir, fold_num-1, dataset_output_dir,
-                                    l3embedding_model=l3embedding_model,
+                                    l3embedding_model=l3embedding_model, model_type=saved_model_type, 
                                     features=features, random_state=random_state,
                                     hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels,\
                                     n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
@@ -349,7 +371,7 @@ if __name__ == '__main__':
         else:
             # Otherwise, generate all the folds
             generate_us8k_folds(metadata_path, data_dir, dataset_output_dir,
-                                l3embedding_model=l3embedding_model,
+                                l3embedding_model=l3embedding_model, model_type=saved_model_type, 
                                 features=features, random_state=random_state,
                                 hop_size=hop_size, num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels,
                                 n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
@@ -357,9 +379,9 @@ if __name__ == '__main__':
     elif dataset_name == 'esc50':
         if fold_num is not None:
             generate_esc50_fold_data(data_dir, fold_num-1, dataset_output_dir,
-                                     l3embedding_model=l3embedding_model, features=features, 
-				     random_state=random_state, hop_size=hop_size, num_random_samples=num_random_samples, 
-				     mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
+                                     l3embedding_model=l3embedding_model, features=features,\
+                                     random_state=random_state, hop_size=hop_size, num_random_samples=num_random_samples,\
+                                     mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
         else:
             generate_esc50_folds(data_dir, dataset_output_dir,
                                  l3embedding_model=l3embedding_model, features=features, random_state=random_state, 
@@ -370,9 +392,9 @@ if __name__ == '__main__':
         if annotation_path is None:
             raise ValueError('Must provide path to annotation file for SONYC_UST')
 
-        generate_sonyc_ust_data(annotation_path=annotation_path, dataset_dir=data_dir,
-                                output_dir=dataset_output_dir, l3embedding_model=l3embedding_model, features=features,
-                                hop_size=hop_size, mel_hop_length=n_hop, n_mels=n_mels,
+        generate_sonyc_ust_data(annotation_path=annotation_path, dataset_dir=data_dir, output_dir=dataset_output_dir,\
+                                l3embedding_model=l3embedding_model, model_type=saved_model_type,\
+                                features=features, hop_size=hop_size, mel_hop_length=n_hop, n_mels=n_mels,
                                 n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
 
     elif dataset_name == 'dcase2013':

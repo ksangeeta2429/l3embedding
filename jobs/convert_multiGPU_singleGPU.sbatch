@@ -4,24 +4,25 @@
 #SBATCH --job-name=l3embedding-convert-multiGPU-singleGPU
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=64GB
+#SBATCH --mem=16GB
 #SBATCH --time=1:00:00
 #SBATCH --mail-type=ALL
 #SBATCH --output="l3embedding-convert-multiGPU-singleGPU-%j.out"
 #SBATCH --err="l3embedding-convert-multiGPU-singleGPU-%j.err"
 
 source ~/.bashrc
-source activate l3embedding-new-cpu
 cd `git rev-parse --show-toplevel`
 
 SRCDIR=.
 
 module purge
+echo 'Using tensorflow 1.12'
+module load cudnn/9.0v7.3.0.29
+    
 if [ $USER == "sk7898" ]; then
-  module load cuda/8.0.44
-  module load cudnn/8.0v6.0
+  source activate l3embedding-tf-12
 else
-  module load cudnn/9.0v7.3.0.29
+  source activate l3embedding-new-cpu
 fi
 
 #MODEL_DIR=$SCRATCH/l3pruning/reduced_input/embedding/music/cnn_L3_melspec2

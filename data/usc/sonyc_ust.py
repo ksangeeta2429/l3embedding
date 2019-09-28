@@ -12,7 +12,7 @@ from log import LogTimer
 LOGGER = logging.getLogger('cls-data-generation')
 LOGGER.setLevel(logging.DEBUG)
 
-def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embedding_model,
+def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embedding_model, model_type='keras',
                             hop_size=0.1, features='l3', timestamps = False, **feature_args):
     """
     Extract embeddings for files annotated in the SONYC annotation file and save them to disk.
@@ -60,13 +60,15 @@ def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embeddin
             return
 
         X = cls_features.compute_file_features(audio_path, features, l3embedding_model=l3embedding_model,
-                                               hop_size=hop_size, **feature_args)
+                                               model_type=model_type, hop_size=hop_size, **feature_args)
 
         # If we were not able to compute the features, skip this file
         if X is None:
             LOGGER.error('Could not generate data for {}'.format(audio_path))
             return
 
+        print(X.shape)
+        exit(0)
         if timestamps:
             # Save timestamps as well, if necessary
             ts = np.arange(X.shape[0]) * hop_size

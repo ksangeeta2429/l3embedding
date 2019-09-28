@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 import getpass
 import git
 import os
@@ -14,6 +17,7 @@ import tensorflow as tf
 import h5py
 import tempfile
 import umap
+import librosa
 from keras import backend as K
 from keras import activations
 from keras.optimizers import Adam
@@ -54,19 +58,44 @@ def cycle_shuffle(iterable, shuffle=True):
         if shuffle:
             random.shuffle(lst)
 
+def amplitude_to_db(S, amin=1e-10, dynamic_range=80.0):
+    magnitude = np.abs(S)
+    power = np.square(magnitude, out=magnitude)
+    ref_value = power.max()
+
+    log_spec = 10.0 * np.log10(np.maximum(amin, magnitude))
+    log_spec -= log_spec.max()
+
+    log_spec = np.maximum(log_spec, -dynamic_range)
+    return log_spec
+
+def get_student_model(model_path):
+    l3model = keras.models.load_model(model_path)
+    embed_layer = l3model.get_layer('audio_embedding_layer')
+    pool_size = tuple(embed_layer.get_output_shape_at(0)[1:3])
+    y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(l3model.output)
+    y_a = keras.layers.Flatten()(y_a)
+    model = keras.models.Model(inputs=l3model.input, outputs=y_a)
+   
+    return model
 
 def get_embedding_length(model):
     embed_layer = model.get_layer('audio_embedding_layer')
     emb_len = tuple(embed_layer.get_output_shape_at(0))
     return emb_len[-1]
 
+def get_melspectrogram(frame, n_fft=2048, mel_hop_length=242, samp_rate=48000, n_mels=256, fmax=None):
+    S = np.abs(librosa.core.stft(frame, n_fft=n_fft, hop_length=mel_hop_length, window='hann', center=True, pad_mode='constant'))
+    S = librosa.feature.melspectrogram(sr=samp_rate, S=S, n_fft=n_fft, n_mels=n_mels, fmax=fmax, power=1.0, htk=True)
+    S = amplitude_to_db(np.array(S))
+    return S
 
 def get_embedding_key(method, batch_size, emb_len, neighbors=None, \
                       metric=None, min_dist=None, iteration=None):
     
     if method == 'umap':
-        if neighbors_list is None or metric_list is None or min_dist_list is None:
-            raise ValueError('Either neighbor_list or metric_list or min_dist_list is missing')
+        if neighbors is None or metric is None or min_dist is None:
+            raise ValueError('Either neighbors or metric or min_dist is missing')
         
         key = 'umap_batch_' + str(batch_size) +\
               '_len_' + str(emb_len) +\
@@ -76,8 +105,8 @@ def get_embedding_key(method, batch_size, emb_len, neighbors=None, \
          
                     
     elif method == 'tsne':
-        if neighbors_list is None or metric_list is None or tsne_iter_list is None:
-            raise ValueError('Either neighbor_list or metric_list or tsne_iter_list is missing')
+        if neighbors is None or metric is None or iteration is None:
+            raise ValueError('Either neighbors or metric or iteration is missing')
         
         key = 'tsne_batch_' + str(batch_size) +\
               '_len_' + str(emb_len) +\
@@ -89,12 +118,13 @@ def get_embedding_key(method, batch_size, emb_len, neighbors=None, \
     return key
 
 
-def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap', neighbors=10, \
-                   min_dist=0.5, metric='euclidean', tsne_iter=500, batch_size=512, \
+def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap', approx_train_size=None, neighbors=10, \
+                   min_dist=0.3, metric='euclidean', tsne_iter=500, batch_size=512, \
+                   n_fft=2048, n_mels=256, n_hop=242, hop_size=0.1, fmax=None,\
                    student_asr=16000, random_state=20180216, start_batch_idx=None):
     
-    if student_emb_length is None:
-        raise ValueError('Student embedding length was not provided')
+    if student_emb_length is None or approx_train_size is None:
+        raise ValueError('Either student embedding length or reduced embedding training size was not provided')
 
     random.seed(random_state)
     batch = None
@@ -104,7 +134,7 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
     start_label_idx = 0
 
     if student_emb_length != 512:
-        emb_key = get_embedding_key(approx_mode, batch_size, student_emb_length, neighbors=neighbors, \
+        emb_key = get_embedding_key(approx_mode, approx_train_size, student_emb_length, neighbors=neighbors, \
                                     metric=metric, min_dist=min_dist, iteration=tsne_iter)
     else:
         emb_key = 'l3_embedding'
@@ -152,7 +182,12 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
                     else:
                         batch['audio'] = resample(pcm2float(batch['audio'], dtype='float32'), sr_orig=48000,
                                                   sr_new=student_asr)
+                        
+                    X = [get_melspectrogram(batch['audio'][i].flatten(), n_fft=n_fft, mel_hop_length=n_hop,\
+                                            samp_rate=student_asr, n_mels=n_mels, fmax=fmax) for i in range(batch_size)]
 
+                    batch['audio'] = np.array(X)[:, :, :, np.newaxis]
+                    #print(np.shape(batch)) #(64, 256, 191, 1)
                     yield batch
 
                 batch_idx += 1
@@ -172,7 +207,7 @@ def single_epoch_data_generator(data_dir, emb_dir, epoch_size, **kwargs):
 
 
 def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, output_dir, student_weight_path=None, \
-          approx_mode='umap', neighbors=10, min_dist=0.3, metric='correlation', tsne_iter=300,\
+          approx_mode='umap', approx_train_size=None, neighbors=10, min_dist=0.3, metric='correlation', tsne_iter=300,\
           num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
           model_type='cnn_L3_melspec2', n_mels=256, n_hop=242, n_dft=2048, samp_rate=48000, fmax=None, halved_convs=False,\
           log_path=None, disable_logging=False, random_state=20180216,learning_rate=0.00001, verbose=True, checkpoint_interval=10,\
@@ -192,16 +227,18 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
     
     if approx_mode == 'umap':
         if min_dist is None:
-            min_dist = 0.5
-        model_attribute = 'umap_k_' + str(neighbors) + '_dist_' + str(min_dist) + '_metric_' + metric
+            min_dist = 0.3
+        if metric is None:
+            metric='euclidean'
+        model_attribute = 'umap_train_' + str(approx_train_size) + '_neighbors_' + str(neighbors)+\
+                            '_dist_' + str(min_dist) + '_metric_' + metric
     elif approx_mode == 'tsne':
-        model_attribute = 'tsne_k_' + str(neighbors) + '_metric_' + metric
+        model_attribute = 'tsne_train_' + str(approx_train_size) + '_perplexity_' + str(neighbors) + '_metric_' + metric
     elif approx_mode == 'mse':
         model_attribute = 'mse_original'
     else:
         raise ValueError('Invalid approximation mode: {}'.format(approx_mode))
     
-
     # Make sure the directories we need exist
     if continue_model_dir:
         model_dir = continue_model_dir
@@ -214,10 +251,18 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
     if continue_model_dir:
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
         student_base_model = keras.models.load_model(latest_model_path, custom_objects={'Melspectrogram': Melspectrogram})
+        
     elif student_weight_path:
-        student_samp_rate = int(os.path.basename(student_weight_path).split('_')[-4])
+        splits = os.path.basename(student_weight_path).strip('.h5').split('_')
+        student_samp_rate = int(splits[3])
+        n_mels = int(splits[4])
+        n_hop = int(splits[5])
+        n_fft = int(splits[6])
+        if len(splits) == 10:
+            fmax = int(splits[-1])
         model_repr = os.path.basename(student_weight_path)
-        student_base_model = keras.models.load_model(student_weight_path, custom_objects={'Melspectrogram': Melspectrogram})
+        student_base_model = get_student_model(student_weight_path)
+        
     else:
         student_samp_rate = samp_rate
         student_base_model, inputs, outputs = MODELS[model_type](n_mels=n_mels, n_hop=n_hop, n_dft=n_dft,
@@ -227,9 +272,9 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
         else:
             model_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_fmax_'+str(fmax)
 
-    LOGGER.info('Student sampling rate: {}'.format(student_samp_rate))
     student_emb_len = get_embedding_length(student_base_model);
-
+    
+    LOGGER.info('Student sampling rate: {}'.format(student_samp_rate))
     LOGGER.info('Model Attribute: {}'.format(model_attribute))
     LOGGER.info('Student Embedding Length: {}'.format(student_emb_len))
 
@@ -363,11 +408,13 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
     train_gen = data_generator(train_data_dir,
                                emb_train_dir,
                                approx_mode=approx_mode,
+                               approx_train_size=approx_train_size,
                                neighbors=neighbors,
                                min_dist=min_dist,
                                student_emb_length=student_emb_len,
                                student_asr=student_samp_rate,
                                batch_size=train_batch_size,
+                               n_fft=n_fft, n_mels=n_mels, n_hop=n_hop, fmax=fmax,
                                random_state=random_state,
                                start_batch_idx=train_start_batch_idx)
 
@@ -375,11 +422,13 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
                                           emb_valid_dir,
                                           validation_epoch_size,
                                           approx_mode=approx_mode,
+                                          approx_train_size=approx_train_size,
                                           neighbors=neighbors,
                                           min_dist=min_dist,
                                           student_emb_length=student_emb_len,
                                           student_asr=student_samp_rate,
                                           batch_size=validation_batch_size,
+                                          n_fft=n_fft, n_mels=n_mels, n_hop=n_hop, fmax=fmax,
                                           random_state=random_state)
 
 
