@@ -7,8 +7,9 @@
 #sbatch big_batch_umap_training.sbatch music 10000000 256 5 0.3 correlation
 
 # Euclidean -- music dataset
-sbatch umap_training.sbatch music 2048000 256 5 0.3
+# sbatch umap_training.sbatch music 2048000 256 5 0.3 -- Error: numpy.linalg.linalg.LinAlgError: 173-th leading minor not positive definite
 sbatch umap_training.sbatch music 2048000 256 10 0.3
 sbatch umap_training.sbatch music 2048000 256 20 0.3
 sbatch umap_training.sbatch music 2048000 256 30 0.3
-
+sbatch umap_training.sbatch music 2048000 256 40 0.3
+sbatch umap_training.sbatch music 2048000 256 50 0.3

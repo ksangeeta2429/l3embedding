@@ -18,7 +18,7 @@ module purge
 SRCDIR=.
 DATASET=$1
 MODEL_FILE=$2
-MODEL_PATH=/scratch/dr2915/reduced_embeddings/umap/models/$MODEL_FILE
+MODEL_PATH=/scratch/dr2915/reduced_embeddings/umap/models/music/$MODEL_FILE
 BATCH_SIZE=$3
 
 echo DATASET=$DATASET
