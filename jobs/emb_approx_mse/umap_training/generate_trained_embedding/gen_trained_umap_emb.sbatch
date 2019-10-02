@@ -3,7 +3,7 @@
 #SBATCH --job-name=gen-trained-embedding
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=250GB
+#SBATCH --mem=150GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=FAIL
 #SBATCH --output="gen-trained-embedding-%j.out"
@@ -43,10 +43,23 @@ fi
 
 #alias nogpu='export CUDA_VISIBLE_DEVICES=-1;'
 
-python -u $SRCDIR/02_extract_trained_umap_emb.py \
-  --random-state 20180216 \
-  --batch-size $BATCH_SIZE \
-  $MODEL_PATH \
-  $DATA_DIR \
-  $OUTPUT_DIR \
-  256
+if [ $# -gt 3 ]; then
+    PARTITION_NUM=$4
+    echo "PARTITION_NUM=$PARTITION_NUM"
+    python -u $SRCDIR/02_extract_trained_umap_emb.py \
+      --random-state 20180216 \
+      --batch-size $BATCH_SIZE \
+      --partition-num $PARTITION_NUM \
+      $MODEL_PATH \
+      $DATA_DIR \
+      $OUTPUT_DIR \
+      256
+else
+    python -u $SRCDIR/02_extract_trained_umap_emb.py \
+      --random-state 20180216 \
+      --batch-size $BATCH_SIZE \
+      $MODEL_PATH \
+      $DATA_DIR \
+      $OUTPUT_DIR \
+      256
+fi

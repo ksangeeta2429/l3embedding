@@ -1,7 +1,7 @@
 import argparse
 import logging
 import os.path
-from l3embedding.save_approx_embedding import embedding_generator
+from l3embedding.save_approx_embedding import generate_trained_umap_embeddings_driver
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Does dimensionality reduction on l3-embeddings and saves it!')
@@ -30,6 +30,14 @@ def parse_arguments():
                         default=20171021,
                         help='Random seed used to set the RNG state')
 
+    parser.add_argument('-pt',
+                        '--partition-num',
+                        dest='partition_to_run',
+                        action='store',
+                        type=int,
+                        default=None,
+                        help='Random seed used to set the RNG state')
+
     parser.add_argument('umap_estimator_path',
                         action='store',
                         type=str,
@@ -55,5 +63,5 @@ def parse_arguments():
 
 
 if __name__ == '__main__':
-    embedding_generator(**(parse_arguments()))
+    generate_trained_umap_embeddings_driver(**(parse_arguments()))
 

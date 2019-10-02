@@ -113,7 +113,7 @@ def get_blob_keys(method, batch_size, emb_len, neighbors_list=None, metric_list=
 
 
 def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap', umap_estimator_path=None, neighbors_list=None, \
-                        metric_list=None, min_dist_list=None, tsne_iter_list=[500], \
+                        list_files = None, metric_list=None, min_dist_list=None, tsne_iter_list=[500], \
                         batch_size=1024, random_state=20180123, start_batch_idx=None):
 
     if data_dir == output_dir:
@@ -162,11 +162,14 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                                   min_dist_list=min_dist_list, tsne_iter_list=tsne_iter_list)
     
     print('Embedding Blob Keys: {}'.format(blob_keys))
-    
-    f_idx = 0
-    list_files = os.listdir(data_dir)
+
+    # If a list of files is not provided, use all files in data_dir
+    if list_files==None:
+        list_files = os.listdir(data_dir)
     last_file = list_files[-1]
     print('Last file on the list: ', last_file)
+
+    f_idx = 0
     for fname in list_files:
         batch_path = os.path.join(data_dir, fname)
         blob_start_idx = 0
@@ -257,6 +260,31 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                 blob_embeddings = dict()
                 embedding_out_paths = []
                 read_start = time.time()
+
+
+def generate_trained_umap_embeddings_driver(data_dir, partition_to_run=None, num_partitions=20, **kwargs):
+    def divide_chunks(l, n):
+        # looping till length l
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
+
+    if partition_to_run is None:
+        # Run all
+        embedding_generator(data_dir, **kwargs)
+    else:
+        # Run specified partition out of given num_partitions
+        all_files = sorted(os.listdir(data_dir))
+        num_files = len(all_files)
+
+        # Split file list into chunks
+        all_files = list(divide_chunks(all_files, math.ceil(num_files / num_partitions)))
+
+        # Get list of files to run
+        print('Partition to run: {} out of {} partitions'.format(partition_to_run, num_partitions))
+        list_files = all_files[partition_to_run]
+
+        # Call embedding generator with requested subgroup of files
+        embedding_generator(data_dir=data_dir, list_files=list_files, **kwargs)
 
 
 def create_umap_training_dataset(data_dir, output_dir, training_size, random_state=20180123):
