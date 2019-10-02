@@ -262,7 +262,7 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                 read_start = time.time()
 
 
-def generate_trained_umap_embeddings_driver(data_dir, partition_to_run=None, num_partitions=20, **kwargs):
+def generate_trained_umap_embeddings_driver(data_dir, partition_to_run=None, num_partitions=10, **kwargs):
     def divide_chunks(l, n):
         # looping till length l
         for i in range(0, len(l), n):

@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=150GB
-#SBATCH --time=7-0
+#SBATCH --time=3-0
 #SBATCH --mail-type=FAIL
 #SBATCH --output="gen-trained-embedding-%j.out"
 #SBATCH --err="gen-trained-embedding-%j.err"

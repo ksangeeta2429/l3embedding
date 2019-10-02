@@ -20,7 +20,7 @@ sbatch gen_trained_umap_emb.sbatch valid umap_ndata=2048000_emb=256_nbrs=30_mind
 # Valids -- umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean
 #       and umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean
 sbatch gen_trained_umap_emb.sbatch valid umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400
-sbatch gen_trained_umap_emb.sbatch valid umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400
+sbatch gen_trained_umap_emb.sbatch valid umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400
 
 # Trains -- umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean
 sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400 0
@@ -42,26 +42,6 @@ sleep 1
 sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400 8
 sleep 1
 sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400 9
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400 10
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400 11
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400 12
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400 13
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400 14
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400 15
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400 16
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400 17
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400 18
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=40_mindist=0.3_mtrc=euclidean.sav 102400 19
 
 # Trains -- umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean
 sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400 0
@@ -83,23 +63,3 @@ sleep 1
 sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400 8
 sleep 1
 sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400 9
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400 10
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400 11
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400 12
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400 13
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400 14
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400 15
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400 16
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400 17
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400 18
-sleep 1
-sbatch gen_trained_umap_emb.sbatch train umap_ndata=2048000_emb=256_nbrs=50_mindist=0.3_mtrc=euclidean.sav 102400 19
