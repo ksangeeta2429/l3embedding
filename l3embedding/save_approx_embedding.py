@@ -262,15 +262,19 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                 read_start = time.time()
 
 
-def generate_trained_umap_embeddings_driver(data_dir, partition_to_run=None, num_partitions=10, **kwargs):
+def generate_trained_umap_embeddings_driver(data_dir, output_dir, continue_extraction=False, partition_to_run=None, num_partitions=10, **kwargs):
     def divide_chunks(l, n):
         # looping till length l
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
     if partition_to_run is None:
-        # Run all
-        embedding_generator(data_dir, **kwargs)
+        # Compute remaining list of files
+        if continue_extraction:
+            list_files = list(set(os.listdir(data_dir))-set(os.listdir(output_dir)))
+            print('Continuing to extract for {} remaining files'.format(len(list_files)))
+        else:
+            list_files = None
     else:
         # Run specified partition out of given num_partitions
         all_files = sorted(os.listdir(data_dir))
@@ -283,8 +287,8 @@ def generate_trained_umap_embeddings_driver(data_dir, partition_to_run=None, num
         print('Partition to run: {} out of {} partitions'.format(partition_to_run, num_partitions))
         list_files = all_files[partition_to_run]
 
-        # Call embedding generator with requested subgroup of files
-        embedding_generator(data_dir=data_dir, list_files=list_files, **kwargs)
+    # Call embedding generator with appropriate list of files
+    embedding_generator(data_dir=data_dir, output_dir=output_dir, list_files=list_files, **kwargs)
 
 
 def create_umap_training_dataset(data_dir, output_dir, training_size, random_state=20180123):

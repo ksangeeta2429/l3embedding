@@ -38,6 +38,13 @@ def parse_arguments():
                         default=None,
                         help='Random seed used to set the RNG state')
 
+    parser.add_argument('-cont',
+                        '--continue-extraction',
+                        dest='continue_extraction',
+                        action='store_true',
+                        default=False,
+                        help='Disables logging if flag enabled')
+
     parser.add_argument('umap_estimator_path',
                         action='store',
                         type=str,
