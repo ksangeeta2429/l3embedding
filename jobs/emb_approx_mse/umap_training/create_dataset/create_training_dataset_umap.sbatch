@@ -3,7 +3,7 @@
 #SBATCH --job-name=create-umap-dataset
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=10
-#SBATCH --mem=100GB
+#SBATCH --mem=150GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=FAIL
 #SBATCH --output="create-umap-dataset-%j.out"
@@ -28,17 +28,17 @@ if ([ "$DATASET" = "music" ]); then
    #For testing
    #DATA_DIR=/scratch/sk7898/temp_data
    #OUTPUT_DIR=/scratch/sk7898/reduced_embeddings
-   echo OUTPUT_DIR=$OUTPUT_DIR
 
 elif([ "$DATASET" = "sonyc" ]); then
-   DATA_DIR=/scratch/sk7898/orig_l3_embeddings/sonyc_train
-   OUTPUT_DIR=OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/training_data/sonyc
+   DATA_DIR=/scratch/dr2915/reduced_embeddings/sonyc_files_list.csv
+   OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/training_data/sonyc/umap_training_ndata=$TRAINING_SIZE
 
 else
    echo "First argument can only be music/sonyc"
    exit
 fi
 
+echo OUTPUT_DIR=$OUTPUT_DIR
 #alias nogpu='export CUDA_VISIBLE_DEVICES=-1;'
 
 python -u $SRCDIR/01_create_umap_training_datasets.py \
