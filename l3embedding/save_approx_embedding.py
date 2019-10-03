@@ -315,7 +315,7 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
             print(multiprocessing.current_process(),
                   'Num. of pescador streams: {}; Rate: {}'.format(len(streams), rate))
 
-            mux = pescador.StochasticMux(streams, n_active=100, rate=rate, mode='single_active')
+            mux = pescador.StochasticMux(streams, n_active=20, rate=rate, mode='single_active')
 
             accumulator = []
             start_time = time.time()
@@ -324,7 +324,7 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
             outfile = h5py.File(outfilename, 'w')
             outfile.create_dataset('l3_embedding', data=np.array(accumulator))
             end_time = time.time()
-            
+
             print(multiprocessing.current_process(), 'Wrote {}, processing time: {} s'
                   .format(outfilename, (end_time-start_time)))
     elif 'music' in data_dir:
