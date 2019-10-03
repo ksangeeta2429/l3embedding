@@ -1,7 +1,7 @@
 import argparse
 import logging
 import os.path
-from l3embedding.save_approx_embedding import create_umap_training_dataset
+from sonyc.utils import downsample_sonyc_points
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Creates randomized training dataset for UMAP')
@@ -14,7 +14,7 @@ def parse_arguments():
                         default=20171021,
                         help='Random seed used to set the RNG state')
 
-    parser.add_argument('data_dir',
+    parser.add_argument('csv_path',
                         action='store',
                         type=str,
                         help='Path to directory where data files are stored')
@@ -32,4 +32,4 @@ def parse_arguments():
     return vars(parser.parse_args())
 
 if __name__ == '__main__':
-    create_umap_training_dataset(**(parse_arguments()))
+    downsample_sonyc_points(**(parse_arguments()))
