@@ -2,6 +2,7 @@ import os
 import math
 import random
 import numpy as np
+import pescador
 import h5py
 import umap
 from sklearn.manifold import TSNE
@@ -10,7 +11,7 @@ import multiprocessing
 from joblib import Parallel, delayed, dump, load
 import re
 import glob
-
+from data.utils import get_sonyc_filtered_files
 
 def get_teacher_embedding(audio_batch):
     import tensorflow as tf
@@ -291,101 +292,132 @@ def generate_trained_umap_embeddings_driver(data_dir, output_dir, continue_extra
     embedding_generator(data_dir=data_dir, output_dir=output_dir, list_files=list_files, **kwargs)
 
 
-def create_umap_training_dataset(data_dir, output_dir, training_size, random_state=20180123):
-    def divide_chunks(l, n):
-        # looping till length l
-        for i in range(0, len(l), n):
-            yield l[i:i + n]
+def create_umap_training_dataset(data_dir, output_dir, training_size, random_state=20180123, sonyc_files_csv=None):
+    if 'sonyc' in data_dir:
+        @pescador.streamable
+        def random_feature_generator(h5_path):
+            f = h5py.File(h5_path, 'r')
+            num_datasets = f[list(f.keys())[0]].shape[0]
+            while True:
+                dataset_index = np.random.randint(0, num_datasets)
+                num_features = f[list(f.keys())[0]][dataset_index][1].shape[0]
+                feature_index = np.random.randint(0, num_features)
+                yield f[list(f.keys())[0]][dataset_index][1][feature_index]
 
-    def process_partition(list_files, training_size, outfilename):
-        # Find number of points in first pass
-        num_points = 0
-        for fname in list_files:
-            f = h5py.File(fname, 'r')
-            num_points += len(f['l3_embedding'])
+        assert sonyc_files_csv is not None
+        datasets = get_sonyc_filtered_files(sonyc_files_csv)
 
-        print(multiprocessing.current_process(), 'Number of files in chunk', len(list_files))
-        print(multiprocessing.current_process(), 'Total number of points in chunk', num_points)
-        print(multiprocessing.current_process(), 'Training size in chunk', training_size)
-        print(multiprocessing.current_process(), 'Output file', outfilename)
+        streams = [random_feature_generator(x) for x in datasets]
 
-        assert num_points >= training_size
+        mux = pescador.StochasticMux(streams,
+                                     n_active=1000,
+                                     # Sample on average 1000 samples from a stream before
+                                     # moving onto another one.
+                                     rate=math.ceil(training_size/len(streams)))
 
-        # Generate random numbers of training size
-        indices = random.sample(range(num_points), training_size)
-        indices.sort()
-        training_pts = []
-        running_index = 0
+        accumulator = []
+        for data in mux(max_iter=1000):
+            accumulator += [data]
 
-        next_sampled_index, indices = indices[0], indices[1:]
-        for fname in list_files:
-            batch_path = os.path.join(data_dir, fname)
+        accumulator = np.array(accumulator)
 
-            blob = h5py.File(batch_path, 'r')
-            blob_size = len(blob['l3_embedding'])
+    elif 'music' in data_dir:
+        def divide_chunks(l, n):
+            # looping till length l
+            for i in range(0, len(l), n):
+                yield l[i:i + n]
 
-            cur_file_start_index = running_index
-            next_file_start_index = cur_file_start_index + blob_size
+        def process_partition(list_files, training_size, outfilename):
+            # Find number of points in first pass
+            num_points = 0
+            for fname in list_files:
+                f = h5py.File(fname, 'r')
+                num_points += len(f['l3_embedding'])
 
-            # Populate training point(s)
-            while running_index <= next_sampled_index < next_file_start_index:
-                # Add training point to list
-                training_pts.append(blob['l3_embedding'][next_sampled_index - cur_file_start_index])
+            print(multiprocessing.current_process(), 'Number of files in chunk', len(list_files))
+            print(multiprocessing.current_process(), 'Total number of points in chunk', num_points)
+            print(multiprocessing.current_process(), 'Training size in chunk', training_size)
+            print(multiprocessing.current_process(), 'Output file', outfilename)
 
-                # Update current index
-                running_index = next_sampled_index + 1
+            assert num_points >= training_size
 
-                # Pop next index to sample
-                try:
-                    next_sampled_index, indices = indices[0], indices[1:]
-                    #print('Next index to be sampled', next_sampled_index)
-                except IndexError:
-                    print(multiprocessing.current_process(), 'Creating UMAP training dataset')
-                    outfile = h5py.File(outfilename, 'w')
-                    outfile.create_dataset('l3_embedding', data=np.array(training_pts))
-                    # Save dataset and exit when all indices have been sampled
-                    blob.close()
-                    return
+            # Generate random numbers of training size
+            indices = random.sample(range(num_points), training_size)
+            indices.sort()
+            training_pts = []
+            running_index = 0
 
-            # Close blob
-            running_index = next_file_start_index
-            blob.close()
+            next_sampled_index, indices = indices[0], indices[1:]
+            for fname in list_files:
+                batch_path = os.path.join(data_dir, fname)
 
-    if data_dir == output_dir:
-        raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
+                blob = h5py.File(batch_path, 'r')
+                blob_size = len(blob['l3_embedding'])
 
-    assert training_size > 0
+                cur_file_start_index = running_index
+                next_file_start_index = cur_file_start_index + blob_size
 
-    random.seed(random_state)
+                # Populate training point(s)
+                while running_index <= next_sampled_index < next_file_start_index:
+                    # Add training point to list
+                    training_pts.append(blob['l3_embedding'][next_sampled_index - cur_file_start_index])
 
-    os.chdir(data_dir)
-    if 'music' in data_dir:
-        all_files = glob.glob('*.h5')
-        num_files = len(all_files)
-    elif 'sonyc' in data_dir:
-        all_files = glob.glob('*/*.h5')
+                    # Update current index
+                    running_index = next_sampled_index + 1
+
+                    # Pop next index to sample
+                    try:
+                        next_sampled_index, indices = indices[0], indices[1:]
+                        #print('Next index to be sampled', next_sampled_index)
+                    except IndexError:
+                        print(multiprocessing.current_process(), 'Creating UMAP training dataset')
+                        outfile = h5py.File(outfilename, 'w')
+                        outfile.create_dataset('l3_embedding', data=np.array(training_pts))
+                        # Save dataset and exit when all indices have been sampled
+                        blob.close()
+                        return
+
+                # Close blob
+                running_index = next_file_start_index
+                blob.close()
+
+        if data_dir == output_dir:
+            raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
+
+        assert training_size > 0
+
+        random.seed(random_state)
+
+        os.chdir(data_dir)
+        if 'music' in data_dir:
+            all_files = glob.glob('*.h5')
+            num_files = len(all_files)
+        elif 'sonyc' in data_dir:
+            all_files = glob.glob('*/*.h5')
+        else:
+            raise NotImplementedError('Invalid data directory: {}; can only be music or sonyc'.format(data_dir))
+
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+
+        num_jobs = min(multiprocessing.cpu_count(), 20)
+
+        print('Number of jobs: {}'.format(num_jobs))
+        training_size_per_chunk = training_size // num_jobs
+        print('Training size per chunk: {}'.format(training_size_per_chunk))
+
+        # Split file list into chunks
+        all_files = list(divide_chunks(all_files, math.ceil(num_files/num_jobs)))
+
+        # Begin parallel jobs
+        Parallel(n_jobs=num_jobs)(delayed(process_partition)
+                                                     (list_files,
+                                                      training_size_per_chunk,
+                                                      os.path.join(output_dir, 'umap_training_ndata={}_{}.h5'
+                                                                   .format(training_size, index)))
+                                                     for index, list_files in enumerate(all_files, 1))
     else:
-        raise NotImplementedError('Invalid data directory: {}; can only be music or sonyc'.format(data_dir))
-
-    if not os.path.isdir(output_dir):
-        os.makedirs(output_dir)
-
-    num_jobs = min(multiprocessing.cpu_count(), 20)
-
-    print('Number of jobs: {}'.format(num_jobs))
-    training_size_per_chunk = training_size // num_jobs
-    print('Training size per chunk: {}'.format(training_size_per_chunk))
-
-    # Split file list into chunks
-    all_files = list(divide_chunks(all_files, math.ceil(num_files/num_jobs)))
-
-    # Begin parallel jobs
-    Parallel(n_jobs=num_jobs)(delayed(process_partition)
-                                                 (list_files,
-                                                  training_size_per_chunk,
-                                                  os.path.join(output_dir, 'umap_training_ndata={}_{}.h5'
-                                                               .format(training_size, index)))
-                                                 for index, list_files in enumerate(all_files, 1))
+        raise NotImplementedError('Dataset not supported; can only be music or sonyc')
 
 
 def train_umap_embedding(data_dir, output_dir, reduced_emb_len, neighbors=5,

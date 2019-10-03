@@ -5,10 +5,10 @@ import h5py
 import os
 import math
 
-def read_sonyc_num_files(csv_path):
+def get_sonyc_filtered_files(csv_path):
     csvread = csv.reader(open(csv_path, newline=''), delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
     list_files = [row for row in csvread][0]
-    return len(list_files)
+    return list_files
 
 
 def check_sonyc_openl3_points(feature_dir, out_path, verbose=True,
@@ -64,7 +64,7 @@ def flatten_dict(dct, parent_key=None):
     return new_dct
 
 # if __name__=='__main__':
-    # read_sonyc_num_datasets('/scratch/dr2915/reduced_embeddings/sonyc_files_list.csv')
+    # get_sonyc_filtered_files('/scratch/dr2915/reduced_embeddings/sonyc_files_list.csv')
     # check_sonyc_openl3_points('/beegfs/work/sonyc/features/openl3_day_format/2017',
     #                           '/scratch/dr2915/reduced_embeddings/sonyc_files_list.csv',
     #                           min_num_datasets_per_file=1400, max_num_datasets_per_file=1500)
