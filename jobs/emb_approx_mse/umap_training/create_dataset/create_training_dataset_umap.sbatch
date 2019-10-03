@@ -3,7 +3,7 @@
 #SBATCH --job-name=create-umap-dataset
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=10
-#SBATCH --mem=64GB
+#SBATCH --mem=100GB
 #SBATCH --time=2-0
 #SBATCH --mail-type=FAIL
 #SBATCH --output="create-umap-dataset-%j.out"
