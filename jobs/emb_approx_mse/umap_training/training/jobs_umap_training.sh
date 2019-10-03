@@ -13,3 +13,10 @@ sbatch umap_training.sbatch music 2048000 256 20 0.3
 sbatch umap_training.sbatch music 2048000 256 30 0.3
 sbatch umap_training.sbatch music 2048000 256 40 0.3
 sbatch umap_training.sbatch music 2048000 256 50 0.3
+
+# Euclidean -- sonyc dataset
+sbatch umap_training.sbatch sonyc 2048000 256 10 0.3
+sbatch umap_training.sbatch sonyc 2048000 256 20 0.3
+sbatch umap_training.sbatch sonyc 2048000 256 30 0.3
+sbatch umap_training.sbatch sonyc 2048000 256 40 0.3
+sbatch umap_training.sbatch sonyc 2048000 256 50 0.3

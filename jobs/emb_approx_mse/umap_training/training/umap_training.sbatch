@@ -15,6 +15,12 @@ cd `git rev-parse --show-toplevel`
 
 module purge
 
+if [ $USER == "sk7898" ]; then
+  source activate l3embedding-tf-14-cpu
+else
+  source activate l3embedding-cpu
+fi
+
 SRCDIR=.
 DATASET=$1
 BATCH_SIZE=$2
@@ -35,18 +41,14 @@ if ([ "$DATASET" = "music" ]); then
    #For testing
    #DATA_DIR=/scratch/sk7898/temp_data
    #OUTPUT_DIR=/scratch/sk7898/reduced_embeddings
-   echo OUTPUT_DIR=$OUTPUT_DIR
-
 elif([ "$DATASET" = "sonyc" ]); then
-    exit
-   DATA_DIR=/scratch/sk7898/orig_l3_embeddings/sonyc_train
-   OUTPUT_DIR=OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/models
-
+   DATA_DIR=/scratch/dr2915/reduced_embeddings/umap/training_data/sonyc/umap_training_ndata=$BATCH_SIZE
+   OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/models/sonyc
 else
    echo "First argument can only be music/sonyc"
    exit
 fi
-
+echo OUTPUT_DIR=$OUTPUT_DIR
 #alias nogpu='export CUDA_VISIBLE_DEVICES=-1;'
 
 python -u $SRCDIR/02_train_umap_emb.py \
