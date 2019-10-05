@@ -11,7 +11,7 @@ import multiprocessing
 from joblib import Parallel, delayed, dump, load
 import re
 import glob
-from data.utils import get_sonyc_filtered_files
+from sonyc.utils import get_sonyc_filtered_files
 
 def get_teacher_embedding(audio_batch):
     import tensorflow as tf
@@ -477,7 +477,7 @@ def train_umap_embedding(data_dir, output_dir, reduced_emb_len, neighbors=5,
                     reducer = umap.UMAP(n_neighbors=neighbors, min_dist=min_dist,
                                         metric=metric,n_components=reduced_emb_len, verbose=True)
 
-                    print('Starting UMAP training: training_size={}, num_neighbors={},'
+                    print('Starting UMAP training: sample_size={}, num_neighbors={},'
                           'min_dist={}, metric={}, reduced_emb_len={}'.format(curr_batch_size, neighbors,
                                                                               min_dist, metric, reduced_emb_len))
 
