@@ -320,10 +320,10 @@ def get_l3_frames_uniform_tflite(audio, interpreter=None, n_fft=2048, n_mels=256
         S = amplitude_to_db(np.array(S))
         X.append(S)
 
-    X = np.array(X)[:, :, :, np.newaxis].astype(np.float32)
+    #X = np.array(X)[:, :, :, np.newaxis].astype(np.float32)
 
     # Get the L3 embedding for each frame
-    batch_size = X.shape[0]
+    batch_size = len(X)
 
     interpreter.allocate_tensors()
     input_details = interpreter.get_input_details()
@@ -333,23 +333,27 @@ def get_l3_frames_uniform_tflite(audio, interpreter=None, n_fft=2048, n_mels=256
     output_shape = output_details[0]['shape'][1:]
     input_index = input_details[0]['index']
     output_index = output_details[0]['index']
-
-    interpreter.resize_tensor_input(input_index, ((batch_size, ) + tuple(input_shape)))
-    interpreter.resize_tensor_input(output_index, ((batch_size, ) + tuple(input_shape)))
+    embedding_length = output_shape[-1]
     
-    
+    #interpreter.resize_tensor_input(input_index, ((batch_size, ) + tuple(input_shape)))
+    #interpreter.resize_tensor_input(output_index, ((batch_size, ) + tuple(output_shape)))
+     
     #print("== Input details ==")
     #print(interpreter.get_input_details()[0])
     #print("type:", input_details[0]['dtype'])
     #print("\n== Output details ==")
     #print(interpreter.get_output_details()[0])
     
-    #predictions per batch
-    interpreter.set_tensor(input_index, X)
-    interpreter.invoke()
-    print('Interpreter Invoked!')
-    output = interpreter.get_tensor(output_index)
-    predictions = np.reshape(output, (output.shape[0], output.shape[-1]))
+    predictions = np.zeros((batch_size, embedding_length), dtype=np.float32)
+    for idx in range(len(X)):
+        #predictions per batch
+        #print(np.array(X[idx]).shape)
+        x = np.array(X[idx])[np.newaxis, :, :, np.newaxis].astype(np.float32)
+        interpreter.set_tensor(input_index, x)
+        interpreter.invoke()
+        #print('Interpreter Invoked!')
+        output = interpreter.get_tensor(output_index)
+        predictions[idx] = np.reshape(output, (output.shape[0], output.shape[-1]))
 
     return predictions
 

@@ -273,7 +273,7 @@ if __name__ == '__main__':
     num_gpus = args['gpus']
     output_dir = args['output_dir']
     dataset_name = args['dataset_name']
-    fold_num = args['fold']
+    fold_num = int(args['fold'])
     from_conv_layer = args['from_conv_layer']
     thresholds = args['thresholds']
     layers = args['include_layers']

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:2
-#SBATCH --job-name=l3embedding-train-embedding-approx-mse
+#SBATCH --job-name=l3embedding-train-quantization-aware-mse
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=64GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=ALL
-#SBATCH --output="l3embedding-train-embedding-approx-mse-%j.out"
-#SBATCH --err="l3embedding-train-embedding-approx-mse-%j.err"
+#SBATCH --output="l3embedding-train-quantization-aware-mse-%j.out"
+#SBATCH --err="l3embedding-train-quantization-aware-mse-%j.err"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
@@ -35,15 +35,28 @@ NUM_GPUS=2
 STUDENT_WEIGHT_PATH=$WEIGHT_DIR/$1 #l3_audio_20190723135620_8000_128_64_256_half_fmax_3500.h5
 EMBEDDING_DIR=$2
 
-EMBEDDING_BASE=${EMBEDDING_DIR##*/}
-IFS='_' 
-read -ra SPLITS <<< "$EMBEDDING_BASE" 
-APPROX_MODE='umap'
-APPROX_TRAIN_SIZE="$(cut -d'=' -f2 <<<"${SPLITS[1]}")" 
-NEIGHBORS="$(cut -d'=' -f2 <<<"${SPLITS[3]}")"
-MIN_DIST="$(cut -d'=' -f2 <<<"${SPLITS[4]}")"
-METRIC="$(cut -d'=' -f2 <<<"${SPLITS[5]}")"
-IFS=' '
+if [ $# -eq 2 ]; then
+    EMBEDDING_BASE=${EMBEDDING_DIR##*/}
+    IFS='_' 
+    read -ra SPLITS <<< "$EMBEDDING_BASE" 
+    APPROX_MODE='umap'
+    APPROX_TRAIN_SIZE="$(cut -d'=' -f2 <<<"${SPLITS[1]}")" 
+    NEIGHBORS="$(cut -d'=' -f2 <<<"${SPLITS[3]}")"
+    MIN_DIST="$(cut -d'=' -f2 <<<"${SPLITS[4]}")"
+    METRIC="$(cut -d'=' -f2 <<<"${SPLITS[5]}")"
+    IFS=' '
+    EMBEDDING_TRAIN_DIR=${EMBEDDING_DIR}/music_train
+    EMBEDDING_VALID_DIR=${EMBEDDING_DIR}/music_valid
+
+elif [ $# -eq 1 ]; then
+    APPROX_MODE='mse'
+    APPROX_TRAIN_SIZE=0
+    NEIGHBORS=0
+    METRIC='mse'
+    MIN_DIST=0.0
+    EMBEDDING_TRAIN_DIR=$SCRATCH/orig_l3_embeddings/music_train
+    EMBEDDING_VALID_DIR=$SCRATCH/orig_l3_embeddings/music_valid
+fi
 
 echo "APPROXIMATION=${APPROX_MODE}"
 echo "UMAP_TRAIN_DATA=${APPROX_TRAIN_SIZE}"
@@ -51,8 +64,6 @@ echo "NEIGHBORS=${NEIGHBORS}"
 echo "MIN_DIST=${MIN_DIST}"
 echo "METRIC=${METRIC}"
 
-EMBEDDING_TRAIN_DIR=${EMBEDDING_DIR}/music_train
-EMBEDDING_VALID_DIR=${EMBEDDING_DIR}/music_valid
 
 # CHOICE of learning-rate, train-epoch-size/steps-per-epoch and batch size
 # Smaller learning rates will require more training epochs. Conversely, larger learning rates will require fewer training epochs.
@@ -61,18 +72,12 @@ EMBEDDING_VALID_DIR=${EMBEDDING_DIR}/music_valid
 # Typically, a grid search involves picking values approximately on a logarithmic scale, 
 # e.g., a learning rate taken within the set {.1, .01, 10−3, 10−4 , 10−5}
 
+
 if ([ "$APPROX_MODE" = "umap" ]); then
-  if [ $# -eq 1 ]; then
-      APPROX_MODE='mse'
-      NEIGHBORS=0
-      METRIC='mse'
-      MIN_DIST=0.0
-  fi
-  python $SRCDIR/03_train_approx_embedding_mse.py \
+  python $SRCDIR/03_train_quantization_aware_mse.py \
 	  --num-epochs 300 \
 	  --train-epoch-size 4096 \
 	  --train-batch-size 64 \
-	  --model-type cnn_L3_melspec2 \
 	  --validation-epoch-size 1024 \
 	  --validation-batch-size 64 \
 	  --checkpoint-interval 10 \
@@ -82,7 +87,7 @@ if ([ "$APPROX_MODE" = "umap" ]); then
           --neighbors $NEIGHBORS \
           --min-dist $MIN_DIST \
 	  --metric $METRIC \
-	  --student-weight-path $STUDENT_WEIGHT_PATH \
+	  --model-path $STUDENT_WEIGHT_PATH \
 	  --learning-rate 0.00001 \
 	  --random-state 20180216 \
 	  --gsheet-id $GSHEET_ID \
@@ -93,13 +98,34 @@ if ([ "$APPROX_MODE" = "umap" ]); then
 	  $EMBEDDING_TRAIN_DIR \
           $EMBEDDING_VALID_DIR \
 	  $OUTPUT_DIR
+
+elif ([ "$APPROX_MODE" = "mse" ]);then
+  python $SRCDIR/03_train_quantization_aware_mse.py \
+          --num-epochs 300 \
+          --train-epoch-size 4096 \
+          --train-batch-size 64 \
+          --validation-epoch-size 1024 \
+          --validation-batch-size 64 \
+          --checkpoint-interval 10 \
+          --gpus $NUM_GPUS \
+          --approx-mode $APPROX_MODE \
+          --model-path $STUDENT_WEIGHT_PATH \
+          --learning-rate 0.00001 \
+          --random-state 20180216 \
+          --gsheet-id $GSHEET_ID \
+          --google-dev-app-name $GOOGLE_DEV_APP_NAME \
+          --verbose \
+          $TRAIN_DATA_DIR \
+          $VAL_DATA_DIR \
+          $EMBEDDING_TRAIN_DIR \
+          $EMBEDDING_VALID_DIR \
+          $OUTPUT_DIR
   
 elif ([ "$APPROX_MODE" = "tsne" ]); then
-    python $SRCDIR/03_train_embedding_approx_mse.py \
+    python $SRCDIR/03_train_quantization_aware_mse.py \
 	--num-epochs 300 \
 	--train-epoch-size 4096 \
 	--train-batch-size 64 \
-	--model-type cnn_L3_melspec2 \
 	--validation-epoch-size 1024 \
 	--validation-batch-size 64 \
 	--checkpoint-interval 10 \
@@ -108,7 +134,7 @@ elif ([ "$APPROX_MODE" = "tsne" ]); then
         --approx-train-size $APPROX_TRAIN_SIZE \
 	--neighbors $NEIGHBORS \
 	--metric $METRIC \
-	--student-weight-path $STUDENT_WEIGHT_PATH \
+	--model-path $STUDENT_WEIGHT_PATH \
 	--learning-rate 0.00001 \
 	--random-state 20180216 \
 	--gsheet-id $GSHEET_ID \

@@ -9,14 +9,12 @@ import csv
 import datetime
 import json
 import pickle
-import csv
 import numpy as np
 import keras
 import pescador
 import tensorflow as tf
 import h5py
 import tempfile
-import umap
 import librosa
 from keras import backend as K
 from keras import activations
@@ -25,9 +23,6 @@ from keras.regularizers import l2
 from keras.layers import *
 from keras.optimizers import Adam
 from keras.models import Model
-from keras.losses import categorical_crossentropy
-from keras.metrics import categorical_accuracy
-from skimage import img_as_float
 from tensorflow.python.ops import math_ops
 from tensorflow.python.framework import dtypes
 from .training_utils import conv_dict_to_val_list, multi_gpu_model, \
@@ -37,11 +32,10 @@ from .audio import pcm2float
 from log import *
 from kapre.time_frequency import Spectrogram, Melspectrogram
 from resampy import resample
-from sklearn.manifold import TSNE
 
 # Do not allocate all the memory for visible GPU
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3"
+os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 config = tf.ConfigProto()
 config.gpu_options.allow_growth=True
 sess = tf.Session(config=config)
@@ -79,6 +73,17 @@ def get_student_model(model_path):
    
     return model
 
+def get_model_params(model_description):
+    fmax = None
+    splits = model_description.split('_') 
+    samp_rate = int(splits[3])
+    n_mels = int(splits[4])
+    n_hop = int(splits[5])
+    n_fft = int(splits[6])
+    if len(splits) == 10:
+        fmax = int(splits[-1])
+    return samp_rate, n_mels, n_hop, n_fft, fmax
+        
 def get_embedding_length(model):
     embed_layer = model.get_layer('audio_embedding_layer')
     emb_len = tuple(embed_layer.get_output_shape_at(0))
@@ -130,8 +135,6 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
     batch = None
     curr_batch_size = 0
     batch_idx = 0
-    file_idx = 0
-    start_label_idx = 0
 
     if student_emb_length != 512:
         emb_key = get_embedding_key(approx_mode, approx_train_size, student_emb_length, neighbors=neighbors, \
@@ -140,7 +143,7 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
         emb_key = 'l3_embedding'
 
 
-    for fname in cycle_shuffle(os.listdir(data_dir)):
+    for fname in cycle_shuffle(os.listdir(emb_dir)):
         data_batch_path = os.path.join(data_dir, fname)
         emb_batch_path = os.path.join(emb_dir, fname)
 
@@ -207,11 +210,11 @@ def single_epoch_data_generator(data_dir, emb_dir, epoch_size, **kwargs):
 
 
 def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, output_dir, student_weight_path=None, \
-          approx_mode='umap', approx_train_size=None, neighbors=10, min_dist=0.3, metric='correlation', tsne_iter=300,\
+          approx_mode='umap', approx_train_size=None, neighbors=10, min_dist=0.3, metric='euclidean', tsne_iter=300,\
           num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
           model_type='cnn_L3_melspec2', n_mels=256, n_hop=242, n_dft=2048, samp_rate=48000, fmax=None, halved_convs=False,\
           log_path=None, disable_logging=False, random_state=20180216,learning_rate=0.00001, verbose=True, checkpoint_interval=10,\
-          gpus=1, continue_model_dir=None, gsheet_id=None, google_dev_app_name=None, thresholds=None):
+          gpus=1, continue_model_dir=None, gsheet_id=None, google_dev_app_name=None):
 
 
     init_console_logger(LOGGER, verbose=verbose)
@@ -220,7 +223,6 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
 
     LOGGER.debug('Initialized logging.')
     LOGGER.info('Embedding Reduction Mode: %s', approx_mode)
-    LOGGER.info('Neighbors/Perplexity: %s', neighbors)
 
     #reduced_emb_dir_train = os.path.join(reduced_emb_dir, os.path.basename(train_data_dir))
     #reduced_emb_dir_valid = os.path.join(reduced_emb_dir, os.path.basename(validation_data_dir))
@@ -239,42 +241,41 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
     else:
         raise ValueError('Invalid approximation mode: {}'.format(approx_mode))
     
-    # Make sure the directories we need exist
     if continue_model_dir:
-        model_dir = continue_model_dir
-    else:
-        model_dir = os.path.join(output_dir, 'embedding_approx', model_attribute, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-
-    if not os.path.isdir(model_dir):
-        os.makedirs(model_dir)
-        
-    if continue_model_dir:
+        model_desc = continue_model_dir.split('/')[-3]
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
         student_base_model = keras.models.load_model(latest_model_path, custom_objects={'Melspectrogram': Melspectrogram})
+        student_samp_rate, n_mels, n_hop, n_dft, fmax = get_model_params(model_desc)
         
     elif student_weight_path:
-        splits = os.path.basename(student_weight_path).strip('.h5').split('_')
-        student_samp_rate = int(splits[3])
-        n_mels = int(splits[4])
-        n_hop = int(splits[5])
-        n_fft = int(splits[6])
-        if len(splits) == 10:
-            fmax = int(splits[-1])
-        model_repr = os.path.basename(student_weight_path)
+        model_desc = os.path.basename(student_weight_path).strip('.h5')
         student_base_model = get_student_model(student_weight_path)
+        student_samp_rate, n_mels, n_hop, n_dft, fmax = get_model_params(model_desc)
         
     else:
         student_samp_rate = samp_rate
         student_base_model, inputs, outputs = MODELS[model_type](n_mels=n_mels, n_hop=n_hop, n_dft=n_dft,
                                                                  asr=samp_rate, fmax=fmax, halved_convs=halved_convs, num_gpus=1)
-        if halved_convs:
-            model_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_half'+'_fmax_'+str(fmax)
-        else:
-            model_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_fmax_'+str(fmax)
+        
+        
+    if halved_convs or 'half' in model_desc:
+        model_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_half'+'_fmax_'+str(fmax)
+    else:
+        model_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_fmax_'+str(fmax)
 
-    student_emb_len = get_embedding_length(student_base_model);
-    
-    LOGGER.info('Student sampling rate: {}'.format(student_samp_rate))
+    # Make sure the directories we need exist
+    if continue_model_dir:
+        model_dir = continue_model_dir
+    else:
+        model_dir = os.path.join(output_dir, 'embedding_approx', model_repr, model_attribute,\
+                                 datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+        
+    if not os.path.isdir(model_dir):
+        os.makedirs(model_dir)
+        
+    student_emb_len = get_embedding_length(student_base_model);  
+    LOGGER.info('Student sampling rate: {}'.format(samp_rate))
+    LOGGER.info('Model Representation: {}'.format(model_repr))
     LOGGER.info('Model Attribute: {}'.format(model_attribute))
     LOGGER.info('Student Embedding Length: {}'.format(student_emb_len))
 
@@ -414,7 +415,7 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
                                student_emb_length=student_emb_len,
                                student_asr=student_samp_rate,
                                batch_size=train_batch_size,
-                               n_fft=n_fft, n_mels=n_mels, n_hop=n_hop, fmax=fmax,
+                               n_fft=n_dft, n_mels=n_mels, n_hop=n_hop, fmax=fmax,
                                random_state=random_state,
                                start_batch_idx=train_start_batch_idx)
 
@@ -428,7 +429,7 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
                                           student_emb_length=student_emb_len,
                                           student_asr=student_samp_rate,
                                           batch_size=validation_batch_size,
-                                          n_fft=n_fft, n_mels=n_mels, n_hop=n_hop, fmax=fmax,
+                                          n_fft=n_dft, n_mels=n_mels, n_hop=n_hop, fmax=fmax,
                                           random_state=random_state)
 
 
