@@ -259,9 +259,9 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
         
         
     if halved_convs or 'half' in model_desc:
-        model_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_half'+'_fmax_'+str(fmax)
+        model_repr = str(student_samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_half'+'_fmax_'+str(fmax)
     else:
-        model_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_fmax_'+str(fmax)
+        model_repr = str(student_samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_fmax_'+str(fmax)
 
     # Make sure the directories we need exist
     if continue_model_dir:
@@ -274,7 +274,7 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
         os.makedirs(model_dir)
         
     student_emb_len = get_embedding_length(student_base_model);  
-    LOGGER.info('Student sampling rate: {}'.format(samp_rate))
+    LOGGER.info('Student sampling rate: {}'.format(student_samp_rate))
     LOGGER.info('Model Representation: {}'.format(model_repr))
     LOGGER.info('Model Attribute: {}'.format(model_attribute))
     LOGGER.info('Student Embedding Length: {}'.format(student_emb_len))

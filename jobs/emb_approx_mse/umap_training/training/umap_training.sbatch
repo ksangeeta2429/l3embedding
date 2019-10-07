@@ -10,7 +10,6 @@
 #SBATCH --err="train-embedding-%j.err"
 
 source ~/.bashrc
-source activate l3embedding-cpu
 cd `git rev-parse --show-toplevel`
 
 module purge
