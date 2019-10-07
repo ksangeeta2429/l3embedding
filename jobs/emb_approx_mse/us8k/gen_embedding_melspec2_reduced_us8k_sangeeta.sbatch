@@ -24,11 +24,10 @@ else
 fi
 
 # Process args
-DATA_DIR=$1
-WEIGHT_DIR=$2
+WEIGHT_DIR=$1
 
-MODEL_DESC="$(cut -d'/' -f1 <<<"${WEIGHT_DIR}")"
-FMAX=None
+MODEL_DESC="$(cut -d'/' -f8 <<<"${WEIGHT_DIR}")"
+
 IFS='_'
 read -ra SPLITS <<< "$MODEL_DESC"
 ASR="${SPLITS[0]}" 
@@ -37,11 +36,6 @@ HOP_LEN="${SPLITS[2]}"
 NUM_DFT="${SPLITS[3]}"
 IFS=' '
 
-if [ ${#SPLITS[@]} -eq 7 ]
-then
-    FMAX="${SPLITS[6]}"
-fi
-
 echo "ASR=$ASR"
 echo "NUM MELS=$NUM_MELS"
 echo "HOP LENGTH=$HOP_LEN"
@@ -49,17 +43,18 @@ echo "DFT=$NUM_DFT"
 
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
-L3_MODEL_PATH=$SCRATCH/l3pruning/embedding_approx_mse/embedding_approx/$DATA_DIR/${WEIGHT_DIR}/model_best_valid_loss.h5 
+L3_MODEL_PATH=${WEIGHT_DIR}/model_best_valid_loss.h5 
 US8K_PATH=/beegfs/jtc440/UrbanSound8K
 METADATA_PATH=$US8K_PATH/metadata/UrbanSound8K.csv
 DATA_DIR=$US8K_PATH/audio
-OUTPUT_DIR=$SCRATCH/embeddings/embedding_approx_mse/$DATA_DIR
+OUTPUT_DIR=$SCRATCH/embeddings/embedding_approx_mse
 DATASET='us8k'
 
 echo "WEIGHT FILE=$L3_MODEL_PATH"
 
-if [ ${FMAX}!="None" ]
+if [ ${#SPLITS[@]} -eq 7 and ${SPLITS[6]} != "None" ]
 then
+    FMAX="${SPLITS[6]}"
     echo "FMAX=$FMAX"
     python $SRCDIR/05_generate_embedding_samples.py \
         --random-state 20180302 \
