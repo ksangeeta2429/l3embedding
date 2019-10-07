@@ -224,11 +224,15 @@ def get_l3model(model_path, saved_model_type='keras'):
         # Load L3 embedding model if using L3 features
         LOGGER.info('Loading keras audio embedding model.....')        
         model = keras.models.load_model(model_path, custom_objects={'Melspectrogram': Melspectrogram})
-        embed_layer = model.get_layer('audio_embedding_layer')
-        pool_size = tuple(embed_layer.get_output_shape_at(0)[1:3])
-        y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(model.output)
-        y_a = keras.layers.Flatten()(y_a)
-        l3embedding_model = keras.models.Model(inputs=model.input, outputs=y_a)
+        if 'flatten' in model.layers[-1].name:
+            print("Flatten Layer is part of model")
+            l3embedding_model = model
+        else:
+            embed_layer = model.get_layer('audio_embedding_layer')
+            pool_size = tuple(embed_layer.get_output_shape_at(0)[1:3])
+            y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(model.output)
+            y_a = keras.layers.Flatten()(y_a)
+            l3embedding_model = keras.models.Model(inputs=model.input, outputs=y_a)
         
     else:
         LOGGER.info('Loading tflite audio embedding interpreter.....')
