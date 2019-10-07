@@ -170,7 +170,7 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
         data_blob = h5py.File(data_batch_path, 'r')
         emb_blob = h5py.File(emb_batch_path, 'r')
 
-        blob_size = len(data_blob['audio'])
+        blob_size = len(emb_blob[emb_key])
 
         while blob_start_idx < blob_size:
             #embedding_output = None
