@@ -32,6 +32,7 @@ from .audio import pcm2float
 from log import *
 from kapre.time_frequency import Spectrogram, Melspectrogram
 from resampy import resample
+import sys
 
 # Do not allocate all the memory for visible GPU
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -167,8 +168,14 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
 
         blob_start_idx = 0
 
-        data_blob = h5py.File(data_batch_path, 'r')
-        emb_blob = h5py.File(emb_batch_path, 'r')
+        # If file is unreadable for any reason, move on to the next file
+        try:
+            data_blob = h5py.File(data_batch_path, 'r')
+            emb_blob = h5py.File(emb_batch_path, 'r')
+        except:
+            print("Unexpected error:", sys.exc_info()[1])
+            continue
+
 
         blob_size = len(emb_blob[emb_key])
 
