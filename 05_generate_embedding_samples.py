@@ -244,9 +244,16 @@ def get_output_dir(model_path, output_dir, dataset_name, saved_model_type='keras
         else:
             model_type = ''
 
-        model_desc = os.path.splitext(os.path.basename(model_path))[0]
-        model_desc_str = model_desc[model_desc.rindex('l3_audio_')+9:]
-        dataset_output_dir = os.path.join(output_dir, 'features', dataset_name, 'l3', model_type, model_desc_str)
+        if 'embedding_approx' in model_path:
+            model_desc = model_path[model_path.index('embedding_approx'):]
+            model_desc_parts = model_desc.split('/')
+            dataset_output_dir = os.path.join(output_dir, 'features', dataset_name, 'l3',
+                                              model_type, model_desc_parts[0], model_desc_parts[2],
+                                              model_desc_parts[3], model_desc_parts[4])
+        else:
+            model_desc = os.path.splitext(os.path.basename(model_path))[0]
+            model_desc_str = model_desc[model_desc.rindex('l3_audio_')+9:]
+            dataset_output_dir = os.path.join(output_dir, 'features', dataset_name, 'l3', model_type, model_desc_str)
     else:
         dataset_output_dir = output_dir
         
@@ -273,7 +280,7 @@ if __name__ == '__main__':
     num_gpus = args['gpus']
     output_dir = args['output_dir']
     dataset_name = args['dataset_name']
-    fold_num = int(args['fold'])
+    fold_num = args['fold']
     from_conv_layer = args['from_conv_layer']
     thresholds = args['thresholds']
     layers = args['include_layers']
@@ -285,6 +292,9 @@ if __name__ == '__main__':
     fmax = args['fmax']
     annotation_path = args['annotation_path']
     saved_model_type = 'keras'
+
+    if fold_num is not None:
+        fold_num = int(fold_num)
 
     LOGGER.info('Configuration: {}'.format(str(args)))
     
@@ -298,6 +308,8 @@ if __name__ == '__main__':
     if (is_l3_feature or is_l3_comp) and not model_path:
         raise ValueError('Must provide model path is L3 embedding features are used')
 
+    print('is_l3_feature', is_l3_feature)
+    print('is_l3_comp', is_l3_comp)
 
     if is_l3_comp:
         if 'fixed' in model_path:

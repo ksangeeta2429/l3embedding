@@ -1,0 +1,22 @@
+# 16000_128_128_512_half -- MUSIC
+sbatch mae_gen_embedding_melspec2_reduced_sonyc_ust.sbatch /scratch/sk7898/l3pruning/embedding_approx_mse/embedding_approx/music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean/20190928132003 16000 128 128 512
+sleep 30
+sbatch mae_gen_embedding_melspec2_reduced_sonyc_ust.sbatch /scratch/sk7898/l3pruning/embedding_approx_mse/embedding_approx/music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean/20191001131207 16000 128 128 512
+sleep 30
+
+
+# 8000_128_64_256_half_fmax_3500 -- MUSIC
+sbatch mae_gen_embedding_melspec2_reduced_sonyc_ust.sbatch /scratch/sk7898/l3pruning/embedding_approx_mse/embedding_approx/music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean/20190928132632 8000 128 64 256 3500
+sleep 30
+sbatch mae_gen_embedding_melspec2_reduced_sonyc_ust.sbatch /scratch/sk7898/l3pruning/embedding_approx_mse/embedding_approx/music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean/20191001142913 8000 128 64 256 3500
+sleep 30
+
+
+
+
+
+
+
+
+
+#sbatch gen_embedding_melspec2_reduced_sonyc_ust.sbatch l3_audio_20190710131207_16000_64_160_1024.h5 16000 64 160 1024
