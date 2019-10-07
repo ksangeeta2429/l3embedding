@@ -226,6 +226,10 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
 
     #reduced_emb_dir_train = os.path.join(reduced_emb_dir, os.path.basename(train_data_dir))
     #reduced_emb_dir_valid = os.path.join(reduced_emb_dir, os.path.basename(validation_data_dir))
+    if 'music_train' in train_data_dir:
+        dataset = 'music'
+    else:
+        dataset = 'sonyc'
     
     if approx_mode == 'umap':
         if min_dist is None:
@@ -267,7 +271,7 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
     if continue_model_dir:
         model_dir = continue_model_dir
     else:
-        model_dir = os.path.join(output_dir, 'embedding_approx', model_repr, model_attribute,\
+        model_dir = os.path.join(output_dir, 'embedding_approx', dataset, model_repr, model_attribute,\
                                  datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
         
     if not os.path.isdir(model_dir):
