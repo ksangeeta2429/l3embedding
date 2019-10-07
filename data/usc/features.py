@@ -401,14 +401,14 @@ def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256,
         audio = np.pad(audio, (left_pad, right_pad), mode='constant')
     
     if with_melSpec:
-        print("Melspectrogram is part of the weight file")
+        #print("Melspectrogram is part of the weight file")
         # Divide into overlapping 1 second frames
         x = librosa.util.utils.frame(audio, frame_length=frame_length, hop_length=hop_length).T    
         # Add a channel dimension
         X = x.reshape((x.shape[0], 1, x.shape[-1]))
     
     else:
-        print("Melspectrogram has been removed from the weight file")
+        #print("Melspectrogram has been removed from the weight file")
         frames = librosa.util.utils.frame(audio, frame_length=frame_length, hop_length=hop_length).T
 
         X = []
