@@ -73,15 +73,24 @@ def get_student_model(model_path):
    
     return model
 
-def get_model_params(model_description):
+def get_model_params(model_description, continue_train=False):
     fmax = None
-    splits = model_description.split('_') 
-    samp_rate = int(splits[3])
-    n_mels = int(splits[4])
-    n_hop = int(splits[5])
-    n_fft = int(splits[6])
-    if len(splits) == 10:
+    splits = model_description.split('_')
+
+    if continue_train:
+        samp_rate = int(splits[0])
+        n_mels = int(splits[1])
+        n_hop = int(splits[2])
+        n_fft = int(splits[3])
+    else:
+        samp_rate = int(splits[3])
+        n_mels = int(splits[4])
+        n_hop = int(splits[5])
+        n_fft = int(splits[6])
+    
+    if 'fmax' in model_description and splits[-1] != "None":
         fmax = int(splits[-1])
+    
     return samp_rate, n_mels, n_hop, n_fft, fmax
         
 def get_embedding_length(model):
@@ -122,6 +131,15 @@ def get_embedding_key(method, batch_size, emb_len, neighbors=None, \
 
     return key
 
+def get_restart_info(history_path):
+    #epoch,loss,mean_absolute_error,val_loss,val_mean_absolute_error
+    last = None
+    with open(history_path, 'r') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            last = row
+
+    return int(last['epoch']), float(last['val_mean_absolute_error']), float(last['val_loss'])
 
 def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap', approx_train_size=None, neighbors=10, \
                    min_dist=0.3, metric='euclidean', tsne_iter=500, batch_size=512, \
@@ -249,7 +267,7 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
         model_desc = continue_model_dir.split('/')[-3]
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
         student_base_model = keras.models.load_model(latest_model_path, custom_objects={'Melspectrogram': Melspectrogram})
-        student_samp_rate, n_mels, n_hop, n_dft, fmax = get_model_params(model_desc)
+        student_samp_rate, n_mels, n_hop, n_dft, fmax = get_model_params(model_desc, continue_train=True)
         
     elif student_weight_path:
         model_desc = os.path.basename(student_weight_path).strip('.h5')
