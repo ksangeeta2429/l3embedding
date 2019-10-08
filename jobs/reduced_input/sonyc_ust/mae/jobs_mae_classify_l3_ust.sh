@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+sbatch mae_classify_l3_ust.sbatch music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean
+sleep 10
+sbatch mae_classify_l3_ust.sbatch /music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean
+sleep 10
+
+
+sbatch mae_classify_l3_ust.sbatch music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean
+sleep 10
+sbatch mae_classify_l3_ust.sbatch music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean
