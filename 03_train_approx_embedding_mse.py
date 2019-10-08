@@ -68,6 +68,13 @@ def parse_arguments():
                         default='cnn_L3_melspec2',
                         help='Name of model type to train')
 
+    parser.add_argument('-melSpec',
+                        '--melSpec',
+                        dest='melSpec',
+                        action='store_true',
+                        default=False,
+                        help='Set to True is Melspec is not included in the model')
+
     parser.add_argument('-student',
                         '--student-weight-path',
                         dest='student_weight_path',

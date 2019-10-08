@@ -917,7 +917,7 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
                       return_decibel_melgram=True, padding='same')(x_a)
     y_a = BatchNormalization()(y_a)
 
-    print('fmax:', fmax)
+    #print('fmax:', fmax)
 
     # CONV BLOCK 1
     n_filter_a_1 = 64
