@@ -296,7 +296,11 @@ def request_with_retry(request, num_retries=50):
 
 
 def get_row(service, spreadsheet_id, param_dict, sheet_name, id_field='model_dir'):
-    range_ = '{}!B:B'.format(sheet_name)
+    if sheet_name == 'embedding_approx_mse':
+        range_ = '{}!B:B'.format(sheet_name)
+    else:
+        range_ = '{}!C:C'.format(sheet_name)
+
     major_dimension = 'COLUMNS'
 
     request = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id,
