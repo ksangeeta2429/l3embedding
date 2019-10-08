@@ -22,7 +22,7 @@ fi
 
 SRCDIR=.
 FEATURES_DIR=$1
-OUTPUT_DIR=$SCRATCH/embeddings/embedding_approx_mse
+OUTPUT_DIR=$SCRATCH/embeddings
 MODEL_TYPE='mlp'
 FEATURE_MODE='framewise'
 GOOGLE_DEV_APP_NAME='l3compression'

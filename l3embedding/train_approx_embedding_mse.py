@@ -143,7 +143,7 @@ def get_restart_info(history_path):
     return int(last['epoch']), float(last['val_mean_absolute_error']), float(last['val_loss'])
 
 def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap', approx_train_size=None, neighbors=10, \
-                   min_dist=0.3, metric='euclidean', tsne_iter=500, batch_size=512, \
+                   min_dist=0.3, metric='euclidean', tsne_iter=500, batch_size=512, melSpec=False,\
                    n_fft=2048, n_mels=256, n_hop=242, hop_size=0.1, fmax=None,\
                    student_asr=16000, random_state=20180216, start_batch_idx=None):
     
@@ -211,11 +211,12 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
                         batch['audio'] = resample(pcm2float(batch['audio'], dtype='float32'), sr_orig=48000,
                                                   sr_new=student_asr)
                         
-                    X = [get_melspectrogram(batch['audio'][i].flatten(), n_fft=n_fft, mel_hop_length=n_hop,\
-                                            samp_rate=student_asr, n_mels=n_mels, fmax=fmax) for i in range(batch_size)]
+                    if melSpec:
+                        X = [get_melspectrogram(batch['audio'][i].flatten(), n_fft=n_fft, mel_hop_length=n_hop,\
+                                                samp_rate=student_asr, n_mels=n_mels, fmax=fmax) for i in range(batch_size)]
 
-                    batch['audio'] = np.array(X)[:, :, :, np.newaxis]
-                    #print(np.shape(batch)) #(64, 256, 191, 1)
+                        batch['audio'] = np.array(X)[:, :, :, np.newaxis]
+                        #print(np.shape(batch)) #(64, 256, 191, 1)
                     yield batch
 
                 batch_idx += 1
@@ -239,7 +240,7 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
           num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
           model_type='cnn_L3_melspec2', n_mels=256, n_hop=242, n_dft=2048, samp_rate=48000, fmax=None, halved_convs=False,\
           log_path=None, disable_logging=False, random_state=20180216,learning_rate=0.00001, verbose=True, checkpoint_interval=10,\
-          gpus=1, continue_model_dir=None, gsheet_id=None, google_dev_app_name=None):
+          gpus=1, continue_model_dir=None, gsheet_id=None, google_dev_app_name=None, melSpec=False):
 
 
     init_console_logger(LOGGER, verbose=verbose)
@@ -283,8 +284,8 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
         
     else:
         student_samp_rate = samp_rate
-        student_base_model, inputs, outputs = MODELS[model_type](n_mels=n_mels, n_hop=n_hop, n_dft=n_dft,
-                                                                 asr=samp_rate, fmax=fmax, halved_convs=halved_convs, num_gpus=1)
+        student_base_model, inputs, outputs = construct_cnn_L3_melspec2_audio_model(n_mels=n_mels, n_hop=n_hop, n_dft=n_dft,
+                                                                                    asr=samp_rate, fmax=fmax, halved_convs=halved_convs)
         
         
     if halved_convs or 'half' in model_desc:
@@ -419,10 +420,10 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
     history_csvlog = os.path.join(model_dir, 'history_csvlog.csv')
     cb.append(keras.callbacks.CSVLogger(history_csvlog, append=True, separator=','))
 
-    earlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=10)
+    #earlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=10)
     reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5)
 
-    cb.append(earlyStopping)
+    #cb.append(earlyStopping)
     cb.append(reduceLR)
 
     if gsheet_id:
@@ -446,6 +447,7 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
                                batch_size=train_batch_size,
                                n_fft=n_dft, n_mels=n_mels, n_hop=n_hop, fmax=fmax,
                                random_state=random_state,
+                               melSpec=melSpec,
                                start_batch_idx=train_start_batch_idx)
 
     val_gen = single_epoch_data_generator(validation_data_dir,
@@ -459,6 +461,7 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
                                           student_asr=student_samp_rate,
                                           batch_size=validation_batch_size,
                                           n_fft=n_dft, n_mels=n_mels, n_hop=n_hop, fmax=fmax,
+                                          melSpec=melSpec,
                                           random_state=random_state)
 
 
