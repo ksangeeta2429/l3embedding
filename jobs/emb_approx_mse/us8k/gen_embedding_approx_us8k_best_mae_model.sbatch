@@ -47,7 +47,7 @@ L3_MODEL_PATH=${WEIGHT_DIR}/model_best_valid_mae.h5
 US8K_PATH=/beegfs/jtc440/UrbanSound8K
 METADATA_PATH=$US8K_PATH/metadata/UrbanSound8K.csv
 DATA_DIR=$US8K_PATH/audio
-OUTPUT_DIR=$SCRATCH/embeddings/embedding_approx_mse/mae
+OUTPUT_DIR=$SCRATCH/embeddings/mae
 DATASET='us8k'
 
 echo "WEIGHT FILE=$L3_MODEL_PATH"
