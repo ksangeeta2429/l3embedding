@@ -420,10 +420,10 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
     history_csvlog = os.path.join(model_dir, 'history_csvlog.csv')
     cb.append(keras.callbacks.CSVLogger(history_csvlog, append=True, separator=','))
 
-    earlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=10)
+    #earlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=10)
     reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5)
 
-    cb.append(earlyStopping)
+    #cb.append(earlyStopping)
     cb.append(reduceLR)
 
     if gsheet_id:
