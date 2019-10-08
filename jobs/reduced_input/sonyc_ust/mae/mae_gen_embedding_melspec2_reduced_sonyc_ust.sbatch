@@ -38,13 +38,13 @@ echo "DFT=$NUM_DFT"
 
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
-L3_MODEL_PATH=$1/model_best_valid_loss.h5
+L3_MODEL_PATH=$1/model_best_valid_mae.h5
 #L3_MODEL_TYPE='cnn_L3_melspec2'
 #L3_POOLING_TYPE='original'
 SONYC_UST_PATH=/beegfs/jtc440/sonyc_ust
 DATA_DIR=$SONYC_UST_PATH/data
 METADATA_PATH=$DATA_DIR/annotations.csv
-OUTPUT_DIR=$SCRATCH/embeddings
+OUTPUT_DIR=$SCRATCH/embeddings/model_best_valid_mae
 DATASET='sonyc_ust'
 
 echo "MODEL FILE=$L3_MODEL_PATH"

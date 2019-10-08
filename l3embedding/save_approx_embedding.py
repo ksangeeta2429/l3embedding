@@ -149,7 +149,7 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
         blob_keys = get_blob_keys('umap', int(inferred_params[0]), int(inferred_params[1]),
                                   neighbors_list=[int(inferred_params[2])], metric_list=[inferred_params[4]],
                                   min_dist_list=[float(inferred_params[3])], tsne_iter_list=tsne_iter_list)
-
+        
         # Extract reducer
         print('Loading UMAP model...')
         start_time = time.time()

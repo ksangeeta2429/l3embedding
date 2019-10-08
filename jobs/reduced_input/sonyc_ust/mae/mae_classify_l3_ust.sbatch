@@ -19,8 +19,8 @@ module load cudnn/9.0v7.3.0.29
 SRCDIR=.
 ANNPATH=/beegfs/jtc440/sonyc_ust/data/annotations.csv
 TAXPATH=/beegfs/jtc440/sonyc_ust/data/dcase-ust-taxonomy.yaml
-EMBDIR=$SCRATCH/embeddings/features/sonyc_ust/l3/embedding_approx_mse/$1
-OUTDIR=$SCRATCH/embeddings/classifier/sonyc_ust/mil
+EMBDIR=$SCRATCH/embeddings/model_best_valid_mae/features/sonyc_ust/l3/embedding_approx_mse/$1
+OUTDIR=$SCRATCH/embeddings/model_best_valid_mae/classifier/sonyc_ust/mil
 
 EXPDIR=$OUTDIR/$1
 OUTPUTDIR=$EXPDIR/results
