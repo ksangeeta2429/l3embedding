@@ -236,7 +236,7 @@ def get_l3_embedding_model(input_repr, content_type, embedding_size, load_weight
     model : keras.models.Model
         Model object.
     """
-    from openl3.models import MODELS, POOLINGS, load_embedding_model_path
+    from openl3.models import MODELS, POOLINGS, get_embedding_model_path
     from keras.layers import (
         Input, Conv2D, BatchNormalization, MaxPooling2D,
         Flatten, Activation, Lambda
@@ -250,7 +250,7 @@ def get_l3_embedding_model(input_repr, content_type, embedding_size, load_weight
         m = MODELS[input_repr]()
 
     if load_weights:
-        m.load_weights(load_embedding_model_path(input_repr, content_type))
+        m.load_weights(get_embedding_model_path(input_repr, content_type))
 
     # Pooling for final output embedding size
     pool_size = POOLINGS[input_repr][embedding_size]
