@@ -7,6 +7,7 @@ import librosa
 import resampy
 import soundfile as sf
 import warnings
+import glob
 from tqdm import tqdm
 
 import tensorflow as tf
@@ -262,7 +263,7 @@ def get_l3_embedding_model(input_repr, content_type, embedding_size, load_weight
 
 def extract_embeddings_l3(annotation_path, dataset_dir, output_dir, hop_duration=None, progress=True,
                           input_repr='mel256', content_type='music', embedding_size=512,
-                          load_l3_weights=True):
+                          load_l3_weights=True, resume=False):
     """
     Extract embeddings for files annotated in the SONYC annotation file and save them to disk.
 
@@ -292,6 +293,14 @@ def extract_embeddings_l3(annotation_path, dataset_dir, output_dir, hop_duration
     os.makedirs(out_dir, exist_ok=True)
 
     df = annotation_data[['split', 'audio_filename']].drop_duplicates()
+
+    if resume:
+        # Filter df with list of files yet to be computed
+        all_files = [os.path.basename(str.replace('.wav', '')) for str in glob.glob(os.path.join(dataset_dir, '*/*.wav'))]
+        embeddings_computed = [os.path.basename(str.replace('.npz','')) for str in glob.glob(os.path.join(out_dir, '*.npz'))]
+        remaining_files = ['{}.wav'.format(f) for f in list(set(all_files)-set(embeddings_computed))]
+        df = df[df['audio_filename'].isin(remaining_files)]
+
     row_iter = df.iterrows()
 
     if progress:
@@ -385,6 +394,7 @@ if __name__ == "__main__":
     parser.add_argument("--frame_duration", type=float)
     parser.add_argument("--hop_duration", type=float)
     parser.add_argument("--progress", action="store_const", const=True, default=False)
+    parser.add_argument("--resume", action="store_const", const=True, default=False)
 
     args = parser.parse_args()
 
@@ -406,7 +416,8 @@ if __name__ == "__main__":
                               load_l3_weights=(not args.l3_random),
                               input_repr=args.l3_input_repr,
                               content_type=args.l3_content_type,
-                              embedding_size=args.l3_embedding_size)
+                              embedding_size=args.l3_embedding_size,
+                              resume=args.resume)
     elif args.embedding_type == "mfcc":
         extract_embeddings_mfcc(annotation_path=args.annotation_path,
                                dataset_dir=args.dataset_dir,

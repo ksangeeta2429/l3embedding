@@ -29,4 +29,5 @@ python extract_embedding.py $ANNPATH $DATAPATH $EMBDIR l3 \
     --l3_content_type music \
     --l3_embedding_size 512 \
     --hop_duration 0.1 \
-    --progress
+    --progress \
+    --resume
