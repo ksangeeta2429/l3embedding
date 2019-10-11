@@ -61,7 +61,7 @@ def save_npz_sonyc_ust(paths, batch, batch_size):
 
     for path in paths:
         end_idx = start_idx + 96
-        np.savez(path, embedding=batch[batch.keys()[0]][start_idx:end_idx])
+        np.savez(path, embedding=batch[list(batch.keys())[0]][start_idx:end_idx])
         start_idx = end_idx
 
 
