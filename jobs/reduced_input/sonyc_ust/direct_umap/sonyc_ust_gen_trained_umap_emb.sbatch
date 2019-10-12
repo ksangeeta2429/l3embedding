@@ -21,13 +21,22 @@ BATCH_SIZE=$2
 
 echo MODEL_PATH=$MODEL_PATH
 
+if [[ $MODEL_PATH == *"music"* ]]; then
+    UMAP_TRAIN_DATA="music"
+elif [[ $MODEL_PATH == *"sonyc"* ]]; then
+    UMAP_TRAIN_DATA="sonyc"
+fi
+
 MODEL_FILE="${MODEL_PATH##*/}"
-OUT_DIR="${MODEL_FILE/.sav/}"
+OUT_DIR="${MODEL_FILE/.sav/}/$UMAP_TRAIN_DATA"
+
 
 DATA_DIR=/scratch/dr2915/embeddings/features/sonyc_ust/l3/openl3/l3-mel256-music-512
 echo DATA_DIR=$DATA_DIR
 OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/$OUT_DIR/sonyc_ust/l3-mel256-music-512
 echo OUTPUT_DIR=$OUTPUT_DIR
+
+exit 1
 
 if [ $# -gt 2 ]; then
     PARTITION_NUM=$3
