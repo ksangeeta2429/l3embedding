@@ -36,8 +36,6 @@ echo DATA_DIR=$DATA_DIR
 OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/$OUT_DIR/sonyc_ust/l3-mel256-music-512
 echo OUTPUT_DIR=$OUTPUT_DIR
 
-exit 1
-
 if [ $# -gt 2 ]; then
     PARTITION_NUM=$3
     echo "PARTITION_NUM=$PARTITION_NUM"
