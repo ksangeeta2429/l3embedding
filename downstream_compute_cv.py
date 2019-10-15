@@ -16,7 +16,7 @@ df = pd.read_table(filename, header=0, sep=',',
 df['Acc'].replace('', np.nan, inplace=True)
 df.dropna(subset=['Acc'], inplace=True)
 
-# Compute average accuracy, grouping by hyperparams
+# Compute average accuracy, grouping by hyp
 df_cv = df['Acc'].groupby(
     df['Path']).mean().to_frame()
 

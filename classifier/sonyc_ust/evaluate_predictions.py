@@ -3,6 +3,26 @@ import json
 import os
 import oyaml as yaml
 from metrics import evaluate, micro_averaged_auprc, macro_averaged_auprc
+import git
+import copy
+import getpass
+import json
+from googleapiclient import discovery
+from gsheets import get_credentials, append_row
+
+class GSheetLogger():
+    """
+    Update Google Sheets Spreadsheet
+    """
+
+    def __init__(self, google_dev_app_name, spreadsheet_id, param_dict):
+        self.google_dev_app_name = google_dev_app_name
+        self.spreadsheet_id = spreadsheet_id
+        self.credentials = get_credentials(google_dev_app_name)
+        self.service = discovery.build('sheets', 'v4', credentials=self.credentials)
+        self.param_dict = copy.deepcopy(param_dict)
+
+        append_row(self.service, self.spreadsheet_id, self.param_dict, 'sonyc_ust')
 
 
 if __name__ == '__main__':
@@ -22,6 +42,12 @@ if __name__ == '__main__':
                         help='Output directory.')
     parser.add_argument('--split_path', type=str,
                         help='Optional path to split CSV file.')
+    parser.add_argument('--gsheet_id',
+                        type=str,
+                        help='Google Spreadsheet ID for centralized logging of experiments')
+    parser.add_argument('--google_dev_app_name',
+                        type=str,
+                        help='Google Developer Application Name for using API')
 
     args = parser.parse_args()
 
@@ -69,4 +95,59 @@ if __name__ == '__main__':
     with open(eval_path, 'w') as f:
         json.dump(metrics, f)
 
+
+    # Get hyperparameters from .json
+    with open(os.path.join(args.output_dir, 'hyper_params.json')) as hyp:
+        hyp = json.load(hyp)
+
+    if 'mae' in hyp['emb_dir']:
+        model_type = 'MAE'
+    elif 'umap' in hyp['emb_dir']:
+        model_type = 'UMAP'
+
+    if 'music' in hyp['emb_dir']:
+        upstream_data = 'music'
+    else:
+        upstream_data = 'sonyc'
+
+    # Update Google spreadsheet
+    param_dict = {
+        'username': getpass.getuser(),
+        'model_type': model_type,
+        'uptsream_data': upstream_data,
+        'git_commit': git.Repo(os.path.dirname(os.path.abspath(__file__)), search_parent_directories=True).head.object.hexsha,
+        'annotation_path': hyp['annotation_path'],
+        'taxonomy_path': hyp['taxonomy_path'],
+        'emb_dir': hyp['emb_dir'],
+        'output_dir': hyp['output_dir'],
+        'exp_id': hyp['exp_id'],
+        'hidden_layer_size': hyp['hidden_layer_size'],
+        'num_hidden_layers': hyp['num_hidden_layers'],
+        'learning_rate': hyp['learning_rate'],
+        'l2_reg': hyp['l2_reg'],
+        'batch_size': hyp['batch_size'],
+        'num_epochs': hyp['num_epochs'],
+        'patience': hyp['patience'],
+        'sensor_factor': hyp['sensor_factor'],
+        'proximity_factor': hyp['proximity_factor'],
+        'no_standardize': hyp['no_standardize'],
+        'cooccurrence_loss': hyp['cooccurrence_loss'],
+        'cooccurrence_loss_factor': hyp['cooccurrence_loss_factor'],
+        'pca': hyp['pca'],
+        'pca_components': hyp['pca_components'],
+        'label_mode': hyp['label_mode'],
+        'oversample': hyp['oversample'],
+        'oversample_iters': hyp['oversample_iters'],
+        'thresh_type': hyp['thresh_type'],
+        'target_mode': hyp['target_mode'],
+        'no_timestamp': hyp['no_timestamp'],
+        'split_path': hyp['split_path'],
+        'optimizer': hyp['optimizer'],
+        'micro_auprc': metrics[hyp['label_mode']]["micro_auprc"],
+        'micro_f1': metrics[hyp['label_mode']]["micro_f1"],
+        'macro_auprc': metrics[hyp['label_mode']]["macro_auprc"],
+        'class_auprc': metrics[hyp['label_mode']]["class_auprc"]
+    }
+
+    GSheetLogger(args.google_dev_app_name, args.gsheet_id, param_dict)
 
