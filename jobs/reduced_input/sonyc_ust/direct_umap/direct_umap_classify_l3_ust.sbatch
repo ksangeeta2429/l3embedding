@@ -25,6 +25,9 @@ OUTDIR=$SCRATCH/embeddings/umap_direct/classifier/sonyc_ust/l3-mel256-music-512/
 EXPDIR=$OUTDIR/$1
 OUTPUTDIR=$EXPDIR/results
 
+GOOGLE_DEV_APP_NAME='l3compression'
+GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo'
+
 #module purge
 #module load sox/intel/14.4.2
 #module load ffmpeg/intel/3.2.2
@@ -43,4 +46,4 @@ python classify.py $ANNPATH $TAXPATH $EMBDIR $EXPDIR results \
     --no_timestamp \
     --optimizer adam
 
-python evaluate_predictions.py $OUTPUTDIR/output.csv $ANNPATH $TAXPATH $OUTPUTDIR
+python evaluate_predictions.py $OUTPUTDIR/output.csv $ANNPATH $TAXPATH $OUTPUTDIR $GSHEET_ID $GOOGLE_DEV_APP_NAME

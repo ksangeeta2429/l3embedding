@@ -237,7 +237,6 @@ SONYC_UST_FILED_NAMES = [
     'no_timestamp',
     'split_path',
     'optimizer',
-    'label_mode',
     'micro_auprc',
     'micro_f1',
     'macro_auprc',

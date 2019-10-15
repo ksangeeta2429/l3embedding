@@ -40,14 +40,12 @@ if __name__ == '__main__':
                         help='Path to dataset taxonomy YAML file.')
     parser.add_argument('output_dir', type=str,
                         help='Output directory.')
+    parser.add_argument('gsheet_id', type=str,
+                        help='Google Spreadsheet ID for centralized logging of experiments')
+    parser.add_argument('google_dev_app_name', type=str,
+                        help='Google Developer Application Name for using API')
     parser.add_argument('--split_path', type=str,
                         help='Optional path to split CSV file.')
-    parser.add_argument('--gsheet_id',
-                        type=str,
-                        help='Google Spreadsheet ID for centralized logging of experiments')
-    parser.add_argument('--google_dev_app_name',
-                        type=str,
-                        help='Google Developer Application Name for using API')
 
     args = parser.parse_args()
 
