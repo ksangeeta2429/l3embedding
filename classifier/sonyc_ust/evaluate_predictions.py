@@ -1,12 +1,12 @@
 import argparse
 import json
 import os
+print('Cur. path:', os.getcwd())
 import oyaml as yaml
 from metrics import evaluate, micro_averaged_auprc, macro_averaged_auprc
 import git
 import copy
 import getpass
-import json
 from googleapiclient import discovery
 from gsheets import get_credentials, append_row
 
@@ -103,7 +103,7 @@ if __name__ == '__main__':
     elif 'umap' in hyp['emb_dir']:
         model_type = 'UMAP'
 
-    if 'music' in hyp['emb_dir']:
+    if '/music/' in hyp['emb_dir']:
         upstream_data = 'music'
     else:
         upstream_data = 'sonyc'

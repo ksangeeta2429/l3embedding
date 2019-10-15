@@ -16,7 +16,6 @@ source activate l3embedding-new-cpu
 module purge
 module load cudnn/9.0v7.3.0.29
 
-SRCDIR=.
 ANNPATH=/beegfs/jtc440/sonyc_ust/data/annotations.csv
 TAXPATH=/beegfs/jtc440/sonyc_ust/data/dcase-ust-taxonomy.yaml
 EMBDIR=$SCRATCH/reduced_embeddings/umap/$1/sonyc_ust/l3-mel256-music-512
@@ -33,9 +32,7 @@ GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo'
 #module load ffmpeg/intel/3.2.2
 #module load rubberband/intel/1.8.1
 
-cd $SRCDIR/classifier/sonyc_ust
-
-python classify.py $ANNPATH $TAXPATH $EMBDIR $EXPDIR results \
+python classifier/sonyc_ust/classify.py $ANNPATH $TAXPATH $EMBDIR $EXPDIR results \
     --hidden_layer_size 0 \
     --num_hidden_layers 0 \
     --batch_size 64 \
@@ -46,4 +43,4 @@ python classify.py $ANNPATH $TAXPATH $EMBDIR $EXPDIR results \
     --no_timestamp \
     --optimizer adam
 
-python evaluate_predictions.py $OUTPUTDIR/output.csv $ANNPATH $TAXPATH $OUTPUTDIR $GSHEET_ID $GOOGLE_DEV_APP_NAME
+PYTHONPATH='.' python classifier/sonyc_ust/evaluate_predictions.py $OUTPUTDIR/output.csv $ANNPATH $TAXPATH $OUTPUTDIR $GSHEET_ID $GOOGLE_DEV_APP_NAME
