@@ -102,8 +102,10 @@ if __name__ == '__main__':
         model_type = 'MAE'
     elif 'umap' in hyp['emb_dir']:
         model_type = 'UMAP'
+    else:
+        model_type = 'BASELINE'
 
-    if '/music/' in hyp['emb_dir']:
+    if '/music/' in hyp['emb_dir'] or model_type == 'BASELINE':
         upstream_data = 'music'
     else:
         upstream_data = 'sonyc'
