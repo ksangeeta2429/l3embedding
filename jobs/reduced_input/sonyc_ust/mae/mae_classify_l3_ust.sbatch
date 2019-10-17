@@ -28,9 +28,9 @@ OUTPUTDIR=$EXPDIR/results
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo'
 
-if [ $# -gt 2 ]; then
-    NUM_HIDDEN=$3
-    HIDDEN_SIZE=$4
+if [ $# -gt 1 ]; then
+    NUM_HIDDEN=$2
+    HIDDEN_SIZE=$3
 else
     NUM_HIDDEN=0
     HIDDEN_SIZE=0

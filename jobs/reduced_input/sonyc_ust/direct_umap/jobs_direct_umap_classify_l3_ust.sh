@@ -13,3 +13,10 @@ sbatch direct_umap_classify_l3_ust.sbatch umap_ndata=2048000_emb=256_nbrs=30_min
 
 sbatch direct_umap_classify_l3_ust.sbatch umap_ndata=2048000_emb=256_nbrs=10_mindist=0.3_mtrc=euclidean music 1 256
 sbatch direct_umap_classify_l3_ust.sbatch umap_ndata=2048000_emb=256_nbrs=30_mindist=0.3_mtrc=euclidean music 1 256
+
+# With two hidden layers
+sbatch direct_umap_classify_l3_ust.sbatch umap_ndata=2048000_emb=256_nbrs=10_mindist=0.3_mtrc=euclidean music 2 128
+sbatch direct_umap_classify_l3_ust.sbatch umap_ndata=2048000_emb=256_nbrs=30_mindist=0.3_mtrc=euclidean music 2 128
+
+sbatch direct_umap_classify_l3_ust.sbatch umap_ndata=2048000_emb=256_nbrs=10_mindist=0.3_mtrc=euclidean music 2 256
+sbatch direct_umap_classify_l3_ust.sbatch umap_ndata=2048000_emb=256_nbrs=30_mindist=0.3_mtrc=euclidean music 2 256

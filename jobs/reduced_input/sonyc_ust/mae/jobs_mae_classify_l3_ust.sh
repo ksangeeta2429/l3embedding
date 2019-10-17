@@ -1,11 +1,48 @@
 #!/usr/bin/env bash
 
+# With no hidden layers
 sbatch mae_classify_l3_ust.sbatch music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean
-sleep 10
+sleep 1
 sbatch mae_classify_l3_ust.sbatch /music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean
-sleep 10
-
+sleep 1
 
 sbatch mae_classify_l3_ust.sbatch music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean
-sleep 10
+sleep 1
 sbatch mae_classify_l3_ust.sbatch music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean
+
+# With one hidden layer
+sbatch mae_classify_l3_ust.sbatch music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean 1 128
+sleep 1
+sbatch mae_classify_l3_ust.sbatch music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean 1 128
+sleep 1
+sbatch mae_classify_l3_ust.sbatch music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean 1 256
+sleep 1
+sbatch mae_classify_l3_ust.sbatch music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean 1 256
+sleep 1
+
+sbatch mae_classify_l3_ust.sbatch music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean 1 128
+sleep 1
+sbatch mae_classify_l3_ust.sbatch music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean 1 128
+sleep 1
+sbatch mae_classify_l3_ust.sbatch music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean 1 256
+sleep 1
+sbatch mae_classify_l3_ust.sbatch music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean 1 256
+sleep 1
+
+# With two hidden layers
+sbatch mae_classify_l3_ust.sbatch music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean 2 128
+sleep 1
+sbatch mae_classify_l3_ust.sbatch music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean 2 128
+sleep 1
+sbatch mae_classify_l3_ust.sbatch music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean 2 256
+sleep 1
+sbatch mae_classify_l3_ust.sbatch music/8000_128_64_256_half_fmax_3500/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean 2 256
+sleep 1
+
+sbatch mae_classify_l3_ust.sbatch music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean 2 128
+sleep 1
+sbatch mae_classify_l3_ust.sbatch music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean 2 128
+sleep 1
+sbatch mae_classify_l3_ust.sbatch music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_10_dist_0.3_metric_euclidean 2 256
+sleep 1
+sbatch mae_classify_l3_ust.sbatch music/16000_128_128_512_half_fmax_None/umap_train_2048000_neighbors_30_dist_0.3_metric_euclidean 2 256
