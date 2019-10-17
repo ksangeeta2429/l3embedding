@@ -27,6 +27,17 @@ OUTPUTDIR=$EXPDIR/results
 echo "Embedding directory: $EMBDIR"
 echo "Output directory: $OUTPUTDIR"
 
+if [ $# -gt 2 ]; then
+    NUM_HIDDEN=$3
+    HIDDEN_SIZE=$4
+else
+    NUM_HIDDEN=0
+    HIDDEN_SIZE=0
+fi
+
+echo "NUM_HIDDEN=$NUM_HIDDEN"
+echo "HIDDEN_SIZE=$HIDDEN_SIZE"
+
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo'
 
@@ -36,8 +47,8 @@ GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo'
 #module load rubberband/intel/1.8.1
 
 python classifier/sonyc_ust/classify.py $ANNPATH $TAXPATH $EMBDIR $EXPDIR results \
-    --hidden_layer_size 0 \
-    --num_hidden_layers 0 \
+    --hidden_layer_size $HIDDEN_SIZE \
+    --num_hidden_layers $NUM_HIDDEN \
     --batch_size 64 \
     --num_epochs 1500 \
     --patience 1500 \
