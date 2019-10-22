@@ -7,6 +7,7 @@ from keras.models import Model
 from keras.layers import Input, Conv2D, BatchNormalization, MaxPooling2D, Flatten, Activation, Lambda
 import tensorflow as tf
 import keras.regularizers as regularizers
+from kapre.time_frequency import Melspectrogram
 
 def parse_arguments():
     """
@@ -214,7 +215,7 @@ if __name__ == '__main__':
     melSpec = args['melSpec']
     
     model_id = weight_dir.split('/')[-1]
-    mt = os.path.basename(os.path.dirname(weight_dir)) #'cnn_L3_melspec2'
+    mt = os.path.basename(os.path.dirname(weight_dir))
     
     if halved_convs:
         input_repr = str(samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_half'
@@ -228,13 +229,23 @@ if __name__ == '__main__':
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
         
-    weight_file = glob.glob(os.path.join(weight_dir, '*best_valid_accuracy*'))[0]
+    weight_file = glob.glob(os.path.join(weight_dir, '*best_valid_loss*'))[0]
 
     # Load and convert model back to 1 gpu
     print("Loading model.......................")
-    m, inputs, outputs = load_model(weight_file, mt, src_num_gpus=src_gpus, tgt_num_gpus=1, return_io=True, \
-                                    n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, halved_convs=halved_convs, fmax=fmax, asr=samp_rate)
-    _, x_a = inputs
+    if src_gpus > 1:
+        m, inputs, outputs = load_model(weight_file, mt, src_num_gpus=src_gpus, tgt_num_gpus=1, return_io=True, \
+                                        n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, halved_convs=halved_convs, fmax=fmax, asr=samp_rate)
+        _, x_a = inputs
+    else:
+        m = keras.models.load_model(weight_file, custom_objects={'Melspectrogram': Melspectrogram})
+        model_output_path = os.path.join(output_dir, 'l3_audio_{}_{}.h5'.format(model_id, input_repr))
+        audio_spec_embed_model, _, _ = construct_cnn_L3_melspec2_spec_model(n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, \
+                                                                            halved_convs=halved_convs, asr=samp_rate)
+        audio_spec_embed_model.set_weights(m.get_weights()[3:])
+        audio_spec_embed_model.save(model_output_path)
+        print(model_output_path)
+        exit(0)
 
     if args['only_audio'] and not melSpec:
         model_output_path = os.path.join(output_dir, 'l3_audio_{}_{}.h5'.format(model_id, input_repr))

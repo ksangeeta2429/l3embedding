@@ -161,8 +161,12 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
     else:
         emb_key = 'l3_embedding'
 
-
-    for fname in cycle_shuffle(os.listdir(emb_dir)):
+    if type(emb_dir) == list:
+        file_list = emb_dir
+    else:
+        file_list = os.listdir(emb_dir)
+        
+    for fname in cycle_shuffle(file_list):
         data_batch_path = os.path.join(data_dir, fname)
         emb_batch_path = os.path.join(emb_dir, fname)
 
@@ -234,7 +238,18 @@ def single_epoch_data_generator(data_dir, emb_dir, epoch_size, **kwargs):
             if (idx + 1) == epoch_size:
                 break
 
-
+def get_dir_splits(data_dir, split=0.017):
+    all_files = os.listdir(os.path.abspath(data_dir))
+    #Make sure only h5 files are retrieved
+    data_files = list(filter(lambda file: file.endswith('.h5'), all_files))
+    
+    random.shuffle(data_files)
+    split_index = int(len(data_files) * split)
+    train_files = data_files[:split_index]
+    val_files = data_files[split_index:]
+    
+    return train_files, val_files
+    
 def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, output_dir, student_weight_path=None, \
           approx_mode='umap', approx_train_size=None, neighbors=10, min_dist=0.3, metric='euclidean', tsne_iter=300,\
           num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
@@ -435,7 +450,10 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
     else:
         train_start_batch_idx = None
 
-
+    if train_data_dir == val_data_dir:
+        LOGGER.info('The dataset is not split into train and valid. Splitting the train data!')
+        emb_train_dir, emb_valid_dir = get_dir_splits(emb_train_dir)
+    
     train_gen = data_generator(train_data_dir,
                                emb_train_dir,
                                approx_mode=approx_mode,

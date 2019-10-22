@@ -14,6 +14,12 @@ def parse_arguments():
                         default=20171021,
                         help='Random seed used to set the RNG state')
 
+    parser.add_argument('-out_type',
+                        '--out-type',
+                        action='store',
+                        type=str,
+                        help='Choose from "l3_embedding" and "logits"')
+
     parser.add_argument('data_dir',
                         action='store',
                         type=str,
