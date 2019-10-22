@@ -205,7 +205,43 @@ CLASSIFIER_FIELD_NAMES = [
     'test_class_acc',
 ]
 
-
+SONYC_UST_FILED_NAMES = [
+    'username',
+    'model_type',
+    'uptsream_data',
+    'git_commit',
+    'annotation_path',
+    'taxonomy_path',
+    'emb_dir',
+    'output_dir',
+    'exp_id',
+    'hidden_layer_size',
+    'num_hidden_layers',
+    'learning_rate',
+    'l2_reg',
+    'batch_size',
+    'num_epochs',
+    'patience',
+    'sensor_factor',
+    'proximity_factor',
+    'no_standardize',
+    'cooccurrence_loss',
+    'cooccurrence_loss_factor',
+    'pca',
+    'pca_components',
+    'label_mode',
+    'oversample',
+    'oversample_iters',
+    'thresh_type',
+    'target_mode',
+    'no_timestamp',
+    'split_path',
+    'optimizer',
+    'micro_auprc',
+    'micro_f1',
+    'macro_auprc',
+    'class_auprc'
+]
 
 
 # If modifying these scopes, delete your previously saved credentials
@@ -255,6 +291,8 @@ def append_row(service, spreadsheet_id, param_dict, sheet_name):
         field_names = DISTILLATION_FIELD_NAMES
     elif sheet_name == 'embedding_approx_mse':
         field_names = EMBEDDING_APPROX_FIELD_NAMES
+    elif sheet_name == 'sonyc_ust':
+        field_names = SONYC_UST_FILED_NAMES
     else:
         raise ValueError('Unknown spreadsheet sheet name: {}'.format(sheet_name))
 

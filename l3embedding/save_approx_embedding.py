@@ -55,6 +55,16 @@ def write_to_h5(paths, batch, batch_size):
         start_idx = end_idx
 
 
+def save_npz_sonyc_ust(paths, batch, batch_size):
+    n_files = int(batch_size / 96)
+    start_idx = 0
+
+    for path in paths:
+        end_idx = start_idx + 96
+        np.savez(path, embedding=batch[list(batch.keys())[0]][start_idx:end_idx])
+        start_idx = end_idx
+
+
 # Note: For UMAP, if a saved model is provided, the UMAP params are all ignored
 def get_reduced_embedding(data, method, emb_len=None, umap_estimator= None, neighbors=10, metric='euclidean', \
                           min_dist=0.3, iterations=500):
@@ -140,6 +150,9 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
+    # Check if dataset is sonyc_ust
+    is_sonyc_ust = 'sonyc_ust' in data_dir
+
     # Infer UMAP params if path provided
     if umap_estimator_path is not None:
         # Infer training params from filename
@@ -167,6 +180,8 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
     # If a list of files is not provided, use all files in data_dir
     if list_files==None:
         list_files = os.listdir(data_dir)
+    random.shuffle(list_files)
+
     last_file = list_files[-1]
     print('Last file on the list: ', last_file)
 
@@ -175,8 +190,12 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
         batch_path = os.path.join(data_dir, fname)
         blob_start_idx = 0
 
-        blob = h5py.File(batch_path, 'r')
-        blob_size = len(blob['l3_embedding'])        
+        if is_sonyc_ust:
+            blob = np.load(batch_path)
+            blob_size = len(blob['embedding'])
+        else:
+            blob = h5py.File(batch_path, 'r')
+            blob_size = len(blob['l3_embedding'])
 
         embedding_out_paths.append(os.path.join(output_dir, fname))
 
@@ -188,14 +207,20 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
             # the prior batches
             if start_batch_idx is None or batch_idx >= start_batch_idx:
                 if batch is None:
-                    batch = {'l3_embedding':blob['l3_embedding'][blob_start_idx:blob_end_idx]} 
+                    if is_sonyc_ust:
+                        batch = {'l3_embedding':blob['embedding'][blob_start_idx:blob_end_idx]}
+                    else:
+                        batch = {'l3_embedding':blob['l3_embedding'][blob_start_idx:blob_end_idx]}
                 else:
-                    batch['l3_embedding'] = np.concatenate([batch['l3_embedding'], blob['l3_embedding'][blob_start_idx:blob_end_idx]])
+                    if is_sonyc_ust:
+                        batch['l3_embedding'] = np.concatenate([batch['l3_embedding'], blob['embedding'][blob_start_idx:blob_end_idx]])
+                    else:
+                        batch['l3_embedding'] = np.concatenate([batch['l3_embedding'], blob['l3_embedding'][blob_start_idx:blob_end_idx]])
 
             curr_batch_size += blob_end_idx - blob_start_idx
             blob_start_idx = blob_end_idx
             
-            if blob_end_idx == blob_size:
+            if blob_end_idx == blob_size and not is_sonyc_ust:
                 blob.close()
 
             if curr_batch_size == batch_size or (fname == last_file and blob_end_idx == blob_size):
@@ -249,7 +274,10 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                             blob_embeddings[blob_keys[0]] = results
 
                     write_start = time.time()
-                    write_to_h5(embedding_out_paths, blob_embeddings, batch_size)
+                    if is_sonyc_ust:
+                        save_npz_sonyc_ust(embedding_out_paths, blob_embeddings, batch_size)
+                    else:
+                        write_to_h5(embedding_out_paths, blob_embeddings, batch_size)
                     write_end = time.time()
                     f_idx += 1
                     print('File {}: {} done! Write took {} seconds'.format(f_idx, fname, (write_end-write_start)))
