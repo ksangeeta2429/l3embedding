@@ -233,6 +233,7 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                     teacher_embedding = batch['l3_embedding'] #get_teacher_embedding(batch['audio'])
                     
                     if approx_mode == 'umap':
+                        print('Batch size:', curr_batch_size)
                         if umap_estimator_path is None:
                             n_process = len(neighbors_list) * len(metric_list) * len(min_dist_list)
                             results = Parallel(n_jobs=min(multiprocessing.cpu_count(), n_process))\
@@ -243,7 +244,6 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                                                                       min_dist=min_dist) \
                                               for neighbors in neighbors_list for metric in metric_list for min_dist in min_dist_list)
                         else:
-                            print('Batch size:', batch_size)
                             results = get_reduced_embedding(teacher_embedding, 'umap', emb_len=reduced_emb_len,
                                                             umap_estimator=reducer)
                     elif approx_mode == 'tsne':
