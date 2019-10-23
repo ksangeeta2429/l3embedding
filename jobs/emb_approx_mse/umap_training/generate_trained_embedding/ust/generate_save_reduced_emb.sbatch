@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-#SBATCH --job-name=gen-reduced-embedding
+#SBATCH --job-name=gen-dir-umap-ust
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=32GB
 #SBATCH --time=7-0
-#SBATCH --mail-type=ALL
-#SBATCH --output="gen-reduced-embedding-neighbor-5-%j.out"
-#SBATCH --err="gen-reduced-embedding-neighbor-5-%j.err"
+#SBATCH --mail-type=FAIL
+#SBATCH --output="gen-dir-umap-ust-%j.out"
+#SBATCH --err="gen-dir-umap-ust-5-%j.err"
 
 source ~/.bashrc
 source activate l3embedding-cpu
@@ -35,7 +35,7 @@ echo "OUTPUT_DIR: "$OUTPUT_DIR
 
 #alias nogpu='export CUDA_VISIBLE_DEVICES=-1;'
 
-python $SRCDIR/02_generate_save_reduced_emb.py \
+python -u $SRCDIR/02_generate_save_reduced_emb.py \
   --batch-size $BATCH_SIZE \
   --approx-mode $APPROX_MODE \
   --neighbors-list ${NEIGHBORS_LIST[*]} \
