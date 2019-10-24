@@ -13,17 +13,18 @@ import re
 import glob
 from sonyc.utils import get_sonyc_filtered_files
 
+
 def get_teacher_embedding(audio_batch):
     import tensorflow as tf
     from kapre.time_frequency import Melspectrogram
-    from l3embedding.model import load_embedding 
+    from l3embedding.model import load_embedding
 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
     import keras
 
     session_conf = tf.ConfigProto(
-        device_count={'CPU' : 1, 'GPU' : 0},
+        device_count={'CPU': 1, 'GPU': 0},
         allow_soft_placement=True,
         log_device_placement=False
     )
@@ -31,7 +32,7 @@ def get_teacher_embedding(audio_batch):
     try:
         with tf.Graph().as_default(), tf.Session(config=session_conf).as_default():
             weight_path = '/scratch/sk7898/l3pruning/embedding/fixed/reduced_input/l3_full_original_48000_256_242_2048.h5'
-            model = keras.models.load_model(weight_path, custom_objects={'Melspectrogram': Melspectrogram}) 
+            model = keras.models.load_model(weight_path, custom_objects={'Melspectrogram': Melspectrogram})
             embeddings = model.get_layer('audio_model').predict(audio_batch)
             return embeddings
 
@@ -40,12 +41,12 @@ def get_teacher_embedding(audio_batch):
 
 
 def write_to_h5(paths, batch, batch_size):
-    n_files = int(batch_size/1024)
+    n_files = int(batch_size / 1024)
     start_idx = 0
-    
+
     for path in paths:
         end_idx = start_idx + 1024
-            
+
         with h5py.File(path, 'a') as f:
             for key in batch.keys():
                 if key in f.keys():
@@ -66,9 +67,8 @@ def save_npz_sonyc_ust(paths, batch, batch_size):
 
 
 # Note: For UMAP, if a saved model is provided, the UMAP params are all ignored
-def get_reduced_embedding(data, method, emb_len=None, umap_estimator= None, neighbors=10, metric='euclidean', \
+def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, neighbors=10, metric='euclidean', \
                           min_dist=0.3, iterations=500):
-    
     if len(data) == 0:
         raise ValueError('Data is empty!')
     if emb_len is None:
@@ -89,44 +89,44 @@ def get_reduced_embedding(data, method, emb_len=None, umap_estimator= None, neig
                          n_iter=iterations, method='exact').fit_transform(data)
     else:
         raise ValueError('Reduction method technique should be either `umap` or `tsne`!')
-    
+
     return embedding
 
 
-def get_blob_keys(method, batch_size, emb_len, neighbors_list=None, metric_list=None, min_dist_list=None, tsne_iter_list=None):
-    
+def get_blob_keys(method, batch_size, emb_len, neighbors_list=None, metric_list=None, min_dist_list=None,
+                  tsne_iter_list=None):
     blob_keys = []
-    
+
     if method == 'umap':
         if neighbors_list is None or metric_list is None or min_dist_list is None:
             raise ValueError('Either neighbor_list or metric_list or min_dist_list is missing')
-        
+
         [blob_keys.append('umap_batch_' + str(batch_size) + \
                           '_len_' + str(emb_len) + \
                           '_k_' + str(neighbors) + \
                           '_metric_' + metric + \
                           '_dist|iter_' + str(min_dist)) \
          for neighbors in neighbors_list for metric in metric_list for min_dist in min_dist_list]
-                    
+
     elif method == 'tsne':
         if neighbors_list is None or metric_list is None or tsne_iter_list is None:
             raise ValueError('Either neighbor_list or metric_list or tsne_iter_list is missing')
-        
-        [blob_keys.append('tsne_batch_' + str(batch_size) +\
+
+        [blob_keys.append('tsne_batch_' + str(batch_size) + \
                           '_len_' + str(emb_len) + \
                           '_batch_' + str(batch_size) + \
                           '_k_' + str(neighbors) + \
                           '_metric_' + metric + \
                           '_dist|iter_' + str(iteration)) \
-        for neighbors in neighbors_list for metric in metric_list for iteration in tsne_iter_list]
+         for neighbors in neighbors_list for metric in metric_list for iteration in tsne_iter_list]
 
     return blob_keys
 
 
-def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap', umap_estimator_path=None, neighbors_list=None, \
-                        list_files = None, metric_list=None, min_dist_list=None, tsne_iter_list=[500], \
+def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap', umap_estimator_path=None,
+                        neighbors_list=None, \
+                        list_files=None, metric_list=None, min_dist_list=None, tsne_iter_list=[500], \
                         batch_size=1024, random_state=20180123, start_batch_idx=None):
-
     if data_dir == output_dir:
         raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
 
@@ -138,9 +138,9 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
 
     if approx_mode == 'umap' and min_dist_list is None and umap_estimator_path is None:
         min_dist_list = [0.3]
-    
+
     random.seed(random_state)
-    
+
     batch = None
     blob_embeddings = dict()
     embedding_out_paths = []
@@ -166,7 +166,7 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
         # Extract reducer
         print('Loading UMAP model...')
         start_time = time.time()
-        reducer=load(umap_estimator_path)
+        reducer = load(umap_estimator_path)
         end_time = time.time()
 
         print('UMAP model loading: {} seconds'.format((end_time - start_time)))
@@ -174,11 +174,11 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
         blob_keys = get_blob_keys(approx_mode, batch_size, reduced_emb_len, \
                                   neighbors_list=neighbors_list, metric_list=metric_list, \
                                   min_dist_list=min_dist_list, tsne_iter_list=tsne_iter_list)
-    
+
     print('Embedding Blob Keys: {}'.format(blob_keys))
 
     # If a list of files is not provided, use all files in data_dir
-    if list_files==None:
+    if list_files == None:
         list_files = os.listdir(data_dir)
     random.shuffle(list_files)
 
@@ -208,18 +208,20 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
             if start_batch_idx is None or batch_idx >= start_batch_idx:
                 if batch is None:
                     if is_sonyc_ust:
-                        batch = {'l3_embedding':blob['embedding'][blob_start_idx:blob_end_idx]}
+                        batch = {'l3_embedding': blob['embedding'][blob_start_idx:blob_end_idx]}
                     else:
-                        batch = {'l3_embedding':blob['l3_embedding'][blob_start_idx:blob_end_idx]}
+                        batch = {'l3_embedding': blob['l3_embedding'][blob_start_idx:blob_end_idx]}
                 else:
                     if is_sonyc_ust:
-                        batch['l3_embedding'] = np.concatenate([batch['l3_embedding'], blob['embedding'][blob_start_idx:blob_end_idx]])
+                        batch['l3_embedding'] = np.concatenate(
+                            [batch['l3_embedding'], blob['embedding'][blob_start_idx:blob_end_idx]])
                     else:
-                        batch['l3_embedding'] = np.concatenate([batch['l3_embedding'], blob['l3_embedding'][blob_start_idx:blob_end_idx]])
+                        batch['l3_embedding'] = np.concatenate(
+                            [batch['l3_embedding'], blob['l3_embedding'][blob_start_idx:blob_end_idx]])
 
             curr_batch_size += blob_end_idx - blob_start_idx
             blob_start_idx = blob_end_idx
-            
+
             if blob_end_idx == blob_size and not is_sonyc_ust:
                 blob.close()
 
@@ -230,39 +232,42 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                 # of the prior batches
                 if start_batch_idx is None or batch_idx >= start_batch_idx:
 
-                    teacher_embedding = batch['l3_embedding'] #get_teacher_embedding(batch['audio'])
-                    
+                    teacher_embedding = batch['l3_embedding']  # get_teacher_embedding(batch['audio'])
+
                     if approx_mode == 'umap':
                         print('Batch size:', curr_batch_size)
                         if umap_estimator_path is None:
                             n_process = len(neighbors_list) * len(metric_list) * len(min_dist_list)
-                            results = Parallel(n_jobs=min(multiprocessing.cpu_count(), n_process))\
-                                      (delayed(get_reduced_embedding)(teacher_embedding, 'umap', \
-                                                                      emb_len=reduced_emb_len, umap_estimator=None, \
-                                                                      neighbors=neighbors, \
-                                                                      metric=metric, \
-                                                                      min_dist=min_dist) \
-                                              for neighbors in neighbors_list for metric in metric_list for min_dist in min_dist_list)
+                            results = Parallel(n_jobs=min(multiprocessing.cpu_count(), n_process)) \
+                                (delayed(get_reduced_embedding)(teacher_embedding, 'umap', \
+                                                                emb_len=reduced_emb_len, umap_estimator=None, \
+                                                                neighbors=neighbors, \
+                                                                metric=metric, \
+                                                                min_dist=min_dist) \
+                                 for neighbors in neighbors_list for metric in metric_list for min_dist in
+                                 min_dist_list)
                         else:
                             results = get_reduced_embedding(teacher_embedding, 'umap', emb_len=reduced_emb_len,
                                                             umap_estimator=reducer)
                     elif approx_mode == 'tsne':
                         n_process = len(neighbors_list) * len(metric_list) * len(tsne_iter_list)
-                        
-                        results = Parallel(n_jobs=n_process)(delayed(get_reduced_embedding)\
-                                                             (teacher_embedding, 'tsne', \
-                                                              emb_len=reduced_emb_len, \
-                                                              neighbors=neighbors, \
-                                                              metric=metric, \
-                                                              iterations=iterations) \
-                                          for neighbors in neighbors_list for metric in metric_list for iterations in tsne_iter_list)
+
+                        results = Parallel(n_jobs=n_process)(delayed(get_reduced_embedding) \
+                                                                 (teacher_embedding, 'tsne', \
+                                                                  emb_len=reduced_emb_len, \
+                                                                  neighbors=neighbors, \
+                                                                  metric=metric, \
+                                                                  iterations=iterations) \
+                                                             for neighbors in neighbors_list for metric in metric_list
+                                                             for iterations in tsne_iter_list)
 
                     if umap_estimator_path is None:
                         assert len(results) == n_process
-                        
+
                         for idx in range(len(results)):
                             if blob_keys[idx] not in blob_embeddings.keys():
-                                blob_embeddings[blob_keys[idx]] = np.zeros((batch_size, reduced_emb_len), dtype=np.float32)
+                                blob_embeddings[blob_keys[idx]] = np.zeros((batch_size, reduced_emb_len),
+                                                                           dtype=np.float32)
                                 blob_embeddings[blob_keys[idx]] = results[idx]
                             else:
                                 blob_embeddings[blob_keys[idx]] = results[idx]
@@ -280,18 +285,19 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                         write_to_h5(embedding_out_paths, blob_embeddings, batch_size)
                     write_end = time.time()
                     f_idx += 1
-                    print('File {}: {} done! Write took {} seconds'.format(f_idx, fname, (write_end-write_start)))
+                    print('File {}: {} done! Write took {} seconds'.format(f_idx, fname, (write_end - write_start)))
                     print('-----------------------------------------\n')
 
                 batch_idx += 1
                 curr_batch_size = 0
-                batch = None 
+                batch = None
                 blob_embeddings = dict()
                 embedding_out_paths = []
                 read_start = time.time()
 
 
-def generate_trained_umap_embeddings_driver(data_dir, output_dir, continue_extraction=False, partition_to_run=None, num_partitions=10, **kwargs):
+def generate_trained_umap_embeddings_driver(data_dir, output_dir, continue_extraction=False, partition_to_run=None,
+                                            num_partitions=10, **kwargs):
     def divide_chunks(l, n):
         # looping till length l
         for i in range(0, len(l), n):
@@ -300,7 +306,7 @@ def generate_trained_umap_embeddings_driver(data_dir, output_dir, continue_extra
     if partition_to_run is None:
         # Compute remaining list of files
         if continue_extraction:
-            list_files = list(set(os.listdir(data_dir))-set(os.listdir(output_dir)))
+            list_files = list(set(os.listdir(data_dir)) - set(os.listdir(output_dir)))
             print('Continuing to extract for {} remaining files'.format(len(list_files)))
         else:
             list_files = None
@@ -324,6 +330,9 @@ def sanity_check_downsampled_l3_dataset(data_dir, verbose=True):
     list_files = glob.glob(os.path.join(data_dir, '*.h5'))
 
     for file in list_files:
+        if verbose:
+            print('Processing {}'.format(file))
+
         f = h5py.File(file, 'r')
 
         if "dataset_index" in list(f.keys()):
@@ -332,9 +341,9 @@ def sanity_check_downsampled_l3_dataset(data_dir, verbose=True):
             flag = 'music'
 
         # Verify that one-to-one correspondence exists
-        assert len(f["filename"])==len(f["l3_embedding"])==len(f["feature_index"])
+        assert len(f["filename"]) == len(f["l3_embedding"]) == len(f["feature_index"])
         if flag == 'sonyc':
-            assert len(f["filename"])==len(f["dataset_index"])
+            assert len(f["filename"]) == len(f["dataset_index"])
 
         orig_data_paths = list(f["filename"])
         for i in range(len(orig_data_paths)):
@@ -342,13 +351,17 @@ def sanity_check_downsampled_l3_dataset(data_dir, verbose=True):
             orig_f = h5py.File(orig_data_paths[i], 'r')
 
             if flag == 'music':
+                if verbose:
+                    print('\tFeature {} drawn from file {}, feature_index {}'.format(i, orig_data_paths[i],
+                                                                                     f["feature_index"][i]))
                 orig_data = orig_f[list(orig_f.keys())[0]][f["feature_index"][i]]
             else:
+                print('\tFeature {} drawn from file {}, dataset_index {}, feature_index {}'.format(i, orig_data_paths[i],
+                                                                                                 f["dataset_index"][i],
+                                                                                                 f["feature_index"][i]))
                 orig_data = orig_f[list(orig_f.keys())[0]][f["dataset_index"][i]][1][f["feature_index"][i]]
 
             assert np.array_equal(downsampled_data, orig_data)
-
-        print('File {} passed sanity check'.format(file))
 
     print('All done!')
 
@@ -409,7 +422,7 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
         end_time = time.time()
 
         print(multiprocessing.current_process(), 'Wrote {}, processing time: {} s'
-              .format(outfilename, (end_time-start_time)))
+              .format(outfilename, (end_time - start_time)))
 
     if data_dir == output_dir:
         raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
@@ -419,7 +432,7 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
     random.seed(random_state)
 
     if 'music' in data_dir:
-        #os.chdir(data_dir)
+        # os.chdir(data_dir)
         all_files = glob.glob(os.path.join(data_dir, '*.h5'))
     elif 'sonyc' in data_dir:
         all_files = get_sonyc_filtered_files(data_dir)
@@ -437,15 +450,15 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
     print('Training size per chunk: {}'.format(training_size_per_chunk))
 
     # Split file list into chunks
-    all_files = list(divide_chunks(all_files, math.ceil(num_files/num_jobs)))
+    all_files = list(divide_chunks(all_files, math.ceil(num_files / num_jobs)))
 
     # Begin parallel jobs
     Parallel(n_jobs=num_jobs)(delayed(process_partition)
-                                                     (list_files,
-                                                      training_size_per_chunk,
-                                                      os.path.join(output_dir, 'umap_training_ndata={}_{}.h5'
-                                                                   .format(training_size, index)))
-                                                     for index, list_files in enumerate(all_files, 1))
+                              (list_files,
+                               training_size_per_chunk,
+                               os.path.join(output_dir, 'umap_training_ndata={}_{}.h5'
+                                            .format(training_size, index)))
+                              for index, list_files in enumerate(all_files, 1))
 
     if sanity_check:
         print('Begin sanity check...')
@@ -453,7 +466,8 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
 
 
 def train_umap_embedding(data_dir, output_dir, reduced_emb_len, neighbors=5,
-                    metric='euclidean', min_dist=0.3, batch_size=1024, random_state=20180123, start_batch_idx=None):
+                         metric='euclidean', min_dist=0.3, batch_size=1024, random_state=20180123,
+                         start_batch_idx=None):
     if data_dir == output_dir:
         raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
 
@@ -506,9 +520,9 @@ def train_umap_embedding(data_dir, output_dir, reduced_emb_len, neighbors=5,
                     teacher_embedding = batch['l3_embedding']  # get_teacher_embedding(batch['audio'])
                     print('Collected data; shape: {}'.format(teacher_embedding.shape))
                     np.random.shuffle(teacher_embedding)
-                    print('Size in mem: {} GB'.format(teacher_embedding.nbytes/1e9))
+                    print('Size in mem: {} GB'.format(teacher_embedding.nbytes / 1e9))
                     reducer = umap.UMAP(n_neighbors=neighbors, min_dist=min_dist,
-                                        metric=metric,n_components=reduced_emb_len, verbose=True)
+                                        metric=metric, n_components=reduced_emb_len, verbose=True)
 
                     print('Starting UMAP training: sample_size={}, num_neighbors={},'
                           'min_dist={}, metric={}, reduced_emb_len={}'.format(curr_batch_size, neighbors,
@@ -518,7 +532,7 @@ def train_umap_embedding(data_dir, output_dir, reduced_emb_len, neighbors=5,
                     embedding = reducer.fit_transform(teacher_embedding)
                     end_time = time.time()
 
-                    print('UMAP training finished: took {} hours'.format((end_time-start_time)/3600))
+                    print('UMAP training finished: took {} hours'.format((end_time - start_time) / 3600))
 
                     # Diagnostic
                     print('Train embedding shape: ', embedding.shape)
