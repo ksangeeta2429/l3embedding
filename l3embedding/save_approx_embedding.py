@@ -326,89 +326,55 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
-    if 'sonyc' in data_dir:
-        def process_partition(datasets, training_size_per_job, outfilename):
+    def process_partition(datasets, training_size_per_job, outfilename):
+        if 'sonyc' in data_dir:
             @pescador.streamable
             def random_feature_generator(h5_path):
                 f = h5py.File(h5_path, 'r')
                 num_datasets = f[list(f.keys())[0]].shape[0]
+                # Select random dataset in file, and random row in each dataset
                 while True:
                     dataset_index = np.random.randint(0, num_datasets)
                     num_features = f[list(f.keys())[0]][dataset_index][1].shape[0]
                     feature_index = np.random.randint(0, num_features)
-                    yield f[list(f.keys())[0]][dataset_index][1][feature_index]
+                    yield f[list(f.keys())[0]][dataset_index][1][feature_index], h5_path, dataset_index, feature_index
+        elif 'music' in data_dir:
+            @pescador.streamable
+            def random_feature_generator(h5_path):
+                f = h5py.File(h5_path, 'r')
+                num_features = f[list(f.keys())[0]].shape[0]
+                while True:
+                    feature_index = np.random.randint(0, num_features)
+                    yield f[list(f.keys())[0]][feature_index], h5_path, feature_index
 
-            streams = [random_feature_generator(x) for x in datasets]
-            rate = math.ceil(training_size_per_job / len(streams))
-            print(multiprocessing.current_process(),
-                  'Num. of pescador streams: {}; Rate: {}'.format(len(streams), rate))
+        streams = [random_feature_generator(x) for x in datasets]
+        rate = math.ceil(training_size_per_job / len(streams))
+        print(multiprocessing.current_process(),
+              'Num. of pescador streams: {}; Rate: {}'.format(len(streams), rate))
 
-            mux = pescador.StochasticMux(streams, n_active=20, rate=rate, mode='single_active')
+        mux = pescador.StochasticMux(streams, n_active=20, rate=rate, mode='single_active')
 
-            accumulator = []
-            start_time = time.time()
-            for data in mux(max_iter=training_size_per_job):
-                accumulator += [data]
-            outfile = h5py.File(outfilename, 'w')
-            outfile.create_dataset('l3_embedding', data=np.array(accumulator))
-            end_time = time.time()
+        accumulator = file_names = dataset_indices = feature_indices = []
+        start_time = time.time()
+        for cur_row in mux(max_iter=training_size_per_job):
+            accumulator += [cur_row[0]]
+            file_names += [cur_row[1]]
+            if len(cur_row) == 3:
+                feature_indices += [cur_row[2]]
+            else:
+                dataset_indices += [cur_row[2]]
+                feature_indices += [cur_row[3]]
 
-            print(multiprocessing.current_process(), 'Wrote {}, processing time: {} s'
-                  .format(outfilename, (end_time-start_time)))
-    elif 'music' in data_dir:
-        def process_partition(list_files, training_size_per_job, outfilename):
-            # Find number of points in first pass
-            num_points = 0
-            for fname in list_files:
-                f = h5py.File(fname, 'r')
-                num_points += len(f['l3_embedding'])
+        outfile = h5py.File(outfilename, 'w')
+        outfile.create_dataset('l3_embedding', data=np.array(accumulator))
+        outfile.create_dataset('file_name', data=file_names)
+        if dataset_indices != []:
+            outfile.create_dataset('dataset_index', data=dataset_indices)
+        outfile.create_dataset('feture_index', data=feature_indices)
+        end_time = time.time()
 
-            print(multiprocessing.current_process(), 'Number of files in chunk', len(list_files))
-            print(multiprocessing.current_process(), 'Total number of points in chunk', num_points)
-            print(multiprocessing.current_process(), 'Training size in chunk', training_size_per_job)
-            print(multiprocessing.current_process(), 'Output file', outfilename)
-
-            assert num_points >= training_size_per_job
-
-            # Generate random numbers of training size
-            indices = random.sample(range(num_points), training_size_per_job)
-            indices.sort()
-            training_pts = []
-            running_index = 0
-
-            next_sampled_index, indices = indices[0], indices[1:]
-            for fname in list_files:
-                batch_path = os.path.join(data_dir, fname)
-
-                blob = h5py.File(batch_path, 'r')
-                blob_size = len(blob['l3_embedding'])
-
-                cur_file_start_index = running_index
-                next_file_start_index = cur_file_start_index + blob_size
-
-                # Populate training point(s)
-                while running_index <= next_sampled_index < next_file_start_index:
-                    # Add training point to list
-                    training_pts.append(blob['l3_embedding'][next_sampled_index - cur_file_start_index])
-
-                    # Update current index
-                    running_index = next_sampled_index + 1
-
-                    # Pop next index to sample
-                    try:
-                        next_sampled_index, indices = indices[0], indices[1:]
-                        #print('Next index to be sampled', next_sampled_index)
-                    except IndexError:
-                        print(multiprocessing.current_process(), 'Creating UMAP training dataset')
-                        outfile = h5py.File(outfilename, 'w')
-                        outfile.create_dataset('l3_embedding', data=np.array(training_pts))
-                        # Save dataset and exit when all indices have been sampled
-                        blob.close()
-                        return
-
-                # Close blob
-                running_index = next_file_start_index
-                blob.close()
+        print(multiprocessing.current_process(), 'Wrote {}, processing time: {} s'
+              .format(outfilename, (end_time-start_time)))
 
     if data_dir == output_dir:
         raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
