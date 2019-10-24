@@ -320,7 +320,7 @@ def generate_trained_umap_embeddings_driver(data_dir, output_dir, continue_extra
     embedding_generator(data_dir=data_dir, output_dir=output_dir, list_files=list_files, **kwargs)
 
 
-def sanity_check_downsampled_l3_dataset(data_dir):
+def sanity_check_downsampled_l3_dataset(data_dir, verbose=True):
     list_files = glob.glob(os.path.join(data_dir, '*.h5'))
 
     for file in list_files:
@@ -330,6 +330,11 @@ def sanity_check_downsampled_l3_dataset(data_dir):
             flag = 'sonyc'
         else:
             flag = 'music'
+
+        # Verify that one-to-one correspondence exists
+        assert len(f["filename"])==len(f["l3_embedding"])==len(f["feature_index"])
+        if flag == 'sonyc':
+            assert len(f["filename"])==len(f["dataset_index"])
 
         orig_data_paths = list(f["filename"])
         for i in range(len(orig_data_paths)):
@@ -343,7 +348,9 @@ def sanity_check_downsampled_l3_dataset(data_dir):
 
             assert np.array_equal(downsampled_data, orig_data)
 
-    print('Sanity check passed.')
+        print('File {} passed sanity check'.format(file))
+
+    print('All done!')
 
 
 def create_umap_training_dataset(data_dir, output_dir, training_size, random_state=20180123, sanity_check=False):
