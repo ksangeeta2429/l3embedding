@@ -386,8 +386,8 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
     random.seed(random_state)
 
     if 'music' in data_dir:
-        os.chdir(data_dir)
-        all_files = glob.glob('*.h5')
+        #os.chdir(data_dir)
+        all_files = glob.glob(os.path.join(data_dir, '*.h5'))
     elif 'sonyc' in data_dir:
         all_files = get_sonyc_filtered_files(data_dir)
     else:
