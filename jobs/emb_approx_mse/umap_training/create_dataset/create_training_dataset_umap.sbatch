@@ -24,14 +24,14 @@ echo TRAINING_SIZE=$TRAINING_SIZE
 
 if ([ "$DATASET" = "music" ]); then
    DATA_DIR=/scratch/sk7898/orig_l3_embeddings/music_train
-   OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/training_data/music/umap_training_ndata=$TRAINING_SIZE
+   OUTPUT_DIR=$BEEGFS/umap/training_data/music/umap_training_ndata=$TRAINING_SIZE
    #For testing
    #DATA_DIR=/scratch/sk7898/temp_data
    #OUTPUT_DIR=/scratch/sk7898/reduced_embeddings
 
 elif([ "$DATASET" = "sonyc" ]); then
    DATA_DIR=/scratch/dr2915/reduced_embeddings/sonyc_files_list.csv
-   OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/training_data/sonyc/umap_training_ndata=$TRAINING_SIZE
+   OUTPUT_DIR=$BEEGFS/umap/training_data/sonyc/umap_training_ndata=$TRAINING_SIZE
 
 else
    echo "First argument can only be music/sonyc"
