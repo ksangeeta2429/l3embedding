@@ -345,7 +345,7 @@ def sanity_check_downsampled_l3_dataset(data_dir, verbose=True):
         if flag == 'sonyc':
             assert len(f["filename"]) == len(f["dataset_index"])
 
-        orig_data_paths = list(f["filename"])
+        orig_data_paths = [str(x) for x in f["filename"]]
         for i in range(len(orig_data_paths)):
             downsampled_data = f["l3_embedding"][i]
             orig_f = h5py.File(orig_data_paths[i], 'r')
