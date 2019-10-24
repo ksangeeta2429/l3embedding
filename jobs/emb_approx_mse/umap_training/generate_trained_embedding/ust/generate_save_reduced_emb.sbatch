@@ -7,7 +7,7 @@
 #SBATCH --time=7-0
 #SBATCH --mail-type=FAIL
 #SBATCH --output="gen-dir-umap-ust-%j.out"
-#SBATCH --err="gen-dir-umap-ust-5-%j.err"
+#SBATCH --err="gen-dir-umap-ust-%j.err"
 
 source ~/.bashrc
 source activate l3embedding-cpu
