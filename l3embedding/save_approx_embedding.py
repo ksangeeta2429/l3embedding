@@ -357,6 +357,10 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
         accumulator = file_names = dataset_indices = feature_indices = []
         start_time = time.time()
         for cur_row in mux(max_iter=training_size_per_job):
+            print('cur_row[0]', cur_row[0])
+            print('cur_row[1]', cur_row[1])
+            print('cur_row[2]', cur_row[2])
+
             accumulator += [cur_row[0]]
             file_names += [cur_row[1]]
             if len(cur_row) == 3:
@@ -367,10 +371,10 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
 
         outfile = h5py.File(outfilename, 'w')
         outfile.create_dataset('l3_embedding', data=np.array(accumulator))
-        outfile.create_dataset('file_name', data=file_names)
+        outfile.create_dataset('file_name', data=np.array(file_names))
         if dataset_indices != []:
-            outfile.create_dataset('dataset_index', data=dataset_indices)
-        outfile.create_dataset('feture_index', data=feature_indices)
+            outfile.create_dataset('dataset_index', data=np.array(dataset_indices))
+        outfile.create_dataset('feature_index', data=np.array(feature_indices))
         end_time = time.time()
 
         print(multiprocessing.current_process(), 'Wrote {}, processing time: {} s'
