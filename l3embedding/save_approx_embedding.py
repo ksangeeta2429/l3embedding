@@ -346,7 +346,7 @@ def sanity_check_downsampled_l3_dataset(data_dir):
     print('Sanity check passed.')
 
 
-def create_umap_training_dataset(data_dir, output_dir, training_size, random_state=20180123, sanity_check=True):
+def create_umap_training_dataset(data_dir, output_dir, training_size, random_state=20180123, sanity_check=False):
     def divide_chunks(l, n):
         # looping till length l
         for i in range(0, len(l), n):
