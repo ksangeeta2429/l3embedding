@@ -24,7 +24,7 @@ def parse_arguments():
                         type=str,
                         help='Path to directory where sampled training will be stored')
 
-    parser.add_argument('sample_size',
+    parser.add_argument('training_size',
                         action='store',
                         type=int,
                         help='Size of training set')
