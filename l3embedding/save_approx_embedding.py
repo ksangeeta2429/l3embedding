@@ -320,11 +320,38 @@ def generate_trained_umap_embeddings_driver(data_dir, output_dir, continue_extra
     embedding_generator(data_dir=data_dir, output_dir=output_dir, list_files=list_files, **kwargs)
 
 
-def create_umap_training_dataset(data_dir, output_dir, training_size, random_state=20180123):
+def create_umap_training_dataset(data_dir, output_dir, training_size, random_state=20180123, sanity_check=True):
     def divide_chunks(l, n):
         # looping till length l
         for i in range(0, len(l), n):
             yield l[i:i + n]
+
+
+    def sanity_check_downsampled_l3_dataset(data_dir):
+        list_files = glob.glob(os.path.join(data_dir, '*.h5'))
+
+        for file in list_files:
+            f = h5py.File(file, 'r')
+
+            if "dataset_index" in list(f.keys()):
+                flag = 'sonyc'
+            else:
+                flag = 'music'
+
+            orig_data_paths = list(f["filename"])
+            for i in range(len(orig_data_paths)):
+                downsampled_data = f["l3_embedding"][i]
+                orig_f = h5py.File(orig_data_paths[i], 'r')
+
+                if flag == 'music':
+                    orig_data = orig_f[list(orig_f.keys())[0]][f["feature_index"][i]]
+                else:
+                    orig_data = orig_f[list(orig_f.keys())[0]][f["dataset_index"][i]][1][f["feature_index"][i]]
+
+                assert np.array_equal(downsampled_data, orig_data)
+
+        print('Sanity check passed.')
+
 
     def process_partition(datasets, training_size_per_job, outfilename):
         if 'sonyc' in data_dir:
@@ -413,6 +440,10 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
                                                       os.path.join(output_dir, 'umap_training_ndata={}_{}.h5'
                                                                    .format(training_size, index)))
                                                      for index, list_files in enumerate(all_files, 1))
+
+    if sanity_check:
+        print('Begin sanity check...')
+        sanity_check_downsampled_l3_dataset(output_dir)
 
 
 def train_umap_embedding(data_dir, output_dir, reduced_emb_len, neighbors=5,
