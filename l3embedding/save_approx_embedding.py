@@ -354,13 +354,12 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
 
         mux = pescador.StochasticMux(streams, n_active=20, rate=rate, mode='single_active')
 
-        accumulator = file_names = dataset_indices = feature_indices = []
+        accumulator = []
+        file_names = []
+        dataset_indices = []
+        feature_indices = []
         start_time = time.time()
         for cur_row in mux(max_iter=training_size_per_job):
-            print('cur_row[0]', cur_row[0])
-            print('cur_row[1]', cur_row[1])
-            print('cur_row[2]', cur_row[2])
-
             accumulator += [cur_row[0]]
             file_names += [cur_row[1]]
             if len(cur_row) == 3:
@@ -368,10 +367,9 @@ def create_umap_training_dataset(data_dir, output_dir, training_size, random_sta
             else:
                 dataset_indices += [cur_row[2]]
                 feature_indices += [cur_row[3]]
-
         outfile = h5py.File(outfilename, 'w')
         outfile.create_dataset('l3_embedding', data=np.array(accumulator))
-        outfile.create_dataset('file_name', data=np.array(file_names))
+        outfile.create_dataset('filename', data=np.array(file_names, dtype=bytes))
         if dataset_indices != []:
             outfile.create_dataset('dataset_index', data=np.array(dataset_indices))
         outfile.create_dataset('feature_index', data=np.array(feature_indices))
