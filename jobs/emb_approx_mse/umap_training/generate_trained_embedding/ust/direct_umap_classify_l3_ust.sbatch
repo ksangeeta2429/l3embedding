@@ -21,12 +21,6 @@ TAXPATH=/beegfs/jtc440/sonyc_ust/data/dcase-ust-taxonomy.yaml
 EMBDIR=$SCRATCH/reduced_embeddings/umap/umap_direct_ust/$1
 OUTDIR=$SCRATCH/embeddings/umap_direct/classifier/sonyc_ust/mil
 
-EXPDIR=$OUTDIR/$1
-OUTPUTDIR=$EXPDIR/results
-
-echo "Embedding directory: $EMBDIR"
-echo "Output directory: $OUTPUTDIR"
-
 if [ $# -gt 1 ]; then
     NUM_HIDDEN=$2
     HIDDEN_SIZE=$3
@@ -37,6 +31,12 @@ fi
 
 echo "NUM_HIDDEN=$NUM_HIDDEN"
 echo "HIDDEN_SIZE=$HIDDEN_SIZE"
+
+EXPDIR=$OUTDIR/$1/num_hidden=${NUM_HIDDEN}_hidden_size=${$HIDDEN_SIZE}
+OUTPUTDIR=$EXPDIR/results
+
+echo "Embedding directory: $EMBDIR"
+echo "Output directory: $OUTPUTDIR"
 
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo'
