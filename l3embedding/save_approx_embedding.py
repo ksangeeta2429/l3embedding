@@ -329,6 +329,7 @@ def generate_trained_umap_embeddings_driver(data_dir, output_dir, continue_extra
 def sanity_check_downsampled_l3_dataset(data_dir, verbose=True):
     list_files = glob.glob(os.path.join(data_dir, '*.h5'))
 
+    num_points = 0
     for file in list_files:
         if verbose:
             print('Processing {}'.format(file))
@@ -344,6 +345,8 @@ def sanity_check_downsampled_l3_dataset(data_dir, verbose=True):
         assert len(f["filename"]) == len(f["l3_embedding"]) == len(f["feature_index"])
         if flag == 'sonyc':
             assert len(f["filename"]) == len(f["dataset_index"])
+
+        num_points += len(f["l3_embedding"])
 
         orig_data_paths = list(f["filename"])
         for i in range(len(orig_data_paths)):
@@ -364,6 +367,7 @@ def sanity_check_downsampled_l3_dataset(data_dir, verbose=True):
             assert np.array_equal(downsampled_data, orig_data)
 
     print('All done!')
+    print('Total number of points is file: {}'.format(num_points))
 
 
 def create_umap_training_dataset(data_dir, output_dir, training_size, random_state=20180123, sanity_check=False):
