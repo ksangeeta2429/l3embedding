@@ -32,7 +32,7 @@ fi
 echo "NUM_HIDDEN=$NUM_HIDDEN"
 echo "HIDDEN_SIZE=$HIDDEN_SIZE"
 
-EXPDIR=$OUTDIR/$1/num_hidden=${NUM_HIDDEN}_hidden_size=${$HIDDEN_SIZE}
+EXPDIR=$OUTDIR/$1/num_hidden=${NUM_HIDDEN}_hidden_size=${HIDDEN_SIZE}
 OUTPUTDIR=$EXPDIR/results
 
 echo "Embedding directory: $EMBDIR"
