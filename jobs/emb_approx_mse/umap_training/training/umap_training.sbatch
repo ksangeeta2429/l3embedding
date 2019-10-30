@@ -35,7 +35,7 @@ echo METRIC=euclidean
 echo MIN_DIST=$MIN_DIST
 
 if ([ "$DATASET" = "music" ]); then
-   DATA_DIR=/scratch/dr2915/reduced_embeddings/umap/training_data/music/umap_training_ndata=$BATCH_SIZE
+   DATA_DIR=/beegfs/dr2915/umap/training_data/music/umap_training_ndata=$BATCH_SIZE
    OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/models/music
    #For testing
    #DATA_DIR=/scratch/sk7898/temp_data
