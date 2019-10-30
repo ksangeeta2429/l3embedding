@@ -91,8 +91,7 @@ def embedding_generator(data_dir, output_dir, out_type='l3_embedding', batch_siz
 
     for fname in os.listdir(data_dir):
         blob_start_idx = 0
-        curr_size = 0
-        out_blob = dict()
+        out_blob = None
         
         batch_path = os.path.join(data_dir, fname)
         blob = h5py.File(batch_path, 'r')
@@ -116,16 +115,18 @@ def embedding_generator(data_dir, output_dir, out_type='l3_embedding', batch_siz
             
             blob_size = len(batch['audio'])
             
-            while curr_size < blob_size:
+            while blob_start_idx < blob_size:
                 blob_end_idx = min(blob_start_idx + batch_size, blob_size)
                 audio_batch = batch['audio'][blob_start_idx:blob_end_idx]
                 video_batch = batch['video'][blob_start_idx:blob_end_idx]
 
                 logits_out, softmax_out = get_teacher_logits(model, video_batch, audio_batch)
-                out_blob['logits'] = np.concatenate([out_blob['logits'], logits_out])
-                out_blob['softmax'] = np.concatenate([out_blob['softmax'], softmax_out])
-                
-                curr_size += blob_end_idx 
+                if out_blob is None:
+                    out_blob = {'logits': logits_out, 'softmax': softmax_out}
+                else:
+                    out_blob['logits'] = np.concatenate([out_blob['logits'], logits_out])
+                    out_blob['softmax'] = np.concatenate([out_blob['softmax'], softmax_out])
+                 
                 blob_start_idx = blob_end_idx
         else:
             raise ValueError('Output type is not supported!')
