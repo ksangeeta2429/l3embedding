@@ -107,8 +107,10 @@ if __name__ == '__main__':
 
     if '/music/' in hyp['emb_dir'] or model_type == 'BASELINE':
         upstream_data = 'music'
-    else:
+    elif '/sonyc/' in hyp['emb_dir']:
         upstream_data = 'sonyc'
+    else:
+        upstream_data = 'sonyc_ust'
 
     # Update Google spreadsheet
     param_dict = {

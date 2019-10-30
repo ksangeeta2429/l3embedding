@@ -7,7 +7,7 @@
 #SBATCH --time=7-0
 #SBATCH --mail-type=FAIL
 #SBATCH --output="gen-dir-umap-ust-%j.out"
-#SBATCH --err="gen-dir-umap-ust-5-%j.err"
+#SBATCH --err="gen-dir-umap-ust-%j.err"
 
 source ~/.bashrc
 source activate l3embedding-cpu
@@ -25,7 +25,7 @@ METRIC_LIST=( 'euclidean' )
 MIN_DIST_LIST=( $2 ) #( 0.3 0.5 )
 
 DATA_DIR=/scratch/dr2915/embeddings/features/sonyc_ust/l3/openl3/l3-mel256-music-512
-OUTPUT_DIR=$SCRATCH/reduced_embeddings/music_train_${BATCH_SIZE}_${NEIGHBORS_LIST[0]}
+#OUTPUT_DIR=$SCRATCH/reduced_embeddings/music_train_${BATCH_SIZE}_${NEIGHBORS_LIST[0]}
 OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/umap_direct_ust/umap_emb=256_nbrs=${NEIGHBORS_LIST[0]}_mindist=${MIN_DIST_LIST[0]}_mtrc=${METRIC_LIST[0]}
 #For testing
 #DATA_DIR=$SCRATCH/temp_data
