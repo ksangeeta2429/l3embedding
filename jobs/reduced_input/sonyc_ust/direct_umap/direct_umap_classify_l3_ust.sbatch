@@ -18,18 +18,12 @@ module load cudnn/9.0v7.3.0.29
 
 ANNPATH=/beegfs/jtc440/sonyc_ust/data/annotations.csv
 TAXPATH=/beegfs/jtc440/sonyc_ust/data/dcase-ust-taxonomy.yaml
-EMBDIR=$SCRATCH/reduced_embeddings/umap/$1/$2/sonyc_ust/l3-mel256-music-512
-OUTDIR=$SCRATCH/embeddings/umap_direct/classifier/sonyc_ust/l3-mel256-music-512/mil
+EMBDIR=$SCRATCH/reduced_embeddings/umap/umap_direct_ust/$1
+OUTDIR=$SCRATCH/embeddings/umap_direct/classifier/sonyc_ust/mil
 
-EXPDIR=$OUTDIR/$1/$2
-OUTPUTDIR=$EXPDIR/results
-
-echo "Embedding directory: $EMBDIR"
-echo "Output directory: $OUTPUTDIR"
-
-if [ $# -gt 2 ]; then
-    NUM_HIDDEN=$3
-    HIDDEN_SIZE=$4
+if [ $# -gt 1 ]; then
+    NUM_HIDDEN=$2
+    HIDDEN_SIZE=$3
 else
     NUM_HIDDEN=0
     HIDDEN_SIZE=0
@@ -37,6 +31,12 @@ fi
 
 echo "NUM_HIDDEN=$NUM_HIDDEN"
 echo "HIDDEN_SIZE=$HIDDEN_SIZE"
+
+EXPDIR=$OUTDIR/$1/num_hidden=${NUM_HIDDEN}_hidden_size=${HIDDEN_SIZE}
+OUTPUTDIR=$EXPDIR/results
+
+echo "Embedding directory: $EMBDIR"
+echo "Output directory: $OUTPUTDIR"
 
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo'
