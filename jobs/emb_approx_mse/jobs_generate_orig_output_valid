@@ -1,0 +1,9 @@
+sbatch save_orig_l3_emb.sbatch valid logits 0 551
+sleep 5
+sbatch save_orig_l3_emb.sbatch valid logits 1 551
+sleep 5
+sbatch save_orig_l3_emb.sbatch valid logits 2 551
+sleep 5
+sbatch save_orig_l3_emb.sbatch valid logits 3 551
+sleep 5
+sbatch save_orig_l3_emb.sbatch valid logits 4 551

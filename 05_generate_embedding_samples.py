@@ -231,7 +231,9 @@ def get_l3model(model_path, saved_model_type='keras'):
             embed_layer = model.get_layer('audio_embedding_layer')
             pool_size = tuple(embed_layer.get_output_shape_at(0)[1:3])
             y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(model.output)
+            y_a = keras.layers.MaxPooling2D(pool_size=(1, 2), data_format='channels_first')(y_a)
             y_a = keras.layers.Flatten()(y_a)
+            
             l3embedding_model = keras.models.Model(inputs=model.input, outputs=y_a)
         
     else:

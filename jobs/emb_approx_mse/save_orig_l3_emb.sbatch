@@ -24,6 +24,7 @@ fi
 SRCDIR=.
 DATASET=$1
 OUT_TYPE=$2
+PARTITION_NUM=$3
 
 if ([ "$DATASET" = "train" ]); then
    DATA_DIR=/beegfs/work/AudioSetSamples/music_train
@@ -37,8 +38,21 @@ else
    exit
 fi
 
-python $SRCDIR/02_save_orig_l3_emb.py \
-      --random-state 20180216 \
-      --out-type $OUT_TYPE \
-      $DATA_DIR \
-      $OUTPUT_DIR \
+if [ $# -gt 3 ]; then
+    START_IDX=$4
+    echo "START_IDX=$START_IDX"
+    python $SRCDIR/02_save_orig_l3_emb.py \
+	--random-state 20180216 \
+	--start-idx $START_IDX \
+	--partition-num $PARTITION_NUM \
+	--out-type $OUT_TYPE \
+	$DATA_DIR \
+	$OUTPUT_DIR
+else
+    python $SRCDIR/02_save_orig_l3_emb.py \
+	--random-state 20180216 \
+	--partition-num $PARTITION_NUM \
+	--out-type $OUT_TYPE \
+	$DATA_DIR \
+	$OUTPUT_DIR
+fi
