@@ -10,12 +10,15 @@
 #SBATCH --output="classifier-train-array-us8k-%A-%a.out"
 #SBATCH --err="classifier-train-array-us8k-%A-%a.err"
 
-
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
-source activate l3embedding-new-cpu
 
-#SRCDIR=$HOME/dev/l3embedding
+if [ $USER == "sk7898" ]; then
+    source activate l3embedding-tf-12
+else
+    source activate l3embedding-new-cpu
+fi
+
 SRCDIR=.
 FEATURES_DIR=$1
 OUTPUT_DIR=$SCRATCH/embeddings

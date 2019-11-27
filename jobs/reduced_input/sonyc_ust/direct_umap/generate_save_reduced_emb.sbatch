@@ -10,10 +10,15 @@
 #SBATCH --err="gen-dir-umap-ust-%j.err"
 
 source ~/.bashrc
-source activate l3embedding-cpu
 cd `git rev-parse --show-toplevel`
 
 module purge
+module load cudnn/9.0v7.3.0.29
+if [ $USER == "sk7898" ]; then
+    source activate l3embedding-tf-12
+else
+    source activate l3embedding-new-cpu
+fi
 
 SRCDIR=.
 BATCH_SIZE=300000

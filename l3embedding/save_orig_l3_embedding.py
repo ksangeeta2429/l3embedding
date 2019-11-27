@@ -1,5 +1,6 @@
 import os
 import random
+import math
 import numpy as np
 import h5py
 import tempfile
@@ -75,34 +76,75 @@ def get_teacher_logits(model, video_batch, audio_batch):
  
     return predicted_logits, softmax
 
+def freeze(model):
+    """Freeze model weights in every layer."""
+    for layer in model.layers:
+        layer.trainable = False
 
-def embedding_generator(data_dir, output_dir, out_type='l3_embedding', batch_size=256, random_state=20180123):
+        if isinstance(layer, keras.models.Model):
+            freeze(layer)
 
+def generate_output_driver(data_dir, output_dir, out_type='l3_embedding', partition_to_run=None,\
+                           num_partitions=10, start_idx=None, **kwargs):
+    #Divide l files in n-sized chunks
+    def divide_chunks(l, n, start_idx=0):
+        for i in range(start_idx, len(l), n):
+            yield l[i:i+n]
+
+    all_files = os.listdir(data_dir)
+    
+    if start_idx == None:
+        idx = 0
+        for fname in all_files:
+            out_path = os.path.join(output_dir, fname)
+            if os.path.exists(out_path) and out_type in h5py.File(out_path,'r').keys():
+                idx += 1
+                continue
+
+        start_idx = idx + 1
+
+    num_files = len(all_files)
+    remaining_files = all_files[start_idx: num_files]
+    all_files = list(divide_chunks(all_files, math.ceil(num_files / num_partitions), start_idx))
+
+    # Get list of files to run
+    print('Starting index: {}'.format(start_idx))
+    print('Partition to run: {} out of {} partitions'.format(partition_to_run, num_partitions))
+    list_files = all_files[partition_to_run]
+
+    #print(list_files)
+    #exit(0)
+    embedding_generator(data_dir=data_dir, output_dir=output_dir, out_type=out_type, list_files=list_files, **kwargs)
+
+
+def embedding_generator(data_dir, output_dir, out_type='l3_embedding', list_files=None, batch_size=256, **kwargs):
+    
     if data_dir == output_dir:
         raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
         
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
+    if list_files == None:
+        list_files = os.listdir(data_dir)
+
     weight_path = '/scratch/sk7898/l3pruning/embedding/fixed/reduced_input/l3_full_original_48000_256_242_2048.h5'
     model = keras.models.load_model(weight_path, custom_objects={'Melspectrogram': Melspectrogram}) 
 
     idx = 0
 
-    for fname in os.listdir(data_dir):
+    for fname in list_files:
         blob_start_idx = 0
-        curr_size = 0
-        out_blob = dict()
-        
-        batch_path = os.path.join(data_dir, fname)
-        blob = h5py.File(batch_path, 'r')
-        
+        out_blob = None
+                
         out_path = os.path.join(output_dir, fname)
         if os.path.exists(out_path) and out_type in h5py.File(out_path,'r').keys():
             idx += 1
-            #print('Skipping file {}: {}! Already exists!'.format(idx, fname))
             continue
 
+        batch_path = os.path.join(data_dir, fname)
+        blob = h5py.File(batch_path, 'r')
+        
         if out_type == 'embedding':
             batch = {'audio': blob['audio']}
             batch['audio'] = pcm2float(batch['audio'], dtype='float32')
@@ -116,16 +158,18 @@ def embedding_generator(data_dir, output_dir, out_type='l3_embedding', batch_siz
             
             blob_size = len(batch['audio'])
             
-            while curr_size < blob_size:
+            while blob_start_idx < blob_size:
                 blob_end_idx = min(blob_start_idx + batch_size, blob_size)
                 audio_batch = batch['audio'][blob_start_idx:blob_end_idx]
                 video_batch = batch['video'][blob_start_idx:blob_end_idx]
 
                 logits_out, softmax_out = get_teacher_logits(model, video_batch, audio_batch)
-                out_blob['logits'] = np.concatenate([out_blob['logits'], logits_out])
-                out_blob['softmax'] = np.concatenate([out_blob['softmax'], softmax_out])
-                
-                curr_size += blob_end_idx 
+                if out_blob is None:
+                    out_blob = {'logits': logits_out, 'softmax': softmax_out}
+                else:
+                    out_blob['logits'] = np.concatenate([out_blob['logits'], logits_out])
+                    out_blob['softmax'] = np.concatenate([out_blob['softmax'], softmax_out])
+                 
                 blob_start_idx = blob_end_idx
         else:
             raise ValueError('Output type is not supported!')

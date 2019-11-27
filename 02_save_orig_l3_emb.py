@@ -1,7 +1,7 @@
 import argparse
 import logging
 import os.path
-from l3embedding.save_orig_l3_embedding import embedding_generator
+from l3embedding.save_orig_l3_embedding import generate_output_driver
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Saves original l3-embeddings!')
@@ -13,6 +13,22 @@ def parse_arguments():
                         type=int,
                         default=20171021,
                         help='Random seed used to set the RNG state')
+
+    parser.add_argument('-pt',
+                        '--partition-num',
+                        dest='partition_to_run',
+                        action='store',
+                        type=int,
+                        default=None,
+                        help='Chunk index to run')
+
+    parser.add_argument('-si',
+                        '--start-idx',
+                        dest='start_idx',
+                        action='store',
+                        type=int,
+                        default=None,
+                        help='Starting index of the file to run')
 
     parser.add_argument('-out_type',
                         '--out-type',
@@ -34,5 +50,5 @@ def parse_arguments():
 
 
 if __name__ == '__main__':
-    embedding_generator(**(parse_arguments()))
+    generate_output_driver(**(parse_arguments()))
 
