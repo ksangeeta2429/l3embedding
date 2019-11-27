@@ -25,10 +25,15 @@ fi
 
 # Process args
 weight_file=$1
-ASR=$2
-NUM_MELS=$3
-HOP_LEN=$4
-NUM_DFT=$5
+weight_dir="$(cut -d'.' -f1 <<<"$weight_file")"
+
+IFS='_'
+read -ra SPLITS <<< "$weight_dir"
+ASR=${SPLITS[3]}
+NUM_MELS=${SPLITS[4]}
+HOP_LEN=${SPLITS[5]}
+NUM_DFT=${SPLITS[6]}
+IFS=' '
 
 #L3_POOLING_TYPE=$(echo $ASR | sed 's/0*$//')'K_'${NUM_MELS}'_'${HOP_LEN}'_'${NUM_DFT}
 
