@@ -22,9 +22,6 @@ TAXPATH=/beegfs/jtc440/sonyc_ust/data/dcase-ust-taxonomy.yaml
 EMBDIR=$SCRATCH/embeddings/features/sonyc_ust/l3/reduced_input/$1
 OUTDIR=$SCRATCH/embeddings/classifier/sonyc_ust/mil
 
-EXPDIR=$OUTDIR/$1
-OUTPUTDIR=$EXPDIR/results
-
 #module purge
 #module load sox/intel/14.4.2
 #module load ffmpeg/intel/3.2.2
@@ -37,6 +34,9 @@ else
     NUM_HIDDEN=0
     HIDDEN_SIZE=0
 fi
+
+EXPDIR=$OUTDIR/$1/$NUM_HIDDEN_$HIDDEN_SIZE
+OUTPUTDIR=$EXPDIR/results
 
 echo "NUM_HIDDEN=$NUM_HIDDEN"
 echo "HIDDEN_SIZE=$HIDDEN_SIZE"
