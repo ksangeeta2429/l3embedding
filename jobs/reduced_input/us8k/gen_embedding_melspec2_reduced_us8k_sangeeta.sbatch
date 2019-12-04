@@ -56,9 +56,9 @@ DATASET='us8k'
 
 echo "WEIGHT FILE=$L3_MODEL_PATH"
 
-if [ $# -gt 5 ]
+if [[ $weight_file == *"fmax"* ]]
 then
-    FMAX=$6
+    FMAX=${SPLITS[-1]}
     echo "FMAX=$FMAX"
 
     python $SRCDIR/05_generate_embedding_samples.py \

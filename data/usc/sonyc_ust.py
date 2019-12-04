@@ -67,8 +67,6 @@ def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embeddin
             LOGGER.error('Could not generate data for {}'.format(audio_path))
             return
 
-        print(X.shape)
-        exit(0)
         if timestamps:
             # Save timestamps as well, if necessary
             ts = np.arange(X.shape[0]) * hop_size

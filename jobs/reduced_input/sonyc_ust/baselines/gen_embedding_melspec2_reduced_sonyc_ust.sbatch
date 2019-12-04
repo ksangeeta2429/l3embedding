@@ -22,11 +22,16 @@ else
 fi
 
 # Process args
-WEIGHT_FILE=$1
-ASR=$2
-NUM_MELS=$3
-HOP_LEN=$4
-NUM_DFT=$5
+weight_file=$1
+weight_dir="$(cut -d'.' -f1 <<<"$weight_file")"
+
+IFS='_'
+read -ra SPLITS <<< "$weight_dir"
+ASR=${SPLITS[3]}
+NUM_MELS=${SPLITS[4]}
+HOP_LEN=${SPLITS[5]}
+NUM_DFT=${SPLITS[6]}
+IFS=' '
 
 #L3_POOLING_TYPE=$(echo $ASR | sed 's/0*$//')'K_'${NUM_MELS}'_'${HOP_LEN}'_'${NUM_DFT}
 
@@ -38,7 +43,7 @@ echo "DFT=$NUM_DFT"
 
 SRCDIR=.
 #L3_MODEL_PATH=${filename}
-L3_MODEL_PATH=$SCRATCH/l3pruning/embedding/fixed/reduced_input/${WEIGHT_FILE} #$SCRATCH/l3pruning/embedding/fixed/reduced_input/${weight_file}
+L3_MODEL_PATH=$SCRATCH/l3pruning/embedding/fixed/reduced_input/${weight_file} #$SCRATCH/l3pruning/embedding/fixed/reduced_input/${weight_file}
 #L3_MODEL_TYPE='cnn_L3_melspec2'
 #L3_POOLING_TYPE='original'
 SONYC_UST_PATH=/beegfs/jtc440/sonyc_ust
@@ -49,9 +54,9 @@ DATASET='sonyc_ust'
 
 echo "WEIGHT FILE=$L3_MODEL_PATH"
 
-if [ $# -gt 5 ]
+if [[ $weight_file == *"fmax"* ]]
 then
-    FMAX=$6
+    FMAX=${SPLITS[-1]}
     echo "FMAX=$FMAX"
 
     python -u $SRCDIR/05_generate_embedding_samples.py \
