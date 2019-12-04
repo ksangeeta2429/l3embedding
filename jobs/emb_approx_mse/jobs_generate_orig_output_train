@@ -1,19 +1,19 @@
-sbatch save_orig_l3_emb.sbatch train logits 0 561
+sbatch save_orig_l3_emb.sbatch train logits 0
 sleep 5
-sbatch save_orig_l3_emb.sbatch train logits 1 561
+sbatch save_orig_l3_emb.sbatch train logits 1
 sleep 5
-sbatch save_orig_l3_emb.sbatch train logits 2 561
+sbatch save_orig_l3_emb.sbatch train logits 2
 sleep 5
-sbatch save_orig_l3_emb.sbatch train logits 3 561
+sbatch save_orig_l3_emb.sbatch train logits 3
 sleep 5
-sbatch save_orig_l3_emb.sbatch train logits 4 561
+sbatch save_orig_l3_emb.sbatch train logits 4
 sleep 5
-sbatch save_orig_l3_emb.sbatch train logits 5 561
+sbatch save_orig_l3_emb.sbatch train logits 5
 sleep 5
-sbatch save_orig_l3_emb.sbatch train logits 6 561
+sbatch save_orig_l3_emb.sbatch train logits 6
 sleep 5
-sbatch save_orig_l3_emb.sbatch train logits 7 561
+sbatch save_orig_l3_emb.sbatch train logits 7
 sleep 5
-sbatch save_orig_l3_emb.sbatch train logits 8 561
+sbatch save_orig_l3_emb.sbatch train logits 8
 sleep 5
-sbatch save_orig_l3_emb.sbatch train logits 9 561
+sbatch save_orig_l3_emb.sbatch train logits 9

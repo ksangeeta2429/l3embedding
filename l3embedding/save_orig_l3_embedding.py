@@ -1,10 +1,12 @@
 import os
 import random
+import shutil
 import math
 import numpy as np
 import h5py
 import tempfile
 import tensorflow as tf
+import multiprocessing
 from kapre.time_frequency import Melspectrogram
 import keras
 from keras.layers import Activation
@@ -13,6 +15,8 @@ from skimage import img_as_float
 from keras import activations
 from l3embedding.audio import pcm2float
 from keras import backend as K
+from functools import partial
+
 
 # Do not allocate all the memory for visible GPU
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -50,7 +54,6 @@ def write_to_h5(path, batch):
             f.create_dataset(key, data=batch[key], compression='gzip')
         f.close()
 
-
 def get_teacher_logits(model, video_batch, audio_batch):
     if model is None:
         raise ValueError('Teacher L3 not provided!')
@@ -76,6 +79,11 @@ def get_teacher_logits(model, video_batch, audio_batch):
  
     return predicted_logits, softmax
 
+def run_in_parallel(iterable, function, processes=8):
+    pool = multiprocessing.Pool(processes=processes)
+    output = pool.map(function, iterable)
+    return list(output)
+
 def freeze(model):
     """Freeze model weights in every layer."""
     for layer in model.layers:
@@ -86,36 +94,116 @@ def freeze(model):
 
 def generate_output_driver(data_dir, output_dir, out_type='l3_embedding', partition_to_run=None,\
                            num_partitions=10, start_idx=None, **kwargs):
+
     #Divide l files in n-sized chunks
     def divide_chunks(l, n, start_idx=0):
         for i in range(start_idx, len(l), n):
             yield l[i:i+n]
 
     all_files = os.listdir(data_dir)
-    
-    if start_idx == None:
-        idx = 0
+    new_dir = None
+    copy = False
+    cpu = False
+
+    if 'valid' in output_dir:
+        new_dir = '/scratch/sk7898/orig_l3_embeddings/music_valid_new'
+    elif 'train' in output_dir:
+        new_dir = '/scratch/sk7898/orig_l3_embeddings/music_train_new'
+
+    if copy:
         for fname in all_files:
             out_path = os.path.join(output_dir, fname)
             if os.path.exists(out_path) and out_type in h5py.File(out_path,'r').keys():
-                idx += 1
+                shutil.move(os.path.join(output_dir, fname), new_dir)
                 continue
 
-        start_idx = idx + 1
-
     num_files = len(all_files)
-    remaining_files = all_files[start_idx: num_files]
-    all_files = list(divide_chunks(all_files, math.ceil(num_files / num_partitions), start_idx))
+    #remaining_files = all_files[start_idx: num_files]
+    remaining_files = list(set(os.listdir(data_dir)) - set(os.listdir(new_dir)))
+    all_files = list(divide_chunks(all_files, math.ceil(num_files / num_partitions)))
 
     # Get list of files to run
-    print('Starting index: {}'.format(start_idx))
+    # print('#Processed files: {}'.format(idx+1))
     print('Partition to run: {} out of {} partitions'.format(partition_to_run, num_partitions))
     list_files = all_files[partition_to_run]
 
-    #print(list_files)
-    #exit(0)
-    embedding_generator(data_dir=data_dir, output_dir=output_dir, out_type=out_type, list_files=list_files, **kwargs)
+    if cpu:
+        print('Total Workers: ',multiprocessing.cpu_count())
+        worker_func = partial(embedding_generator_cpu, data_dir=data_dir, output_dir=output_dir, out_type=out_type, **kwargs)
+        run_in_parallel(list_files, worker_func, processes=multiprocessing.cpu_count())
+    else:
+        embedding_generator(data_dir=data_dir, output_dir=output_dir, out_type=out_type, list_files=list_files, **kwargs)
 
+
+def embedding_generator_cpu(list_files, data_dir, output_dir, out_type='l3_embedding', batch_size=256, **kwargs):
+
+    if data_dir == output_dir:
+        raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
+
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+
+    if list_files == None:
+        list_files = os.listdir(data_dir)
+
+    weight_path = '/scratch/sk7898/l3pruning/embedding/fixed/reduced_input/l3_full_original_48000_256_242_2048.h5'
+    model = keras.models.load_model(weight_path, custom_objects={'Melspectrogram': Melspectrogram})
+
+    idx = 0
+    new_dir = None
+
+    if 'valid' in output_dir:
+        new_dir = '/scratch/sk7898/orig_l3_embeddings/music_valid_new'
+    elif 'train' in output_dir:
+        new_dir = '/scratch/sk7898/orig_l3_embeddings/music_train_new'
+
+    for fname in list_files:
+        blob_start_idx = 0
+        out_blob = None
+
+        out_path = os.path.join(output_dir, fname)
+        if os.path.exists(out_path) and out_type in h5py.File(out_path,'r').keys():
+            idx += 1
+            continue
+
+        batch_path = os.path.join(data_dir, fname)
+        blob = h5py.File(batch_path, 'r')
+
+        if out_type == 'embedding':
+            batch = {'audio': blob['audio']}
+            batch['audio'] = pcm2float(batch['audio'], dtype='float32')
+            audio_model = model.get_layer('audio_model')
+            out_blob['l3_embedding'] = audio_model.predict(batch['audio'])
+
+        elif out_type == 'logits':
+            batch = {'audio': blob['audio'], 'video': blob['video']}
+            batch['audio'] = pcm2float(batch['audio'], dtype='float32')
+            batch['video'] = 2 * img_as_float(batch['video']).astype('float32') - 1
+
+            blob_size = len(batch['audio'])
+
+            while blob_start_idx < blob_size:
+                blob_end_idx = min(blob_start_idx + batch_size, blob_size)
+                audio_batch = batch['audio'][blob_start_idx:blob_end_idx]
+                video_batch = batch['video'][blob_start_idx:blob_end_idx]
+
+                logits_out, softmax_out = get_teacher_logits(model, video_batch, audio_batch)
+                if out_blob is None:
+                    out_blob = {'logits': logits_out, 'softmax': softmax_out}
+                else:
+                    out_blob['logits'] = np.concatenate([out_blob['logits'], logits_out])
+                    out_blob['softmax'] = np.concatenate([out_blob['softmax'], softmax_out])
+
+                blob_start_idx = blob_end_idx
+        else:
+            raise ValueError('Output type is not supported!')
+
+        write_to_h5(out_path, out_blob)
+        shutil.move(out_path, new_dir)
+
+        idx += 1
+        print('File {}: {} done!'.format(idx, fname))
+        blob.close()
 
 def embedding_generator(data_dir, output_dir, out_type='l3_embedding', list_files=None, batch_size=256, **kwargs):
     
@@ -132,6 +220,12 @@ def embedding_generator(data_dir, output_dir, out_type='l3_embedding', list_file
     model = keras.models.load_model(weight_path, custom_objects={'Melspectrogram': Melspectrogram}) 
 
     idx = 0
+    new_dir = None
+
+    if 'valid' in output_dir:
+        new_dir = '/scratch/sk7898/orig_l3_embeddings/music_valid_new'
+    elif 'train' in output_dir:
+        new_dir = '/scratch/sk7898/orig_l3_embeddings/music_train_new'
 
     for fname in list_files:
         blob_start_idx = 0
@@ -174,7 +268,8 @@ def embedding_generator(data_dir, output_dir, out_type='l3_embedding', list_file
         else:
             raise ValueError('Output type is not supported!')
 
-        write_to_h5(out_path, out_blob) 
+        write_to_h5(out_path, out_blob)
+        shutil.move(out_path, new_dir) 
     
         idx += 1
         print('File {}: {} done!'.format(idx, fname))
