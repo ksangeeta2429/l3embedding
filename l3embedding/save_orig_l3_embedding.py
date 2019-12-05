@@ -19,12 +19,12 @@ from functools import partial
 
 
 # Do not allocate all the memory for visible GPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="-1"
-config = tf.ConfigProto()
-config.gpu_options.allow_growth=True
-sess = tf.Session(config=config)
-K.set_session(sess)
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+#os.environ["CUDA_VISIBLE_DEVICES"]="-1"
+#config = tf.ConfigProto()
+#config.gpu_options.allow_growth=True
+#sess = tf.Session(config=config)
+#K.set_session(sess)
 
 def apply_modifications(model, custom_objects=None):
     """Applies modifications to the model layers to create a new Graph. For example, simply changing
@@ -60,7 +60,6 @@ def get_teacher_logits(model, video_batch, audio_batch):
     
     test = False
     softmax = model.predict([video_batch, audio_batch])
-    
     model.layers[-1].activation = activations.linear
     model = apply_modifications(model, custom_objects={'Melspectrogram': Melspectrogram})
     logits = model.layers[-1].output
@@ -76,7 +75,7 @@ def get_teacher_logits(model, video_batch, audio_batch):
         print(predicted_logits[:10])
         print(softmax_test[:10])
         exit(0)
- 
+
     return predicted_logits, softmax
 
 def run_in_parallel(iterable, function, processes=8):
@@ -234,6 +233,10 @@ def embedding_generator(data_dir, output_dir, out_type='l3_embedding', list_file
         out_path = os.path.join(output_dir, fname)
         if os.path.exists(out_path) and out_type in h5py.File(out_path,'r').keys():
             idx += 1
+<<<<<<< Updated upstream
+=======
+            print('Skipping file {}: {}! Already exists!'.format(idx, fname))
+>>>>>>> Stashed changes
             continue
 
         batch_path = os.path.join(data_dir, fname)
@@ -258,12 +261,22 @@ def embedding_generator(data_dir, output_dir, out_type='l3_embedding', list_file
                 video_batch = batch['video'][blob_start_idx:blob_end_idx]
 
                 logits_out, softmax_out = get_teacher_logits(model, video_batch, audio_batch)
+<<<<<<< Updated upstream
                 if out_blob is None:
                     out_blob = {'logits': logits_out, 'softmax': softmax_out}
                 else:
                     out_blob['logits'] = np.concatenate([out_blob['logits'], logits_out])
                     out_blob['softmax'] = np.concatenate([out_blob['softmax'], softmax_out])
                  
+=======
+                if 'logits' in out_blob.keys():
+                    out_blob['logits'] = np.concatenate([out_blob['logits'], logits_out])
+                    out_blob['softmax'] = np.concatenate([out_blob['softmax'], softmax_out])
+                else:
+                    out_blob = {'logits': logits_out, 'softmax': softmax_out}
+
+                curr_size += blob_end_idx 
+>>>>>>> Stashed changes
                 blob_start_idx = blob_end_idx
         else:
             raise ValueError('Output type is not supported!')
