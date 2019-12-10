@@ -77,7 +77,7 @@ def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, neigh
     if method == 'umap':
         if umap_estimator is None:
             embedding = umap.umap_.UMAP(n_neighbors=neighbors, min_dist=min_dist, metric=metric, \
-                                        n_components=emb_len).fit_transform(data)
+                                        n_components=emb_len, verbose=True).fit_transform(data)
         else:
             start_time = time.time()
             embedding = umap_estimator.transform(data)
