@@ -7,4 +7,4 @@ numba.config.THREADING_LAYER = "workqueue"
 
 import pkg_resources
 
-__version__ = pkg_resources.get_distribution("umap-learn").version
+#__version__ = pkg_resources.get_distribution("umap-learn").version
