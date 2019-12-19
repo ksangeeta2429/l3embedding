@@ -12,6 +12,7 @@ import pandas as pd
 import oyaml as yaml
 
 import keras
+import tensorflow as tf
 from keras.layers import Input, Dense, TimeDistributed, GlobalAveragePooling1D
 from keras.models import Model
 from keras import regularizers
@@ -1025,6 +1026,12 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir,
     # Reload checkpointed file
     model_weight_file = os.path.join(output_dir, 'model_best.h5')
     model.load_weights(model_weight_file)
+
+    # Convert model to .tflite in output directory
+    keras.models.save_model(model, os.path.join(output_dir, 'mlp_ust.h5'))
+    converter = tf.lite.TFLiteConverter.from_keras_model_file(os.path.join(output_dir, 'mlp_ust.h5'))
+    tflite_model = converter.convert()
+    open(os.path.join(output_dir, 'mlp_ust.tflite'), 'wb').write(tflite_model)
 
     print("* Saving model predictions.")
     results = {}
