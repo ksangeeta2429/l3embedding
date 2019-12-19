@@ -7,7 +7,7 @@
 #SBATCH --mem=20GB
 #SBATCH --time=1-0
 #SBATCH --mail-type=FAIL
-#SBATCH --output="classify-ust-mil-%j.out"
+#SBATCH --output="classify-ust-mlp-%j.out"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
