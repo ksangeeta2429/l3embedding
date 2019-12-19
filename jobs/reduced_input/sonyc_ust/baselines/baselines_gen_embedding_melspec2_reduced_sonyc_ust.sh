@@ -7,3 +7,6 @@ sbatch gen_embedding_melspec2_reduced_sonyc_ust.sbatch l3_audio_20190710131207_1
 # After introducing auto-parsing of melspec params
 # Student that is <100% duty cycle
 sbatch gen_embedding_melspec2_reduced_sonyc_ust.sbatch l3_audio_20191108201753_8000_64_160_1024_half.h5
+
+# Without BN layer after input
+sbatch gen_embedding_melspec2_reduced_sonyc_ust.sbatch l3_audio_20191108201753_8000_64_160_1024_half_for_quantization_flattenOp.h5 

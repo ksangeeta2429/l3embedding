@@ -5,3 +5,6 @@ sbatch gen_embedding_melspec2_reduced_us8k_sangeeta.sbatch l3_audio_201907231356
 # After introducing auto-parsing of melspec params
 # Student that is <100% duty cycle
 sbatch gen_embedding_melspec2_reduced_us8k_sangeeta.sbatch l3_audio_20191108201753_8000_64_160_1024_half.h5
+
+# Without BN layer after input
+sbatch gen_embedding_melspec2_reduced_us8k_sangeeta.sbatch l3_audio_20191108201753_8000_64_160_1024_half_for_quantization_flattenOp.h5 
