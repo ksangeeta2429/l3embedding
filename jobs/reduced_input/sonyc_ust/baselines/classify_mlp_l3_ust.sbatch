@@ -35,7 +35,7 @@ else
     HIDDEN_SIZE=0
 fi
 
-EXPDIR=$OUTDIR/$1/mil/${NUM_HIDDEN}_${HIDDEN_SIZE}
+EXPDIR=$OUTDIR/$1/mlp/${NUM_HIDDEN}_${HIDDEN_SIZE}
 OUTPUTDIR=$EXPDIR/results
 
 echo "NUM_HIDDEN=$NUM_HIDDEN"
@@ -51,7 +51,7 @@ python classifier/sonyc_ust/classify.py $ANNPATH $TAXPATH $EMBDIR $EXPDIR result
     --num_epochs 1500 \
     --patience 1500 \
     --label_mode coarse \
-    --target_mode mil \
+    --target_mode framewise \
     --no_timestamp \
     --optimizer adam
 
