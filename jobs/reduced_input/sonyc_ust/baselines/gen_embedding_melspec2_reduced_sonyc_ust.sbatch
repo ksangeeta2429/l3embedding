@@ -46,9 +46,9 @@ SRCDIR=.
 L3_MODEL_PATH=$SCRATCH/l3pruning/embedding/fixed/reduced_input/${weight_file} #$SCRATCH/l3pruning/embedding/fixed/reduced_input/${weight_file}
 #L3_MODEL_TYPE='cnn_L3_melspec2'
 #L3_POOLING_TYPE='original'
-SONYC_UST_PATH=beegfs/work/sonyc/ust #/beegfs/jtc440/sonyc_ust
-DATA_DIR=$SONYC_UST_PATH/audio/48k #$SONYC_UST_PATH/data
-METADATA_PATH=$SONYC_UST_PATH/annotations/v0.4/annotations.csv
+SONYC_UST_PATH=/beegfs/dr2915/sonyc_ust
+DATA_DIR=$SONYC_UST_PATH #$SONYC_UST_PATH/data
+METADATA_PATH=$SONYC_UST_PATH/annotations.csv
 OUTPUT_DIR=$SCRATCH/embeddings
 DATASET='sonyc_ust'
 
