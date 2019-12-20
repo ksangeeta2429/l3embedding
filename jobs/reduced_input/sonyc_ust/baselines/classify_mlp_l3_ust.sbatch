@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=classify-ust-loso
+#SBATCH --job-name=classify-ust-mlp
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=20GB
@@ -20,7 +20,7 @@ SRCDIR=.
 ANNPATH=/beegfs/dr2915/sonyc_ust/annotations.csv
 TAXPATH=/beegfs/dr2915/sonyc_ust/dcase-ust-taxonomy.yaml
 EMBDIR=$SCRATCH/embeddings/features/sonyc_ust/l3/reduced_input/$1
-OUTDIR=$SCRATCH/embeddings/classifier/sonyc_ust/mil
+OUTDIR=$SCRATCH/embeddings/classifier/sonyc_ust/mlp
 
 #module purge
 #module load sox/intel/14.4.2
@@ -35,7 +35,7 @@ else
     HIDDEN_SIZE=0
 fi
 
-EXPDIR=$OUTDIR/$1/mlp/${NUM_HIDDEN}_${HIDDEN_SIZE}
+EXPDIR=$OUTDIR/$1/${NUM_HIDDEN}_${HIDDEN_SIZE}
 OUTPUTDIR=$EXPDIR/results
 
 echo "NUM_HIDDEN=$NUM_HIDDEN"
@@ -55,4 +55,4 @@ python classifier/sonyc_ust/classify.py $ANNPATH $TAXPATH $EMBDIR $EXPDIR result
     --no_timestamp \
     --optimizer adam
 
-PYTHONPATH='.' python classifier/sonyc_ust/evaluate_predictions.py $OUTPUTDIR/output.csv $ANNPATH $TAXPATH $OUTPUTDIR $GSHEET_ID $GOOGLE_DEV_APP_NAME
+PYTHONPATH='.' python classifier/sonyc_ust/evaluate_predictions.py $OUTPUTDIR/output_mean.csv $ANNPATH $TAXPATH $OUTPUTDIR $GSHEET_ID $GOOGLE_DEV_APP_NAME

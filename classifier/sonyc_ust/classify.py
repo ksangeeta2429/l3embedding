@@ -1027,12 +1027,6 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir,
     model_weight_file = os.path.join(output_dir, 'model_best.h5')
     model.load_weights(model_weight_file)
 
-    # Convert model to .tflite in output directory
-    keras.models.save_model(model, os.path.join(output_dir, 'mlp_ust.h5'))
-    converter = tf.lite.TFLiteConverter.from_keras_model_file(os.path.join(output_dir, 'mlp_ust.h5'))
-    tflite_model = converter.convert()
-    open(os.path.join(output_dir, 'mlp_ust.tflite'), 'wb').write(tflite_model)
-
     print("* Saving model predictions.")
     results = {}
     results['train'] = predict_framewise(embeddings, train_file_idxs, model,
@@ -1051,7 +1045,13 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir,
     for aggregation_type, y_pred in results['test'].items():
         generate_output_file(y_pred, test_file_idxs, output_dir, file_list,
                              aggregation_type, label_mode, taxonomy)
-
+    
+    # Convert model to .tflite in output directory
+    print("* Saving Keras model.")
+    keras.models.save_model(model, os.path.join(output_dir, 'mlp_ust.h5'))
+    #converter = tf.contrib.lite.TFLiteConverter.from_keras_model_file(os.path.join(output_dir, 'mlp_ust.h5'))
+    #tflite_model = converter.convert()
+    #open(os.path.join(output_dir, 'mlp_ust.tflite'), 'wb').write(tflite_model)
 
 def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="fine",
               batch_size=64, num_epochs=100, patience=20, learning_rate=1e-4,
@@ -1318,7 +1318,6 @@ def predict_framewise(embeddings, test_file_idxs, model, scaler=None, pca_model=
         y_pred_max.append(pred_frame.max(axis=0).tolist())
         y_pred_mean.append(pred_frame.mean(axis=0).tolist())
         y_pred_softmax.append(((softmax(pred_frame, axis=0) * pred_frame).sum(axis=0)).tolist())
-
 
     results = {
         'max': y_pred_max,
