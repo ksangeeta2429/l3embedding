@@ -1046,12 +1046,9 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir,
         generate_output_file(y_pred, test_file_idxs, output_dir, file_list,
                              aggregation_type, label_mode, taxonomy)
     
-    # Convert model to .tflite in output directory
+    # Save Keras model in output directory
     print("* Saving Keras model.")
     keras.models.save_model(model, os.path.join(output_dir, 'mlp_ust.h5'))
-    #converter = tf.contrib.lite.TFLiteConverter.from_keras_model_file(os.path.join(output_dir, 'mlp_ust.h5'))
-    #tflite_model = converter.convert()
-    #open(os.path.join(output_dir, 'mlp_ust.tflite'), 'wb').write(tflite_model)
 
 def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="fine",
               batch_size=64, num_epochs=100, patience=20, learning_rate=1e-4,
