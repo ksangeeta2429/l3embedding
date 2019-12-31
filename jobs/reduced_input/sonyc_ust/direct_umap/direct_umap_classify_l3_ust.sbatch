@@ -11,7 +11,7 @@
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
-source activate l3embedding-new-cpu
+source activate rapids
 
 module purge
 module load cudnn/9.0v7.3.0.29
