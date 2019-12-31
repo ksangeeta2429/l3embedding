@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+#SBATCH --gres=gpu:1
 #SBATCH --job-name=gen-dir-umap-ust
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1

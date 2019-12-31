@@ -131,7 +131,7 @@ def get_blob_keys(method, batch_size, emb_len, neighbors_list=None, metric_list=
 
 def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap', umap_estimator_path=None,
                         neighbors_list=None, list_files=None, metric_list=None, min_dist_list=None, tsne_iter_list=[500],
-                        batch_size=1024, random_state=20180123, start_batch_idx=None, mode='gpu'):
+                        batch_size=1024, random_state=20180123, start_batch_idx=None, extraction_mode='gpu'):
     if data_dir == output_dir:
         raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
 
@@ -249,7 +249,7 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                                                                 neighbors=neighbors,
                                                                 metric=metric,
                                                                 min_dist=min_dist,
-                                                                mode=mode) \
+                                                                mode=extraction_mode) \
                                  for neighbors in neighbors_list for metric in metric_list for min_dist in
                                  min_dist_list)
                         else:
@@ -263,7 +263,7 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                                                                   emb_len=reduced_emb_len,
                                                                   neighbors=neighbors,
                                                                   metric=metric,
-                                                                  mode=mode,
+                                                                  mode=extraction_mode,
                                                                   iterations=iterations) \
                                                              for neighbors in neighbors_list for metric in metric_list
                                                              for iterations in tsne_iter_list)
