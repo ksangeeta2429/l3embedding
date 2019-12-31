@@ -130,9 +130,8 @@ def get_blob_keys(method, batch_size, emb_len, neighbors_list=None, metric_list=
 
 
 def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap', umap_estimator_path=None,
-                        neighbors_list=None, \
-                        list_files=None, metric_list=None, min_dist_list=None, tsne_iter_list=[500], \
-                        batch_size=1024, random_state=20180123, start_batch_idx=None):
+                        neighbors_list=None, list_files=None, metric_list=None, min_dist_list=None, tsne_iter_list=[500],
+                        batch_size=1024, random_state=20180123, start_batch_idx=None, mode='gpu'):
     if data_dir == output_dir:
         raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
 
@@ -245,11 +244,12 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                         if umap_estimator_path is None:
                             n_process = len(neighbors_list) * len(metric_list) * len(min_dist_list)
                             results = Parallel(n_jobs=min(multiprocessing.cpu_count(), n_process)) \
-                                (delayed(get_reduced_embedding)(teacher_embedding, 'umap', \
-                                                                emb_len=reduced_emb_len, umap_estimator=None, \
-                                                                neighbors=neighbors, \
-                                                                metric=metric, \
-                                                                min_dist=min_dist) \
+                                (delayed(get_reduced_embedding)(teacher_embedding, 'umap',
+                                                                emb_len=reduced_emb_len, umap_estimator=None,
+                                                                neighbors=neighbors,
+                                                                metric=metric,
+                                                                min_dist=min_dist,
+                                                                mode=mode) \
                                  for neighbors in neighbors_list for metric in metric_list for min_dist in
                                  min_dist_list)
                         else:
@@ -259,10 +259,11 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                         n_process = len(neighbors_list) * len(metric_list) * len(tsne_iter_list)
 
                         results = Parallel(n_jobs=n_process)(delayed(get_reduced_embedding) \
-                                                                 (teacher_embedding, 'tsne', \
-                                                                  emb_len=reduced_emb_len, \
-                                                                  neighbors=neighbors, \
-                                                                  metric=metric, \
+                                                                 (teacher_embedding, 'tsne',
+                                                                  emb_len=reduced_emb_len,
+                                                                  neighbors=neighbors,
+                                                                  metric=metric,
+                                                                  mode=mode,
                                                                   iterations=iterations) \
                                                              for neighbors in neighbors_list for metric in metric_list
                                                              for iterations in tsne_iter_list)
