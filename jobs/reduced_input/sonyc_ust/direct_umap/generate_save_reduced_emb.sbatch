@@ -14,11 +14,12 @@ source ~/.bashrc
 cd `git rev-parse --show-toplevel`
 
 module purge
-module load cudnn/9.0v7.3.0.29
 if [ $USER == "sk7898" ]; then
+    module load cudnn/9.0v7.3.0.29
     source activate l3embedding-tf-12
 else
-    source activate l3embedding-new-cpu
+    module load cudnn/10.0v7.4.2.24
+    source activate rapids
 fi
 
 SRCDIR=.
