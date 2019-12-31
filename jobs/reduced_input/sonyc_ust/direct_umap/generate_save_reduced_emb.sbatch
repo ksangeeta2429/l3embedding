@@ -18,8 +18,8 @@ if [ $USER == "sk7898" ]; then
     module load cudnn/9.0v7.3.0.29
     source activate l3embedding-tf-12
 else
-    module load cudnn/10.0v7.4.2.24
-    source activate rapids
+    # Needs an NVIDIA GPU > 6.0 compute capability, so no K80s
+    source activate rapids  # Create env from envs_yml/rapids.yml
 fi
 
 SRCDIR=.

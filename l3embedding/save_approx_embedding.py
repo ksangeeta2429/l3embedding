@@ -68,7 +68,7 @@ def save_npz_sonyc_ust(paths, batch, batch_size):
 
 
 # Note: For UMAP, if a saved model is provided, the UMAP params are all ignored
-def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, neighbors=10, metric='euclidean', \
+def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, neighbors=10, metric='euclidean',
                           min_dist=0.3, iterations=500, mode='gpu'):
     if len(data) == 0:
         raise ValueError('Data is empty!')
@@ -79,8 +79,8 @@ def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, neigh
         if umap_estimator is None:
             if mode=='gpu':
                 assert metric=='euclidean', 'cuML UMAP currently only supports euclidean distances'
-                embedding = cumlUMAP(n_neighbors=neighbors, min_dist=min_dist, n_components=emb_len,
-                                     verbose=True).fit_transform(data)
+                embedding = cumlUMAP(n_neighbors=neighbors, min_dist=min_dist,
+                                     n_components=emb_len).fit_transform(data)
             else:
                 embedding = umap.umap_.UMAP(n_neighbors=neighbors, min_dist=min_dist, metric=metric,
                                             n_components=emb_len, verbose=True).fit_transform(data)
