@@ -21,7 +21,7 @@ def create_dict_audio_tar_to_h5(index_path, out_dir):
         f = h5py.File(file)
         if len(f['recording_index']) > 0:
             for row in range(len(f['recording_index'])):
-                audio_file = h5py.File(f['recording_index'][row]['day_hdf5_path'])
+                audio_file = h5py.File(os.path.join('/beegfs/work/sonyc',f['recording_index'][row]['day_hdf5_path'].decode()))
                 print('Adding key {}:({},{})'.format(
                     audio_file['recordings'][f['recording_index'][row]['day_h5_index']]['filename'],
                     f['recording_index'][row]['day_hdf5_path'], f['recording_index'][row]['day_h5_index']))
