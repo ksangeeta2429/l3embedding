@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-NEIGHBORS_LIST=( 300 )
-MIN_DIST_LIST=( 0.05 0.1 )
+NEIGHBORS_LIST=( 25 50 75 )
+MIN_DIST_LIST=( 0.3 0.5 0.7 )
 
 for nbr in "${NEIGHBORS_LIST[@]}"; do
     for dst in "${MIN_DIST_LIST[@]}"; do
