@@ -13,15 +13,20 @@ import pickle
 from joblib import Parallel, delayed, dump, load
 from decrypt import read_encrypted_tar_audio_file
 
+
 def create_dict_audio_tar_to_h5(index_path, out_dir):
     list_files = glob.glob(os.path.join(index_path, '*/*.h5'))
     map = dict()
     for file in list_files:
-        f=h5py.File(file)
-        for row in range(len(f['recording_index'])):
-            audio_file = h5py.File(f['recording_index']['day_hdf5_path'])
-            print('Adding key {}:({},{})'.format(audio_file['recordings'][f['recording_index']['day_h5_index']]['filename'], f['recording_index']['day_hdf5_path'], f['recording_index']['day_h5_index']))
-            map[audio_file['recordings'][f['recording_index']['day_h5_index']]['filename']] = (f['recording_index']['day_hdf5_path'], f['recording_index']['day_h5_index'])
+        f = h5py.File(file)
+        if len(f['recording_index']) > 0:
+            for row in range(len(f['recording_index'])):
+                audio_file = h5py.File(f['recording_index'][row]['day_hdf5_path'])
+                print('Adding key {}:({},{})'.format(
+                    audio_file['recordings'][f['recording_index'][row]['day_h5_index']]['filename'],
+                    f['recording_index'][row]['day_hdf5_path'], f['recording_index'][row]['day_h5_index']))
+                map[audio_file['recordings'][f['recording_index'][row]['day_h5_index']]['filename']] = (
+                f['recording_index'][row]['day_hdf5_path'], f['recording_index'][row]['day_h5_index'])
 
     # Dump dictionary in pickle
     os.makedirs(out_dir, exist_ok=True)
@@ -223,7 +228,8 @@ def check_sonyc_openl3_points(feature_dir, out_path, verbose=True,
     csvwrite = csv.writer(open(out_path, 'w', newline=''), delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
     csvwrite.writerow(valid_files)
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     create_dict_audio_tar_to_h5('/beegfs/jtc440/sonyc_indices_split', 'scratch/dr2915/sonyc_map')
 # get_sonyc_filtered_files('/scratch/dr2915/reduced_embeddings/sonyc_files_list.csv')
 # check_sonyc_openl3_points('/beegfs/work/sonyc/features/openl3_day_format/2017',
