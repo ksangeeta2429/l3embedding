@@ -94,7 +94,7 @@ def check_sonyc_openl3_points(feature_dir, out_path, verbose=True,
             num_sets += f[list(f.keys())[0]].shape[0]
             if verbose:
                 print('File: {} Num. of datasets: {}'.format(fname, f[list(f.keys())[0]].shape[0]))
-            num_pts += f[list(f.keys())[0]].shape[0] * f[list(f.keys())[0]][0][1].shape[0]
+            num_pts += f[list(f.keys())[0]].shape[0] * f[list(f.keys())[0]][0][2].shape[0]
 
     print('Num files:', len(valid_files))
     print('Num points:', num_pts)
