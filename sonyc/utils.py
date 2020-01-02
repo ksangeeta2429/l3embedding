@@ -14,24 +14,47 @@ from joblib import Parallel, delayed, dump, load
 from decrypt import read_encrypted_tar_audio_file
 
 
-def create_dict_audio_tar_to_h5(index_path, out_dir):
-    list_files = glob.glob(os.path.join(index_path, '*/*.h5'))
-    map = dict()
-    for file in list_files:
-        f = h5py.File(file)
-        if len(f['recording_index']) > 0:
-            for row in range(len(f['recording_index'])):
-                audio_file = h5py.File(os.path.join('/beegfs/work/sonyc',f['recording_index'][row]['day_hdf5_path'].decode()))
-                print('Adding key {}:({},{})'.format(
-                    audio_file['recordings'][f['recording_index'][row]['day_h5_index']]['filename'],
-                    f['recording_index'][row]['day_hdf5_path'], f['recording_index'][row]['day_h5_index']))
-                map[audio_file['recordings'][f['recording_index'][row]['day_h5_index']]['filename']] = (
-                f['recording_index'][row]['day_hdf5_path'], f['recording_index'][row]['day_h5_index'])
+def create_dict_audio_tar_to_h5(index_path, out_dir, max_workers=50):
+    def divide_chunks(l, n):
+        # looping till length l
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
 
-    # Dump dictionary in pickle
+    def process_partition(index_files, worker_id):
+        map = dict()
+        for file in index_files:
+            f = h5py.File(file)
+            if len(f['recording_index']) > 0:
+                for row in range(len(f['recording_index'])):
+                    audio_file = h5py.File(os.path.join('/beegfs/work/sonyc',f['recording_index'][row]['day_hdf5_path'].decode()))
+                    print('Adding key {}:({},{})'.format(
+                        audio_file['recordings'][f['recording_index'][row]['day_h5_index']]['filename'],
+                        f['recording_index'][row]['day_hdf5_path'], f['recording_index'][row]['day_h5_index']))
+                    map[audio_file['recordings'][f['recording_index'][row]['day_h5_index']]['filename']] = (
+                    f['recording_index'][row]['day_hdf5_path'], f['recording_index'][row]['day_h5_index'])
+
+        # Dump dictionary in pickle
+        with open(os.path.join(out_dir, 'map_' + worker_id + '.pkl')) as f:
+            pickle.dump(map, f)
+
+    # Create output directory
     os.makedirs(out_dir, exist_ok=True)
-    with open(os.path.join(out_dir, 'map.pkl')) as f:
-        pickle.dump(map, f)
+
+    # Create worker partitions
+    all_files = glob.glob(os.path.join(index_path, '*/*.h5'))
+
+    num_files = len(all_files)
+    num_jobs = min(multiprocessing.cpu_count(), max_workers)
+
+    print('Number of jobs: {}'.format(num_jobs))
+
+    # Split file list into chunks
+    all_files = list(divide_chunks(all_files, math.ceil(num_files / num_jobs)))
+
+    # Begin parallel jobs
+    Parallel(n_jobs=num_jobs)(
+        delayed(process_partition)(list_files, jobindex) for jobindex, list_files in enumerate(all_files, 1))
+
 
 
 def downsample_sonyc_points(feature_dir, audio_dir, output_dir, sample_size, audio_samp_rate=8000,
