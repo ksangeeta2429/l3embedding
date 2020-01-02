@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32GB
 #SBATCH --time=2-0
-#SBATCH --mail-type=ALL
+#SBATCH --mail-type=FAIL
 #SBATCH --output="gen-embedding-reduced-melspec2-sonyc-%A-%a.out"
 #SBATCH --err="gen-embedding-reduced-melspec2-sonyc-%A-%a.err"
 

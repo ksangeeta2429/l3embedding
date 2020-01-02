@@ -70,7 +70,7 @@ def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embeddin
         if save_raw:
             sr = feature_args['sr']
             assert audio.ndim == 2 and audio.shape[1] == sr
-            out_audio_path = '/beegfs/dr2915/sonyc_ust/frames/' + str(sr) + 'KHz'
+            out_audio_path = '/beegfs/dr2915/sonyc_ust/frames/' + str(int(sr//1000)) + 'KHz'
             os.makedirs(out_audio_path, exist_ok=True)
             out_audio = os.path.join(out_audio_path, os.path.splitext(filename)[0] + '.npz')
             np.savez(out_audio, audio=audio)
