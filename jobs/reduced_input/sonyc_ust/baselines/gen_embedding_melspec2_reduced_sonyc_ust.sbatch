@@ -83,6 +83,7 @@ else
         --l3embedding-model-path $L3_MODEL_PATH \
         --hop-size 0.1 \
         --gpus 0 \
+        --save-raw \
         --samp-rate $ASR \
         --num-mels $NUM_MELS \
         --mel-hop-length $HOP_LEN \

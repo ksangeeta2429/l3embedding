@@ -13,7 +13,7 @@ LOGGER = logging.getLogger('cls-data-generation')
 LOGGER.setLevel(logging.DEBUG)
 
 def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embedding_model, model_type='keras',
-                            hop_size=0.1, features='l3', timestamps = False, **feature_args):
+                            hop_size=0.1, features='l3', timestamps = False, save_raw=False, **feature_args):
     """
     Extract embeddings for files annotated in the SONYC annotation file and save them to disk.
     Parameters
@@ -59,13 +59,21 @@ def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embeddin
             LOGGER.info('Output file {} already exists'.format(output_path))
             return
 
-        X = cls_features.compute_file_features(audio_path, features, l3embedding_model=l3embedding_model,
+        X, audio = cls_features.compute_file_features(audio_path, features, l3embedding_model=l3embedding_model,
                                                model_type=model_type, hop_size=hop_size, **feature_args)
 
         # If we were not able to compute the features, skip this file
         if X is None:
             LOGGER.error('Could not generate data for {}'.format(audio_path))
             return
+
+        if save_raw:
+            sr = feature_args['sr']
+            assert audio.ndim == 2 and audio.shape[1] == sr
+            out_audio_path = '/beegfs/dr2915/sonyc_ust/frames/' + str(sr) + 'KHz'
+            os.makedirs(out_audio_path, exist_ok=True)
+            out_audio = os.path.join(out_audio_path, os.path.splitext(filename)[0] + '.npz')
+            np.savez(out_audio, audio=audio)
 
         if timestamps:
             # Save timestamps as well, if necessary
