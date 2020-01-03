@@ -98,16 +98,16 @@ if __name__ == '__main__':
     with open(os.path.join(args.output_dir, 'hyper_params.json')) as hyp:
         hyp = json.load(hyp)
 
-    if 'mae' in hyp['raw_dir']:
+    if 'mae' in hyp['emb_dir']:
         model_type = 'MAE'
-    elif 'umap' in hyp['raw_dir']:
+    elif 'umap' in hyp['emb_dir']:
         model_type = 'UMAP'
     else:
         model_type = 'BASELINE'
 
-    if '/music/' in hyp['raw_dir'] or model_type == 'BASELINE':
+    if '/music/' in hyp['emb_dir'] or model_type == 'BASELINE':
         upstream_data = 'music'
-    elif '/sonyc/' in hyp['raw_dir']:
+    elif '/sonyc/' in hyp['emb_dir']:
         upstream_data = 'sonyc'
     else:
         upstream_data = 'sonyc_ust'
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         'git_commit': git.Repo(os.path.dirname(os.path.abspath(__file__)), search_parent_directories=True).head.object.hexsha,
         'annotation_path': hyp['annotation_path'],
         'taxonomy_path': hyp['taxonomy_path'],
-        'raw_dir': hyp['raw_dir'],
+        'emb_dir': hyp['emb_dir'],
         'output_dir': hyp['output_dir'],
         'exp_id': hyp['exp_id'],
         'hidden_layer_size': hyp['hidden_layer_size'],
