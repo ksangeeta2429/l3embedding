@@ -16,6 +16,22 @@ source activate l3embedding-new-cpu
 module purge
 module load cudnn/9.0v7.3.0.29
 
+weight_file=$1
+weight_dir="$(cut -d'.' -f1 <<<"$weight_file")"
+
+IFS='_'
+read -ra SPLITS <<< "$weight_dir"
+ASR=${SPLITS[3]}
+NUM_MELS=${SPLITS[4]}
+HOP_LEN=${SPLITS[5]}
+NUM_DFT=${SPLITS[6]}
+IFS=' '
+
+echo "ASR=$ASR"
+echo "NUM MELS=$NUM_MELS"
+echo "HOP LENGTH=$HOP_LEN"
+echo "DFT=$NUM_DFT"
+
 SRCDIR=.
 ANNPATH=/beegfs/dr2915/sonyc_ust/annotations.csv
 TAXPATH=/beegfs/dr2915/sonyc_ust/dcase-ust-taxonomy.yaml
@@ -45,15 +61,40 @@ echo "HIDDEN_SIZE=$HIDDEN_SIZE"
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo'
 
-python classifier/sonyc_ust/classify_pipeline.py $ANNPATH $TAXPATH $L3_MODEL_DIR $RAWDIR $EXPDIR results \
-    --hidden_layer_size $HIDDEN_SIZE \
-    --num_hidden_layers $NUM_HIDDEN \
-    --batch_size 64 \
-    --num_epochs 1500 \
-    --patience 1500 \
-    --label_mode coarse \
-    --target_mode framewise \
-    --no_timestamp \
-    --optimizer adam
+if [[ $weight_file == *"fmax"* ]]
+then
+    FMAX=${SPLITS[-1]}
+    echo "FMAX=$FMAX"
+    python classifier/sonyc_ust/classify_pipeline.py $ANNPATH $TAXPATH $L3_MODEL_DIR $RAWDIR $EXPDIR results \
+        --hidden_layer_size $HIDDEN_SIZE \
+        --num_hidden_layers $NUM_HIDDEN \
+        --batch_size 64 \
+        --num_epochs 1500 \
+        --patience 1500 \
+        --label_mode coarse \
+        --target_mode framewise \
+        --no_timestamp \
+        --optimizer adam \
+        --fmax $FMAX \
+        --n_fft $NUM_DFT \
+        --n_mels $NUM_MELS \
+        --mel_hop_length $HOP_LEN \
+        --sr $ASR
+else
+    python classifier/sonyc_ust/classify_pipeline.py $ANNPATH $TAXPATH $L3_MODEL_DIR $RAWDIR $EXPDIR results \
+        --hidden_layer_size $HIDDEN_SIZE \
+        --num_hidden_layers $NUM_HIDDEN \
+        --batch_size 64 \
+        --num_epochs 1500 \
+        --patience 1500 \
+        --label_mode coarse \
+        --target_mode framewise \
+        --no_timestamp \
+        --optimizer adam \
+        --n_fft $NUM_DFT \
+        --n_mels $NUM_MELS \
+        --mel_hop_length $HOP_LEN \
+        --sr $ASR
+fi
 
 PYTHONPATH='.' python classifier/sonyc_ust/evaluate_predictions.py $OUTPUTDIR/output_mean.csv $ANNPATH $TAXPATH $OUTPUTDIR $GSHEET_ID $GOOGLE_DEV_APP_NAME
