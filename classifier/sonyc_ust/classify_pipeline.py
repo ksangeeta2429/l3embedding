@@ -1076,10 +1076,10 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
 
     print("* Saving model predictions.")
     results = {}
-    results['train'], _, _ = predict_framewise(raw, train_file_idxs, model,
+    results['train'] = predict_framewise(raw, train_file_idxs, model,
                                          scaler=scaler, pca_model=pca_model, **kwargs)
-    results['test'], X_test, preds_test = predict_framewise(raw, test_file_idxs, model,
-                                        scaler=scaler, pca_model=pca_model, **kwargs)
+    results['test'] = predict_framewise(raw, test_file_idxs, model,
+                                        scaler=scaler, pca_model=pca_model, out_path=os.path.join(output_dir, 'test_data_preds.csv'), **kwargs)
     if history is not None:
         results['train_history'] = history.history
     else:
@@ -1096,12 +1096,6 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
     # Save Keras model in output directory
     print("* Saving Keras model.")
     keras.models.save_model(model, os.path.join(output_dir, 'mlp_ust.h5'))
-
-    # Save test data and predictions
-    print(" Saving test data and predictions")
-    with open(os.path.join(output_dir, 'test_data_preds.csv'), 'w') as f:
-        f.write('Data,Pred_class\n')
-        np.savetxt(f, zip(X_test, preds_test), delimiter=',', fmt='%f')
 
 
 # def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="fine",
@@ -1335,7 +1329,7 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
 
 ## MODEL EVALUATION
 
-def predict_framewise(embeddings, test_file_idxs, model, scaler=None, pca_model=None, **kwargs):
+def predict_framewise(embeddings, test_file_idxs, model, scaler=None, pca_model=None, out_path = None, **kwargs):
     """
     Evaluate the output of a framewise classification model.
 
@@ -1388,7 +1382,17 @@ def predict_framewise(embeddings, test_file_idxs, model, scaler=None, pca_model=
         'softmax': y_pred_softmax
     }
 
-    return results, np.array(data), np.array(y_pred_max)
+    if out_path is not None:
+        X_test = np.array(data)
+        preds_test = np.array(y_pred_max)
+
+        # Save test data and predictions
+        print(" Saving test data and predictions")
+        with open(out_path, 'w') as f:
+            f.write('Data,Pred_class\n')
+            np.savetxt(f, zip(X_test, preds_test), delimiter=',', fmt='%f')
+
+    return results
 
 
 # def predict_mil(embeddings, test_file_idxs, model, scaler=None, pca_model=None):
