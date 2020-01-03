@@ -329,7 +329,7 @@ def construct_mlp_framewise(cnn, num_classes, sensor_factor=True,
     y = cnn.output
 
     # Add a batchnorm layer
-    y = BatchNormalization(name='batch_normalization_dst')(y)
+    #y = BatchNormalization(name='batch_normalization_dst')(y)
 
     # Add hidden layers
     for idx in range(num_hidden_layers):
@@ -823,6 +823,9 @@ def train_model(model, X_train, y_train, X_valid, y_valid, output_dir,
     cb.append(keras.callbacks.EarlyStopping(monitor='val_loss',
                                             patience=patience))
 
+    # Reduce LR on plateau
+    cb.append(keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1,
+                                                patience=10, min_lr=0.000001, verbose=1))
     # monitor losses
     history_csv_file = os.path.join(output_dir, 'history.csv')
     cb.append(keras.callbacks.CSVLogger(history_csv_file, append=True,
@@ -839,11 +842,11 @@ def train_model(model, X_train, y_train, X_valid, y_valid, output_dir,
 
     model.compile(opt, loss=loss,
                   loss_weights=loss_weights, metrics=metrics)
-
+    
     if num_epochs > 0:
         history = model.fit(
             x=X_train, y=y_train, batch_size=batch_size, epochs=num_epochs,
-            validation_data=(X_valid, y_valid), callbacks=cb, verbose=2)
+            validation_data=(X_valid, y_valid), callbacks=cb, verbose=1)
     else:
         history = None
 
@@ -1055,11 +1058,12 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
             loss['proximity_output'] = 'categorical_crossentropy'
             loss_weights['proximity_output'] = 1.0
 
-    print("* Training model.")
+    print("* Transforming training data into melspecs.")
     # Transform
     X_train = transform_input_to_melspec(X_train, **kwargs)
     X_valid = transform_input_to_melspec(X_valid, **kwargs)
-
+    
+    print("* Training model.")
     history = train_model(model, X_train, y_train, X_valid, y_valid,
                           output_dir, loss=loss, loss_weights=loss_weights,
                           batch_size=batch_size, num_epochs=num_epochs,
@@ -1579,7 +1583,7 @@ if __name__ == '__main__':
         train_framewise(args.annotation_path,
                         args.taxonomy_path,
                         args.l3_path,
-                        args.emb_dir,
+                        args.raw_dir,
                         out_dir,
                         label_mode=args.label_mode,
                         batch_size=args.batch_size,
