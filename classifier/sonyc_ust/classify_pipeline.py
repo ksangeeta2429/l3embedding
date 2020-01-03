@@ -380,89 +380,89 @@ def construct_mlp_framewise(cnn, num_classes, sensor_factor=True,
     return m
 
 
-def construct_mlp_mil(num_frames, emb_size, num_classes, sensor_factor=False,
-                      num_sensors=None, proximity_factor=False, num_proximity_classes=None,
-                      hidden_layer_size=128, num_hidden_layers=0, l2_reg=1e-5):
-    """
-    Construct a 2-hidden-layer MLP model for MIL processing
-
-    Parameters
-    ----------
-    num_frames
-    emb_size
-    num_classes
-    hidden_layer_size
-    num_hidden_layers
-    l2_reg
-
-    Returns
-    -------
-    model
-
-    """
-    # Input layer
-    inp = Input(shape=(num_frames, emb_size), dtype='float32', name='input')
-    y = inp
-
-    # Add hidden layers
-    repr_size = emb_size
-    for idx in range(num_hidden_layers):
-        y = TimeDistributed(Dense(hidden_layer_size, activation='relu',
-                                  kernel_regularizer=regularizers.l2(l2_reg)),
-                            name='dense_{}'.format(idx + 1),
-                            input_shape=(num_frames, repr_size))(y)
-        repr_size = hidden_layer_size
-
-    if sensor_factor:
-        assert num_sensors is not None
-
-        y_sensor_t = TimeDistributed(Dense(num_sensors, activation='softmax',
-                                           kernel_regularizer=regularizers.l2(l2_reg)),
-                                     name='sensor_t',
-                                     input_shape=(num_frames, repr_size))(y)
-        y_sensor = GlobalAveragePooling1D(name='sensor_output')(y_sensor_t)
-
-    if proximity_factor:
-        proximity_outputs = []
-        for idx in range(num_proximity_classes):
-            prox_output = TimeDistributed(Dense(2, activation='softmax',
-                                                kernel_regularizer=regularizers.l2(l2_reg)),
-                                          name='proximity_{}'.format(idx),
-                                          input_shape=(num_frames, repr_size))(y)
-            proximity_outputs.append(prox_output)
-        y_proximity_t = keras.layers.Concatenate(name='proximity_t')(proximity_outputs)
-        y_proximity = GlobalAveragePooling1D(name='proximity_output')(y_proximity_t)
-
-    # Concatenate
-    if sensor_factor:
-        y = keras.layers.Concatenate(name='concat_sensor')([y, y_sensor_t])
-    if proximity_factor:
-        y = keras.layers.Concatenate(name='concat_proximity')([y, y_proximity_t])
-
-    # Output layer
-    y = TimeDistributed(Dense(num_classes, activation='sigmoid',
-                              kernel_regularizer=regularizers.l2(l2_reg)),
-                        name='output_t',
-                        input_shape=(num_frames, repr_size))(y)
-
-    # Apply autopool over time dimension
-    y = AutoPool1D(kernel_constraint=keras.constraints.non_neg(),
-                   axis=1, name='output')(y)
-
-    if sensor_factor or proximity_factor:
-        outputs = [y]
-        if sensor_factor:
-            outputs.append(y_sensor)
-        if proximity_factor:
-            outputs.append(y_proximity)
-    else:
-        outputs = y
-
-    m = Model(inputs=inp, outputs=outputs)
-    m.name = 'urban_sound_classifier'
-    print(m.summary())
-
-    return m
+# def construct_mlp_mil(num_frames, emb_size, num_classes, sensor_factor=False,
+#                       num_sensors=None, proximity_factor=False, num_proximity_classes=None,
+#                       hidden_layer_size=128, num_hidden_layers=0, l2_reg=1e-5):
+#     """
+#     Construct a 2-hidden-layer MLP model for MIL processing
+#
+#     Parameters
+#     ----------
+#     num_frames
+#     emb_size
+#     num_classes
+#     hidden_layer_size
+#     num_hidden_layers
+#     l2_reg
+#
+#     Returns
+#     -------
+#     model
+#
+#     """
+#     # Input layer
+#     inp = Input(shape=(num_frames, emb_size), dtype='float32', name='input')
+#     y = inp
+#
+#     # Add hidden layers
+#     repr_size = emb_size
+#     for idx in range(num_hidden_layers):
+#         y = TimeDistributed(Dense(hidden_layer_size, activation='relu',
+#                                   kernel_regularizer=regularizers.l2(l2_reg)),
+#                             name='dense_{}'.format(idx + 1),
+#                             input_shape=(num_frames, repr_size))(y)
+#         repr_size = hidden_layer_size
+#
+#     if sensor_factor:
+#         assert num_sensors is not None
+#
+#         y_sensor_t = TimeDistributed(Dense(num_sensors, activation='softmax',
+#                                            kernel_regularizer=regularizers.l2(l2_reg)),
+#                                      name='sensor_t',
+#                                      input_shape=(num_frames, repr_size))(y)
+#         y_sensor = GlobalAveragePooling1D(name='sensor_output')(y_sensor_t)
+#
+#     if proximity_factor:
+#         proximity_outputs = []
+#         for idx in range(num_proximity_classes):
+#             prox_output = TimeDistributed(Dense(2, activation='softmax',
+#                                                 kernel_regularizer=regularizers.l2(l2_reg)),
+#                                           name='proximity_{}'.format(idx),
+#                                           input_shape=(num_frames, repr_size))(y)
+#             proximity_outputs.append(prox_output)
+#         y_proximity_t = keras.layers.Concatenate(name='proximity_t')(proximity_outputs)
+#         y_proximity = GlobalAveragePooling1D(name='proximity_output')(y_proximity_t)
+#
+#     # Concatenate
+#     if sensor_factor:
+#         y = keras.layers.Concatenate(name='concat_sensor')([y, y_sensor_t])
+#     if proximity_factor:
+#         y = keras.layers.Concatenate(name='concat_proximity')([y, y_proximity_t])
+#
+#     # Output layer
+#     y = TimeDistributed(Dense(num_classes, activation='sigmoid',
+#                               kernel_regularizer=regularizers.l2(l2_reg)),
+#                         name='output_t',
+#                         input_shape=(num_frames, repr_size))(y)
+#
+#     # Apply autopool over time dimension
+#     y = AutoPool1D(kernel_constraint=keras.constraints.non_neg(),
+#                    axis=1, name='output')(y)
+#
+#     if sensor_factor or proximity_factor:
+#         outputs = [y]
+#         if sensor_factor:
+#             outputs.append(y_sensor)
+#         if proximity_factor:
+#             outputs.append(y_proximity)
+#     else:
+#         outputs = y
+#
+#     m = Model(inputs=inp, outputs=outputs)
+#     m.name = 'urban_sound_classifier'
+#     print(m.summary())
+#
+#     return m
 
 
 ## DATA PREPARATION
@@ -627,122 +627,122 @@ def prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings,
     return X_train, y_train, X_valid, y_valid, scaler, pca_model
 
 
-def prepare_mil_data(train_file_idxs, valid_file_idxs, embeddings, target_list,
-                     sensor_list=None, num_sensors=None, proximity_list=None,
-                     standardize=True, pca=False, pca_components=None,
-                     oversample=None, oversample_iters=1, thresh_type="mean"):
-    """
-    Prepare inputs and targets for MIL training using training and validation indices.
-
-    Parameters
-    ----------
-    train_file_idxs
-    valid_file_idxs
-    embeddings
-    target_list
-    standardize
-    pca
-    pca_components
-    oversample
-    oversample_iters
-    thresh_type
-
-    Returns
-    -------
-    X_train
-    y_train
-    X_valid
-    y_valid
-    scaler
-
-    """
-
-    X_train_mil = np.array([embeddings[idx] for idx in train_file_idxs])
-    X_valid_mil = np.array([embeddings[idx] for idx in valid_file_idxs])
-    y_train_mil = np.array([target_list[idx] for idx in train_file_idxs])
-    y_valid_mil = np.array([target_list[idx] for idx in valid_file_idxs])
-
-    if oversample == 'mlsmote':
-        X_train_mil, y_train_mil, _ = mlsmote(X_train_mil, y_train_mil, oversample_iters=oversample_iters,
-                                              thresh_type=thresh_type)
-    elif oversample == 'lssmote':
-        X_train_mil, y_train_mil, _ = lssmote(X_train_mil, y_train_mil, oversample_iters=oversample_iters,
-                                              thresh_type=thresh_type)
-    elif oversample is not None:
-        raise ValueError("Unknown oversample method: {}".format(oversample))
-
-    if oversample is not None and (sensor_list is not None or proximity_list is not None):
-        raise ValueError('Oversampling with additional data sources is not supported')
-
-    # standardize
-    if standardize:
-        scaler = StandardScaler()
-        scaler.fit(np.array([emb for emb_grp in X_train_mil for emb in emb_grp]))
-
-        X_train_mil = [scaler.transform(emb_grp) for emb_grp in X_train_mil]
-        X_valid_mil = [scaler.transform(emb_grp) for emb_grp in X_valid_mil]
-    else:
-        scaler = None
-
-    # standardize
-    if pca:
-        if pca_components is not None:
-            pca_components = min(X_train_mil[0].shape[-1], pca_components)
-        pca_model = PCA(pca_components, whiten=True)
-        pca_model.fit(np.array([emb for emb_grp in X_train_mil for emb in emb_grp]))
-
-        X_train_mil = [pca_model.transform(emb_grp) for emb_grp in X_train_mil]
-        X_valid_mil = [pca_model.transform(emb_grp) for emb_grp in X_valid_mil]
-    else:
-        pca_model = None
-
-    train_mil_idxs = np.random.permutation(len(X_train_mil))
-
-    X_train_mil = np.array(X_train_mil)[train_mil_idxs]
-    y_train_mil = np.array(y_train_mil)[train_mil_idxs]
-    X_valid_mil = np.array(X_valid_mil)
-
-    # Add auxilliary information
-    if sensor_list is not None:
-        y_sensor_train_mil = []
-        for idx in train_file_idxs:
-            target = sensor_list[idx]
-            y_sensor_train_mil.append(target)
-
-        y_sensor_train_mil = np.array(y_sensor_train_mil)[train_mil_idxs]
-
-        y_sensor_valid_mil = []
-        for idx in valid_file_idxs:
-            target = sensor_list[idx]
-            y_sensor_valid_mil.append(target)
-        y_sensor_valid_mil = np.array(y_sensor_valid_mil)
-
-    if proximity_list is not None:
-        y_proximity_train_mil = []
-        for idx in train_file_idxs:
-            target = proximity_list[idx]
-            y_proximity_train_mil.append(target)
-        y_proximity_train_mil = np.array(y_proximity_train_mil)[train_mil_idxs]
-
-        y_proximity_valid_mil = []
-        for idx in valid_file_idxs:
-            target = proximity_list[idx]
-            y_proximity_valid_mil.append(target)
-        y_proximity_valid_mil = np.array(y_proximity_valid_mil)
-
-    if sensor_list is not None or proximity_list is not None:
-        y_train_mil = {'output': y_train_mil}
-        y_valid_mil = {'output': y_valid_mil}
-
-        if sensor_list is not None:
-            y_train_mil['sensor_output'] = y_sensor_train_mil
-            y_valid_mil['sensor_output'] = y_sensor_valid_mil
-
-        if proximity_list is not None:
-            y_train_mil['proximity_output'] = y_proximity_train_mil
-            y_valid_mil['proximity_output'] = y_proximity_valid_mil
-
-    return X_train_mil, y_train_mil, X_valid_mil, y_valid_mil, scaler, pca_model
+# def prepare_mil_data(train_file_idxs, valid_file_idxs, embeddings, target_list,
+#                      sensor_list=None, num_sensors=None, proximity_list=None,
+#                      standardize=True, pca=False, pca_components=None,
+#                      oversample=None, oversample_iters=1, thresh_type="mean"):
+#     """
+#     Prepare inputs and targets for MIL training using training and validation indices.
+#
+#     Parameters
+#     ----------
+#     train_file_idxs
+#     valid_file_idxs
+#     embeddings
+#     target_list
+#     standardize
+#     pca
+#     pca_components
+#     oversample
+#     oversample_iters
+#     thresh_type
+#
+#     Returns
+#     -------
+#     X_train
+#     y_train
+#     X_valid
+#     y_valid
+#     scaler
+#
+#     """
+#
+#     X_train_mil = np.array([embeddings[idx] for idx in train_file_idxs])
+#     X_valid_mil = np.array([embeddings[idx] for idx in valid_file_idxs])
+#     y_train_mil = np.array([target_list[idx] for idx in train_file_idxs])
+#     y_valid_mil = np.array([target_list[idx] for idx in valid_file_idxs])
+#
+#     if oversample == 'mlsmote':
+#         X_train_mil, y_train_mil, _ = mlsmote(X_train_mil, y_train_mil, oversample_iters=oversample_iters,
+#                                               thresh_type=thresh_type)
+#     elif oversample == 'lssmote':
+#         X_train_mil, y_train_mil, _ = lssmote(X_train_mil, y_train_mil, oversample_iters=oversample_iters,
+#                                               thresh_type=thresh_type)
+#     elif oversample is not None:
+#         raise ValueError("Unknown oversample method: {}".format(oversample))
+#
+#     if oversample is not None and (sensor_list is not None or proximity_list is not None):
+#         raise ValueError('Oversampling with additional data sources is not supported')
+#
+#     # standardize
+#     if standardize:
+#         scaler = StandardScaler()
+#         scaler.fit(np.array([emb for emb_grp in X_train_mil for emb in emb_grp]))
+#
+#         X_train_mil = [scaler.transform(emb_grp) for emb_grp in X_train_mil]
+#         X_valid_mil = [scaler.transform(emb_grp) for emb_grp in X_valid_mil]
+#     else:
+#         scaler = None
+#
+#     # standardize
+#     if pca:
+#         if pca_components is not None:
+#             pca_components = min(X_train_mil[0].shape[-1], pca_components)
+#         pca_model = PCA(pca_components, whiten=True)
+#         pca_model.fit(np.array([emb for emb_grp in X_train_mil for emb in emb_grp]))
+#
+#         X_train_mil = [pca_model.transform(emb_grp) for emb_grp in X_train_mil]
+#         X_valid_mil = [pca_model.transform(emb_grp) for emb_grp in X_valid_mil]
+#     else:
+#         pca_model = None
+#
+#     train_mil_idxs = np.random.permutation(len(X_train_mil))
+#
+#     X_train_mil = np.array(X_train_mil)[train_mil_idxs]
+#     y_train_mil = np.array(y_train_mil)[train_mil_idxs]
+#     X_valid_mil = np.array(X_valid_mil)
+#
+#     # Add auxilliary information
+#     if sensor_list is not None:
+#         y_sensor_train_mil = []
+#         for idx in train_file_idxs:
+#             target = sensor_list[idx]
+#             y_sensor_train_mil.append(target)
+#
+#         y_sensor_train_mil = np.array(y_sensor_train_mil)[train_mil_idxs]
+#
+#         y_sensor_valid_mil = []
+#         for idx in valid_file_idxs:
+#             target = sensor_list[idx]
+#             y_sensor_valid_mil.append(target)
+#         y_sensor_valid_mil = np.array(y_sensor_valid_mil)
+#
+#     if proximity_list is not None:
+#         y_proximity_train_mil = []
+#         for idx in train_file_idxs:
+#             target = proximity_list[idx]
+#             y_proximity_train_mil.append(target)
+#         y_proximity_train_mil = np.array(y_proximity_train_mil)[train_mil_idxs]
+#
+#         y_proximity_valid_mil = []
+#         for idx in valid_file_idxs:
+#             target = proximity_list[idx]
+#             y_proximity_valid_mil.append(target)
+#         y_proximity_valid_mil = np.array(y_proximity_valid_mil)
+#
+#     if sensor_list is not None or proximity_list is not None:
+#         y_train_mil = {'output': y_train_mil}
+#         y_valid_mil = {'output': y_valid_mil}
+#
+#         if sensor_list is not None:
+#             y_train_mil['sensor_output'] = y_sensor_train_mil
+#             y_valid_mil['sensor_output'] = y_sensor_valid_mil
+#
+#         if proximity_list is not None:
+#             y_train_mil['proximity_output'] = y_proximity_train_mil
+#             y_valid_mil['proximity_output'] = y_proximity_valid_mil
+#
+#     return X_train_mil, y_train_mil, X_valid_mil, y_valid_mil, scaler, pca_model
 
 
 def compute_cooccurrence_laplacian(y_train_mil):
@@ -1076,9 +1076,9 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
 
     print("* Saving model predictions.")
     results = {}
-    results['train'] = predict_framewise(raw, train_file_idxs, model,
+    results['train'], _, _ = predict_framewise(raw, train_file_idxs, model,
                                          scaler=scaler, pca_model=pca_model, **kwargs)
-    results['test'] = predict_framewise(raw, test_file_idxs, model,
+    results['test'], X_test, preds_test = predict_framewise(raw, test_file_idxs, model,
                                         scaler=scaler, pca_model=pca_model, **kwargs)
     if history is not None:
         results['train_history'] = history.history
@@ -1097,234 +1097,240 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
     print("* Saving Keras model.")
     keras.models.save_model(model, os.path.join(output_dir, 'mlp_ust.h5'))
 
+    # Save test data and predictions
+    print(" Saving test data and predictions")
+    with open(os.path.join(output_dir, 'test_data_preds.csv'), 'w') as f:
+        f.write('Data,Pred_class\n')
+        np.savetxt(f, zip(X_test, preds_test), delimiter=',', fmt='%f')
 
-def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="fine",
-              batch_size=64, num_epochs=100, patience=20, learning_rate=1e-4,
-              hidden_layer_size=128, num_hidden_layers=0, sensor_factor=False,
-              cooccurrence_loss=False, cooccurrence_loss_factor=1e-5,
-              proximity_factor=False, l2_reg=1e-5, standardize=True,
-              pca=False, pca_components=None, oversample=None, oversample_iters=1,
-              thresh_type="mean", split_path=None, optimizer='adam'):
-    """
-    Train and evaluate a MIL MLP model.
 
-    Parameters
-    ----------
-    annotation_path
-    emb_dir
-    output_dir
-    label_mode
-    batch_size
-    test_ratio
-    num_epochs
-    patience
-    learning_rate
-    hidden_layer_size
-    l2_reg
-    standardize
-    pca
-    pca_components
-    oversample
-    oversample_iters
-    thresh_type
-    split_path
-    optimizer
-
-    Returns
-    -------
-
-    """
-    # Load annotations and taxonomy
-    print("* Loading dataset.")
-    annotation_data = pd.read_csv(annotation_path).sort_values('audio_filename')
-    with open(taxonomy_path, 'r') as f:
-        taxonomy = yaml.load(f, Loader=yaml.Loader)
-
-    file_list = annotation_data.sort_values('audio_filename')['audio_filename'].unique().tolist()
-    num_sensors = len(annotation_data.sort_values('sensor_id')['sensor_id'].unique().tolist())
-
-    full_fine_target_labels = ["{}-{}_{}".format(coarse_id, fine_id, fine_label)
-                               for coarse_id, fine_dict in taxonomy['fine'].items()
-                               for fine_id, fine_label in fine_dict.items()]
-    fine_target_labels = [x for x in full_fine_target_labels
-                          if x.split('_')[0].split('-')[1] != 'X']
-    coarse_target_labels = ["_".join([str(k), v])
-                            for k, v in taxonomy['coarse'].items()]
-
-    print("* Preparing training data.")
-
-    # For fine, we include incomplete labels in targets for computing the loss
-    fine_target_list = get_file_targets(annotation_data, full_fine_target_labels)
-    coarse_target_list = get_file_targets(annotation_data, coarse_target_labels)
-    train_file_idxs, test_file_idxs = get_subset_split(annotation_data, split_path=split_path)
-
-    if sensor_factor:
-        sensor_target_list = get_file_sensor_targets(annotation_data)
-    else:
-        sensor_target_list = None
-
-    if proximity_factor:
-        proximity_target_list = get_file_proximity_targets(annotation_data, fine_target_labels)
-    else:
-        proximity_target_list = None
-
-    if label_mode == "fine":
-        target_list = fine_target_list
-        labels = fine_target_labels
-    elif label_mode == "coarse":
-        target_list = coarse_target_list
-        labels = coarse_target_labels
-    else:
-        raise ValueError("Invalid label mode: {}".format(label_mode))
-
-    num_classes = len(labels)
-
-    embeddings = load_raw_audio(file_list, emb_dir)
-
-    X_train, y_train, X_valid, y_valid, scaler, pca_model \
-        = prepare_mil_data(train_file_idxs, test_file_idxs,
-                           embeddings, target_list,
-                           sensor_list=sensor_target_list,
-                           num_sensors=num_sensors,
-                           proximity_list=proximity_target_list,
-                           standardize=standardize, pca=pca,
-                           pca_components=pca_components,
-                           oversample=oversample,
-                           oversample_iters=oversample_iters,
-                           thresh_type=thresh_type)
-
-    if scaler is not None:
-        scaler_path = os.path.join(output_dir, 'stdizer.pkl')
-        with open(scaler_path, 'wb') as f:
-            pk.dump(scaler, f)
-
-    if pca_model is not None:
-        pca_path = os.path.join(output_dir, 'pca.pkl')
-        with open(pca_path, 'wb') as f:
-            pk.dump(pca_model, f)
-
-    _, num_frames, emb_size = X_train.shape
-
-    model = construct_mlp_mil(num_frames,
-                              emb_size,
-                              num_classes,
-                              num_hidden_layers=num_hidden_layers,
-                              sensor_factor=sensor_factor,
-                              num_sensors=num_sensors,
-                              proximity_factor=proximity_factor,
-                              num_proximity_classes=len(fine_target_labels),
-                              hidden_layer_size=hidden_layer_size,
-                              l2_reg=l2_reg)
-
-    if label_mode == "fine":
-        full_coarse_to_fine_terminal_idxs = np.cumsum(
-            [len(fine_dict) for fine_dict in taxonomy['fine'].values()])
-        incomplete_fine_subidxs = [len(fine_dict) - 1 if 'X' in fine_dict else None
-                                   for fine_dict in taxonomy['fine'].values()]
-        coarse_to_fine_end_idxs = np.cumsum([len(fine_dict) - 1 if 'X' in fine_dict else len(fine_dict)
-                                             for fine_dict in taxonomy['fine'].values()])
-
-        # Create loss function that only adds loss for fine labels for which
-        # the we don't have any incomplete labels
-        def masked_loss(y_true, y_pred):
-            loss = None
-            for coarse_idx in range(len(full_coarse_to_fine_terminal_idxs)):
-                true_terminal_idx = full_coarse_to_fine_terminal_idxs[coarse_idx]
-                true_incomplete_subidx = incomplete_fine_subidxs[coarse_idx]
-                pred_end_idx = coarse_to_fine_end_idxs[coarse_idx]
-
-                if coarse_idx != 0:
-                    true_start_idx = full_coarse_to_fine_terminal_idxs[coarse_idx - 1]
-                    pred_start_idx = coarse_to_fine_end_idxs[coarse_idx - 1]
-                else:
-                    true_start_idx = 0
-                    pred_start_idx = 0
-
-                if true_incomplete_subidx is None:
-                    true_end_idx = true_terminal_idx
-
-                    sub_true = y_true[:, true_start_idx:true_end_idx]
-                    sub_pred = y_pred[:, pred_start_idx:pred_end_idx]
-
-                else:
-                    # Don't include incomplete label
-                    true_end_idx = true_terminal_idx - 1
-                    true_incomplete_idx = true_incomplete_subidx + true_start_idx
-                    assert true_end_idx - true_start_idx == pred_end_idx - pred_start_idx
-                    assert true_incomplete_idx == true_end_idx
-
-                    # 1 if not incomplete, 0 if incomplete
-                    mask = K.expand_dims(1 - y_true[:, true_incomplete_idx])
-
-                    # Mask the target and predictions. If the mask is 0,
-                    # all entries will be 0 and the BCE will be 0.
-                    # This has the effect of masking the BCE for each fine
-                    # label within a coarse label if an incomplete label exists
-                    sub_true = y_true[:, true_start_idx:true_end_idx] * mask
-                    sub_pred = y_pred[:, pred_start_idx:pred_end_idx] * mask
-
-                if loss is not None:
-                    loss += K.sum(K.binary_crossentropy(sub_true, sub_pred))
-                else:
-                    loss = K.sum(K.binary_crossentropy(sub_true, sub_pred))
-
-            return loss
-
-        loss_func = masked_loss
-    else:
-        loss_func = K.binary_crossentropy
-
-    if cooccurrence_loss:
-        if sensor_factor or proximity_factor:
-            L = compute_cooccurrence_laplacian(y_train['output'])
-        else:
-            L = compute_cooccurrence_laplacian(y_train)
-        laplacian_loss = create_graph_laplacian_loss(L)
-        alpha = cooccurrence_loss_factor
-        original_loss_func = loss_func
-
-        def loss_with_cooccurrence(y_true, y_pred):
-            return original_loss_func(y_true, y_pred) + alpha * laplacian_loss(y_true, y_pred)
-
-        loss_func = loss_with_cooccurrence
-
-    loss = loss_func
-    loss_weights = None
-    if sensor_factor or proximity_factor:
-        loss = {'output': loss_func}
-        loss_weights = {'output': 1.0}
-        if sensor_factor:
-            loss['sensor_output'] = 'categorical_crossentropy'
-            loss_weights['sensor_output'] = 1.0
-        if proximity_factor:
-            loss['proximity_output'] = 'categorical_crossentropy'
-            loss_weights['proximity_output'] = 1.0
-
-    print("* Training model.")
-    history = train_model(model, X_train, y_train, X_valid, y_valid,
-                          output_dir, loss=loss, loss_weights=loss_weights,
-                          batch_size=batch_size, num_epochs=num_epochs,
-                          patience=patience, learning_rate=learning_rate,
-                          optimizer=optimizer)
-
-    # Reload checkpointed file
-    model_weight_file = os.path.join(output_dir, 'model_best.h5')
-    model.load_weights(model_weight_file)
-
-    print("* Saving model predictions.")
-    results = {}
-    results['train'] = predict_mil(embeddings, train_file_idxs, model,
-                                   scaler=scaler, pca_model=pca_model)
-    results['test'] = predict_mil(embeddings, test_file_idxs, model,
-                                  scaler=scaler, pca_model=pca_model)
-    results['train_history'] = history.history
-
-    results_path = os.path.join(output_dir, "results.json")
-    with open(results_path, "w") as f:
-        json.dump(results, f, indent=2)
-
-    generate_output_file(results['test'], test_file_idxs, output_dir, file_list,
-                         "", label_mode, taxonomy)
+# def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="fine",
+#               batch_size=64, num_epochs=100, patience=20, learning_rate=1e-4,
+#               hidden_layer_size=128, num_hidden_layers=0, sensor_factor=False,
+#               cooccurrence_loss=False, cooccurrence_loss_factor=1e-5,
+#               proximity_factor=False, l2_reg=1e-5, standardize=True,
+#               pca=False, pca_components=None, oversample=None, oversample_iters=1,
+#               thresh_type="mean", split_path=None, optimizer='adam'):
+#     """
+#     Train and evaluate a MIL MLP model.
+#
+#     Parameters
+#     ----------
+#     annotation_path
+#     emb_dir
+#     output_dir
+#     label_mode
+#     batch_size
+#     test_ratio
+#     num_epochs
+#     patience
+#     learning_rate
+#     hidden_layer_size
+#     l2_reg
+#     standardize
+#     pca
+#     pca_components
+#     oversample
+#     oversample_iters
+#     thresh_type
+#     split_path
+#     optimizer
+#
+#     Returns
+#     -------
+#
+#     """
+#     # Load annotations and taxonomy
+#     print("* Loading dataset.")
+#     annotation_data = pd.read_csv(annotation_path).sort_values('audio_filename')
+#     with open(taxonomy_path, 'r') as f:
+#         taxonomy = yaml.load(f, Loader=yaml.Loader)
+#
+#     file_list = annotation_data.sort_values('audio_filename')['audio_filename'].unique().tolist()
+#     num_sensors = len(annotation_data.sort_values('sensor_id')['sensor_id'].unique().tolist())
+#
+#     full_fine_target_labels = ["{}-{}_{}".format(coarse_id, fine_id, fine_label)
+#                                for coarse_id, fine_dict in taxonomy['fine'].items()
+#                                for fine_id, fine_label in fine_dict.items()]
+#     fine_target_labels = [x for x in full_fine_target_labels
+#                           if x.split('_')[0].split('-')[1] != 'X']
+#     coarse_target_labels = ["_".join([str(k), v])
+#                             for k, v in taxonomy['coarse'].items()]
+#
+#     print("* Preparing training data.")
+#
+#     # For fine, we include incomplete labels in targets for computing the loss
+#     fine_target_list = get_file_targets(annotation_data, full_fine_target_labels)
+#     coarse_target_list = get_file_targets(annotation_data, coarse_target_labels)
+#     train_file_idxs, test_file_idxs = get_subset_split(annotation_data, split_path=split_path)
+#
+#     if sensor_factor:
+#         sensor_target_list = get_file_sensor_targets(annotation_data)
+#     else:
+#         sensor_target_list = None
+#
+#     if proximity_factor:
+#         proximity_target_list = get_file_proximity_targets(annotation_data, fine_target_labels)
+#     else:
+#         proximity_target_list = None
+#
+#     if label_mode == "fine":
+#         target_list = fine_target_list
+#         labels = fine_target_labels
+#     elif label_mode == "coarse":
+#         target_list = coarse_target_list
+#         labels = coarse_target_labels
+#     else:
+#         raise ValueError("Invalid label mode: {}".format(label_mode))
+#
+#     num_classes = len(labels)
+#
+#     embeddings = load_raw_audio(file_list, emb_dir)
+#
+#     X_train, y_train, X_valid, y_valid, scaler, pca_model \
+#         = prepare_mil_data(train_file_idxs, test_file_idxs,
+#                            embeddings, target_list,
+#                            sensor_list=sensor_target_list,
+#                            num_sensors=num_sensors,
+#                            proximity_list=proximity_target_list,
+#                            standardize=standardize, pca=pca,
+#                            pca_components=pca_components,
+#                            oversample=oversample,
+#                            oversample_iters=oversample_iters,
+#                            thresh_type=thresh_type)
+#
+#     if scaler is not None:
+#         scaler_path = os.path.join(output_dir, 'stdizer.pkl')
+#         with open(scaler_path, 'wb') as f:
+#             pk.dump(scaler, f)
+#
+#     if pca_model is not None:
+#         pca_path = os.path.join(output_dir, 'pca.pkl')
+#         with open(pca_path, 'wb') as f:
+#             pk.dump(pca_model, f)
+#
+#     _, num_frames, emb_size = X_train.shape
+#
+#     model = construct_mlp_mil(num_frames,
+#                               emb_size,
+#                               num_classes,
+#                               num_hidden_layers=num_hidden_layers,
+#                               sensor_factor=sensor_factor,
+#                               num_sensors=num_sensors,
+#                               proximity_factor=proximity_factor,
+#                               num_proximity_classes=len(fine_target_labels),
+#                               hidden_layer_size=hidden_layer_size,
+#                               l2_reg=l2_reg)
+#
+#     if label_mode == "fine":
+#         full_coarse_to_fine_terminal_idxs = np.cumsum(
+#             [len(fine_dict) for fine_dict in taxonomy['fine'].values()])
+#         incomplete_fine_subidxs = [len(fine_dict) - 1 if 'X' in fine_dict else None
+#                                    for fine_dict in taxonomy['fine'].values()]
+#         coarse_to_fine_end_idxs = np.cumsum([len(fine_dict) - 1 if 'X' in fine_dict else len(fine_dict)
+#                                              for fine_dict in taxonomy['fine'].values()])
+#
+#         # Create loss function that only adds loss for fine labels for which
+#         # the we don't have any incomplete labels
+#         def masked_loss(y_true, y_pred):
+#             loss = None
+#             for coarse_idx in range(len(full_coarse_to_fine_terminal_idxs)):
+#                 true_terminal_idx = full_coarse_to_fine_terminal_idxs[coarse_idx]
+#                 true_incomplete_subidx = incomplete_fine_subidxs[coarse_idx]
+#                 pred_end_idx = coarse_to_fine_end_idxs[coarse_idx]
+#
+#                 if coarse_idx != 0:
+#                     true_start_idx = full_coarse_to_fine_terminal_idxs[coarse_idx - 1]
+#                     pred_start_idx = coarse_to_fine_end_idxs[coarse_idx - 1]
+#                 else:
+#                     true_start_idx = 0
+#                     pred_start_idx = 0
+#
+#                 if true_incomplete_subidx is None:
+#                     true_end_idx = true_terminal_idx
+#
+#                     sub_true = y_true[:, true_start_idx:true_end_idx]
+#                     sub_pred = y_pred[:, pred_start_idx:pred_end_idx]
+#
+#                 else:
+#                     # Don't include incomplete label
+#                     true_end_idx = true_terminal_idx - 1
+#                     true_incomplete_idx = true_incomplete_subidx + true_start_idx
+#                     assert true_end_idx - true_start_idx == pred_end_idx - pred_start_idx
+#                     assert true_incomplete_idx == true_end_idx
+#
+#                     # 1 if not incomplete, 0 if incomplete
+#                     mask = K.expand_dims(1 - y_true[:, true_incomplete_idx])
+#
+#                     # Mask the target and predictions. If the mask is 0,
+#                     # all entries will be 0 and the BCE will be 0.
+#                     # This has the effect of masking the BCE for each fine
+#                     # label within a coarse label if an incomplete label exists
+#                     sub_true = y_true[:, true_start_idx:true_end_idx] * mask
+#                     sub_pred = y_pred[:, pred_start_idx:pred_end_idx] * mask
+#
+#                 if loss is not None:
+#                     loss += K.sum(K.binary_crossentropy(sub_true, sub_pred))
+#                 else:
+#                     loss = K.sum(K.binary_crossentropy(sub_true, sub_pred))
+#
+#             return loss
+#
+#         loss_func = masked_loss
+#     else:
+#         loss_func = K.binary_crossentropy
+#
+#     if cooccurrence_loss:
+#         if sensor_factor or proximity_factor:
+#             L = compute_cooccurrence_laplacian(y_train['output'])
+#         else:
+#             L = compute_cooccurrence_laplacian(y_train)
+#         laplacian_loss = create_graph_laplacian_loss(L)
+#         alpha = cooccurrence_loss_factor
+#         original_loss_func = loss_func
+#
+#         def loss_with_cooccurrence(y_true, y_pred):
+#             return original_loss_func(y_true, y_pred) + alpha * laplacian_loss(y_true, y_pred)
+#
+#         loss_func = loss_with_cooccurrence
+#
+#     loss = loss_func
+#     loss_weights = None
+#     if sensor_factor or proximity_factor:
+#         loss = {'output': loss_func}
+#         loss_weights = {'output': 1.0}
+#         if sensor_factor:
+#             loss['sensor_output'] = 'categorical_crossentropy'
+#             loss_weights['sensor_output'] = 1.0
+#         if proximity_factor:
+#             loss['proximity_output'] = 'categorical_crossentropy'
+#             loss_weights['proximity_output'] = 1.0
+#
+#     print("* Training model.")
+#     history = train_model(model, X_train, y_train, X_valid, y_valid,
+#                           output_dir, loss=loss, loss_weights=loss_weights,
+#                           batch_size=batch_size, num_epochs=num_epochs,
+#                           patience=patience, learning_rate=learning_rate,
+#                           optimizer=optimizer)
+#
+#     # Reload checkpointed file
+#     model_weight_file = os.path.join(output_dir, 'model_best.h5')
+#     model.load_weights(model_weight_file)
+#
+#     print("* Saving model predictions.")
+#     results = {}
+#     results['train'] = predict_mil(embeddings, train_file_idxs, model,
+#                                    scaler=scaler, pca_model=pca_model)
+#     results['test'] = predict_mil(embeddings, test_file_idxs, model,
+#                                   scaler=scaler, pca_model=pca_model)
+#     results['train_history'] = history.history
+#
+#     results_path = os.path.join(output_dir, "results.json")
+#     with open(results_path, "w") as f:
+#         json.dump(results, f, indent=2)
+#
+#     generate_output_file(results['test'], test_file_idxs, output_dir, file_list,
+#                          "", label_mode, taxonomy)
 
 
 ## MODEL EVALUATION
@@ -1349,6 +1355,8 @@ def predict_framewise(embeddings, test_file_idxs, model, scaler=None, pca_model=
     y_pred_mean = []
     y_pred_softmax = []
 
+    data = []
+
     for idx in test_file_idxs:
         if scaler is None:
             X_ = np.array(embeddings[idx])
@@ -1357,6 +1365,9 @@ def predict_framewise(embeddings, test_file_idxs, model, scaler=None, pca_model=
 
         if pca_model is not None:
             X_ = pca_model.transform(X_)
+
+        # Append raw data
+        data.append(X_)
 
         # Transform to melspecs
         X_ = transform_input_to_melspec(X_, **kwargs)
@@ -1377,40 +1388,40 @@ def predict_framewise(embeddings, test_file_idxs, model, scaler=None, pca_model=
         'softmax': y_pred_softmax
     }
 
-    return results
+    return results, np.array(data), np.array(y_pred_max)
 
 
-def predict_mil(embeddings, test_file_idxs, model, scaler=None, pca_model=None):
-    """
-    Evaluate the output of a MIL classification model.
-
-    Parameters
-    ----------
-    embeddings
-    test_file_idxs
-    model
-    scaler
-    pca_model
-
-    Returns
-    -------
-    results
-    """
-    if scaler is None:
-        X = np.array([embeddings[idx] for idx in test_file_idxs])
-    else:
-        X = np.array([scaler.transform(embeddings[idx]) for idx in test_file_idxs])
-
-    if pca_model is not None:
-        X = np.array([pca_model.transform(ex) for ex in X])
-
-    pred = model.predict(X)
-
-    # Discard auxilliary predictions
-    if type(pred) == list:
-        pred = pred[0]
-
-    return pred.tolist()
+# def predict_mil(embeddings, test_file_idxs, model, scaler=None, pca_model=None):
+#     """
+#     Evaluate the output of a MIL classification model.
+#
+#     Parameters
+#     ----------
+#     embeddings
+#     test_file_idxs
+#     model
+#     scaler
+#     pca_model
+#
+#     Returns
+#     -------
+#     results
+#     """
+#     if scaler is None:
+#         X = np.array([embeddings[idx] for idx in test_file_idxs])
+#     else:
+#         X = np.array([scaler.transform(embeddings[idx]) for idx in test_file_idxs])
+#
+#     if pca_model is not None:
+#         X = np.array([pca_model.transform(ex) for ex in X])
+#
+#     pred = model.predict(X)
+#
+#     # Discard auxilliary predictions
+#     if type(pred) == list:
+#         pred = pred[0]
+#
+#     return pred.tolist()
 
 
 def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
