@@ -302,7 +302,7 @@ def construct_mlp_framewise(cnn, num_classes, sensor_factor=True,
     y = cnn.output
 
     # Add a batchnorm layer
-    y = BatchNormalization()(y)
+    y = BatchNormalization(name='batch_normalization_dst')(y)
 
     # Add hidden layers
     for idx in range(num_hidden_layers):
