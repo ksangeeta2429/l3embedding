@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import oyaml as yaml
 
+import librosa
 import keras
 import tensorflow as tf
 from keras.layers import Input, Dense, TimeDistributed, GlobalAveragePooling1D, BatchNormalization
@@ -26,6 +27,32 @@ from scipy_optimizer import ScipyOpt
 
 
 ## HELPERS
+def transform_input_to_melspec(frames, n_fft=2048, n_mels=256,
+                               mel_hop_length=242, sr=48000, fmax=None):
+    def amplitude_to_db(S, amin=1e-10, dynamic_range=80.0):
+        magnitude = np.abs(S)
+        power = np.square(magnitude, out=magnitude)
+        ref_value = power.max()
+
+        log_spec = 10.0 * np.log10(np.maximum(amin, magnitude))
+        log_spec -= log_spec.max()
+
+        log_spec = np.maximum(log_spec, -dynamic_range)
+
+        return log_spec
+
+    X = []
+    for frame in frames:
+        S = np.abs(librosa.core.stft(frame, n_fft=n_fft, hop_length=mel_hop_length,
+                                     window='hann', center=True,
+                                     pad_mode='constant'))
+        S = librosa.feature.melspectrogram(sr=sr, S=S, n_mels=n_mels, fmax=fmax,
+                                           power=1.0, htk=True)
+        S = amplitude_to_db(np.array(S))
+        X.append(S)
+
+    return np.array(X)[:, :, :, np.newaxis]
+
 
 def load_raw_audio(file_list, emb_dir):
     """
@@ -252,13 +279,13 @@ def softmax(X, theta=1.0, axis=None):
     y = y * float(theta)
 
     # subtract the max for numerical stability
-    y = y - np.expand_dims(np.max(y, axis = axis), axis)
+    y = y - np.expand_dims(np.max(y, axis=axis), axis)
 
     # exponentiate y
     y = np.exp(y)
 
     # take the sum along the specified axis
-    ax_sum = np.expand_dims(np.sum(y, axis = axis), axis)
+    ax_sum = np.expand_dims(np.sum(y, axis=axis), axis)
 
     # finally: divide elementwise
     p = y / ax_sum
@@ -295,10 +322,10 @@ def construct_mlp_framewise(cnn, num_classes, sensor_factor=True,
     """
     # First set all layers of cnn to non-trainable
     for l in cnn.layers:
-        l.trainable=False
+        l.trainable = False
 
     # Input layer
-    #inp = Input(shape=(emb_size,), dtype='float32', name='input')
+    # inp = Input(shape=(emb_size,), dtype='float32', name='input')
     y = cnn.output
 
     # Add a batchnorm layer
@@ -308,7 +335,7 @@ def construct_mlp_framewise(cnn, num_classes, sensor_factor=True,
     for idx in range(num_hidden_layers):
         y = Dense(hidden_layer_size, activation='relu',
                   kernel_regularizer=regularizers.l2(l2_reg),
-                  name='dense_{}'.format(idx+1))(y)
+                  name='dense_{}'.format(idx + 1))(y)
 
     if sensor_factor:
         assert num_sensors is not None
@@ -382,7 +409,7 @@ def construct_mlp_mil(num_frames, emb_size, num_classes, sensor_factor=False,
     for idx in range(num_hidden_layers):
         y = TimeDistributed(Dense(hidden_layer_size, activation='relu',
                                   kernel_regularizer=regularizers.l2(l2_reg)),
-                            name='dense_{}'.format(idx+1),
+                            name='dense_{}'.format(idx + 1),
                             input_shape=(num_frames, repr_size))(y)
         repr_size = hidden_layer_size
 
@@ -675,7 +702,6 @@ def prepare_mil_data(train_file_idxs, valid_file_idxs, embeddings, target_list,
     y_train_mil = np.array(y_train_mil)[train_mil_idxs]
     X_valid_mil = np.array(X_valid_mil)
 
-
     # Add auxilliary information
     if sensor_list is not None:
         y_sensor_train_mil = []
@@ -727,7 +753,7 @@ def compute_cooccurrence_laplacian(y_train_mil):
     for y in y_train_mil:
         active_classes = np.nonzero(y)[0]
         for idx, src_cls_idx in enumerate(active_classes):
-            for dst_cls_idx in active_classes[idx+1:]:
+            for dst_cls_idx in active_classes[idx + 1:]:
                 A[src_cls_idx, dst_cls_idx] += 1
                 A[dst_cls_idx, src_cls_idx] += 1
 
@@ -742,9 +768,11 @@ def compute_cooccurrence_laplacian(y_train_mil):
 
 def create_graph_laplacian_loss(L):
     L = K.variable(L, dtype='float32')
+
     def loss(y_true, y_pred):
         y = K.expand_dims(K.sum(y_pred, axis=0))
         return K.dot(K.transpose(y), K.dot(L, y))
+
     return loss
 
 
@@ -810,7 +838,7 @@ def train_model(model, X_train, y_train, X_valid, y_valid, output_dir,
         raise ValueError('Invalid optimizer: {}'.format(optimizer))
 
     model.compile(opt, loss=loss,
-                       loss_weights=loss_weights, metrics=metrics)
+                  loss_weights=loss_weights, metrics=metrics)
 
     if num_epochs > 0:
         history = model.fit(
@@ -832,7 +860,7 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
                     num_hidden_layers=0, l2_reg=1e-5, standardize=True,
                     pca=False, pca_components=None, oversample=None,
                     oversample_iters=1, thresh_type='mean', split_path=None,
-                    optimizer='adam'):
+                    optimizer='adam', **kwargs):
     """
     Train and evaluate a framewise MLP model.
 
@@ -876,9 +904,9 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
                                for coarse_id, fine_dict in taxonomy['fine'].items()
                                for fine_id, fine_label in fine_dict.items()]
     fine_target_labels = [x for x in full_fine_target_labels
-                            if x.split('_')[0].split('-')[1] != 'X']
+                          if x.split('_')[0].split('-')[1] != 'X']
     coarse_target_labels = ["_".join([str(k), v])
-                            for k,v in taxonomy['coarse'].items()]
+                            for k, v in taxonomy['coarse'].items()]
 
     print("* Preparing training data.")
 
@@ -931,7 +959,7 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
         with open(pca_path, 'wb') as f:
             pk.dump(pca_model, f)
 
-    #_, emb_size = X_train.shape
+    # _, emb_size = X_train.shape
     l3cnn = load_model(l3_path)
 
     model = construct_mlp_framewise(l3cnn, num_classes,
@@ -961,8 +989,8 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
                 pred_end_idx = coarse_to_fine_end_idxs[coarse_idx]
 
                 if coarse_idx != 0:
-                    true_start_idx = full_coarse_to_fine_terminal_idxs[coarse_idx-1]
-                    pred_start_idx = coarse_to_fine_end_idxs[coarse_idx-1]
+                    true_start_idx = full_coarse_to_fine_terminal_idxs[coarse_idx - 1]
+                    pred_start_idx = coarse_to_fine_end_idxs[coarse_idx - 1]
                 else:
                     true_start_idx = 0
                     pred_start_idx = 0
@@ -996,6 +1024,7 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
                     loss = K.sum(K.binary_crossentropy(sub_true, sub_pred))
 
             return loss
+
         loss_func = masked_loss
     else:
         loss_func = K.binary_crossentropy
@@ -1008,8 +1037,10 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
         laplacian_loss = create_graph_laplacian_loss(L)
         alpha = cooccurrence_loss_factor
         original_loss_func = loss_func
+
         def loss_with_cooccurrence(y_true, y_pred):
             return original_loss_func(y_true, y_pred) + alpha * laplacian_loss(y_true, y_pred)
+
         loss_func = loss_with_cooccurrence
 
     loss = loss_func
@@ -1025,6 +1056,10 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
             loss_weights['proximity_output'] = 1.0
 
     print("* Training model.")
+    # Transform
+    X_train = transform_input_to_melspec(X_train, **kwargs)
+    X_valid = transform_input_to_melspec(X_valid, **kwargs)
+
     history = train_model(model, X_train, y_train, X_valid, y_valid,
                           output_dir, loss=loss, loss_weights=loss_weights,
                           batch_size=batch_size, num_epochs=num_epochs,
@@ -1038,9 +1073,9 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
     print("* Saving model predictions.")
     results = {}
     results['train'] = predict_framewise(raw, train_file_idxs, model,
-                                         scaler=scaler, pca_model=pca_model)
+                                         scaler=scaler, pca_model=pca_model, **kwargs)
     results['test'] = predict_framewise(raw, test_file_idxs, model,
-                                        scaler=scaler, pca_model=pca_model)
+                                        scaler=scaler, pca_model=pca_model, **kwargs)
     if history is not None:
         results['train_history'] = history.history
     else:
@@ -1053,10 +1088,11 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
     for aggregation_type, y_pred in results['test'].items():
         generate_output_file(y_pred, test_file_idxs, output_dir, file_list,
                              aggregation_type, label_mode, taxonomy)
-    
+
     # Save Keras model in output directory
     print("* Saving Keras model.")
     keras.models.save_model(model, os.path.join(output_dir, 'mlp_ust.h5'))
+
 
 def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="fine",
               batch_size=64, num_epochs=100, patience=20, learning_rate=1e-4,
@@ -1109,7 +1145,7 @@ def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="f
     fine_target_labels = [x for x in full_fine_target_labels
                           if x.split('_')[0].split('-')[1] != 'X']
     coarse_target_labels = ["_".join([str(k), v])
-                            for k,v in taxonomy['coarse'].items()]
+                            for k, v in taxonomy['coarse'].items()]
 
     print("* Preparing training data.")
 
@@ -1194,8 +1230,8 @@ def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="f
                 pred_end_idx = coarse_to_fine_end_idxs[coarse_idx]
 
                 if coarse_idx != 0:
-                    true_start_idx = full_coarse_to_fine_terminal_idxs[coarse_idx-1]
-                    pred_start_idx = coarse_to_fine_end_idxs[coarse_idx-1]
+                    true_start_idx = full_coarse_to_fine_terminal_idxs[coarse_idx - 1]
+                    pred_start_idx = coarse_to_fine_end_idxs[coarse_idx - 1]
                 else:
                     true_start_idx = 0
                     pred_start_idx = 0
@@ -1229,6 +1265,7 @@ def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="f
                     loss = K.sum(K.binary_crossentropy(sub_true, sub_pred))
 
             return loss
+
         loss_func = masked_loss
     else:
         loss_func = K.binary_crossentropy
@@ -1241,8 +1278,10 @@ def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="f
         laplacian_loss = create_graph_laplacian_loss(L)
         alpha = cooccurrence_loss_factor
         original_loss_func = loss_func
+
         def loss_with_cooccurrence(y_true, y_pred):
             return original_loss_func(y_true, y_pred) + alpha * laplacian_loss(y_true, y_pred)
+
         loss_func = loss_with_cooccurrence
 
     loss = loss_func
@@ -1286,7 +1325,7 @@ def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="f
 
 ## MODEL EVALUATION
 
-def predict_framewise(embeddings, test_file_idxs, model, scaler=None, pca_model=None):
+def predict_framewise(embeddings, test_file_idxs, model, scaler=None, pca_model=None, **kwargs):
     """
     Evaluate the output of a framewise classification model.
 
@@ -1315,10 +1354,14 @@ def predict_framewise(embeddings, test_file_idxs, model, scaler=None, pca_model=
         if pca_model is not None:
             X_ = pca_model.transform(X_)
 
+        # Transform to melspecs
+        X_ = transform_input_to_melspec(X_, **kwargs)
+
         pred_frame = model.predict(X_)
         # Discard auxilliary predictions
         if type(pred_frame) == list:
             pred_frame = pred_frame[0]
+
 
         y_pred_max.append(pred_frame.max(axis=0).tolist())
         y_pred_mean.append(pred_frame.mean(axis=0).tolist())
@@ -1392,14 +1435,13 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
     test_file_list = [file_list[idx] for idx in test_file_idxs]
 
     coarse_fine_labels = [["{}-{}_{}".format(coarse_id, fine_id, fine_label)
-                             for fine_id, fine_label in fine_dict.items()]
-                           for coarse_id, fine_dict in taxonomy['fine'].items()]
+                           for fine_id, fine_label in fine_dict.items()]
+                          for coarse_id, fine_dict in taxonomy['fine'].items()]
 
     full_fine_target_labels = [fine_label for fine_list in coarse_fine_labels
-                                          for fine_label in fine_list]
+                               for fine_label in fine_list]
     coarse_target_labels = ["_".join([str(k), v])
-                            for k,v in taxonomy['coarse'].items()]
-
+                            for k, v in taxonomy['coarse'].items()]
 
     with open(output_path, 'w') as f:
         csvwriter = csv.writer(f)
@@ -1476,12 +1518,18 @@ if __name__ == '__main__':
     parser.add_argument("--oversample", type=str, choices=["mlsmote", "lssmote"])
     parser.add_argument("--oversample_iters", type=int, default=1)
     parser.add_argument("--thresh_type", type=str, default="mean",
-                        choices=["mean"] + ["percentile_{}".format(i) for i in range(1,100)])
+                        choices=["mean"] + ["percentile_{}".format(i) for i in range(1, 100)])
     parser.add_argument("--target_mode", type=str, choices=["framewise", "mil"],
                         default='framewise')
     parser.add_argument("--no_timestamp", action='store_true')
     parser.add_argument("--split_path", type=str)
     parser.add_argument("--optimizer", type=str, choices=["adam", "lbfgs"])
+
+    parser.add_argument("--n_fft", type=int, default=2048)
+    parser.add_argument("--n_mels", type=int, default=256)
+    parser.add_argument("--mel_hop_length", type=int, default=242)
+    parser.add_argument("--sr", type=int, default=48000)
+    parser.add_argument("--fmax", type=int, default=None)
 
     args = parser.parse_args()
 
@@ -1545,11 +1593,17 @@ if __name__ == '__main__':
                         cooccurrence_loss=args.cooccurrence_loss,
                         cooccurrence_loss_factor=args.cooccurrence_loss_factor,
                         l2_reg=args.l2_reg,
-                        standardize=False, #(not args.no_standardize),
+                        standardize=False,  # (not args.no_standardize),
                         pca=args.pca,
                         pca_components=args.pca_components,
                         oversample=args.oversample,
                         oversample_iters=args.oversample_iters,
                         thresh_type=args.thresh_type,
                         split_path=args.split_path,
-                        optimizer=args.optimizer)
+                        optimizer=args.optimizer,
+                        n_fft=args.n_fft,
+                        n_mels=args.n_mels,
+                        mel_hop_length=args.mel_hop_length,
+                        sr=args.sr,
+                        fmax=args.fmax
+                        )
