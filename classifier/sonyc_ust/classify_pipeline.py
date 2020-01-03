@@ -1091,7 +1091,7 @@ def train_framewise(annotation_path, taxonomy_path, l3_path, raw_dir, output_dir
 
     # Save Keras model in output directory
     print("* Saving Keras model.")
-    keras.models.save_model(model, os.path.join(output_dir, 'pipeline_mlp_ust.h5'))
+    keras.models.save_model(model, os.path.join(output_dir, 'mlp_ust.h5'))
 
 
 def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="fine",
@@ -1579,7 +1579,7 @@ if __name__ == '__main__':
         train_framewise(args.annotation_path,
                         args.taxonomy_path,
                         args.l3_path,
-                        args.raw_dir,
+                        args.emb_dir,
                         out_dir,
                         label_mode=args.label_mode,
                         batch_size=args.batch_size,
