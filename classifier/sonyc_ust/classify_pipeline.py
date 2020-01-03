@@ -13,7 +13,7 @@ import oyaml as yaml
 
 import keras
 import tensorflow as tf
-from keras.layers import Input, Dense, TimeDistributed, GlobalAveragePooling1D
+from keras.layers import Input, Dense, TimeDistributed, GlobalAveragePooling1D, BatchNormalization
 from keras.models import Model, load_model
 from keras import regularizers
 from keras.optimizers import Adam
@@ -296,10 +296,13 @@ def construct_mlp_framewise(cnn, num_classes, sensor_factor=True,
     # First set all layers of cnn to non-trainable
     for l in cnn.layers:
         l.trainable=False
-        
+
     # Input layer
     #inp = Input(shape=(emb_size,), dtype='float32', name='input')
     y = cnn.output
+
+    # Add a batchnorm layer
+    y = BatchNormalization()(y)
 
     # Add hidden layers
     for idx in range(num_hidden_layers):
