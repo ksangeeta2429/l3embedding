@@ -6,7 +6,7 @@ def create_sonyc_pipeline_model(l3_model_path, mlp_model_path):
     l3 = load_model(l3_model_path)
 
     # Connect l3 with MLP (both functional models)
-    return Model(input=l3.input, output=load_model(l3_model_path)(l3.output))
+    return Model(input=l3.input, output=load_model(mlp_model_path)(l3.output))
 
 
 def convert_keras_classifier_to_TFLite(keras_model_path, out_path_name):
