@@ -112,7 +112,7 @@ def downsample_sonyc_points(feature_dir, dict_dir, output_dir, sample_size, audi
         start_time = time.time()
         for data, raw in mux(max_iter=sample_size_per_job):
             accumulator += [data]
-            rawlist += raw
+            rawlist += [raw]
             if len(accumulator) == embeddings_per_file:
                 outfile = h5py.File(os.path.join(output_dir,
                                                  'sonyc_ndata={}_job={}_split={}.h5'.format(sample_size, jobindex,
