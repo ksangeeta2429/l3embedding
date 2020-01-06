@@ -1,14 +1,14 @@
 #!/bin/bash
 
-#SBATCH --job-name=sonyc-map
+#SBATCH --job-name=sonyc-downsample
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
 #SBATCH --cpus-per-task=32
 #SBATCH --time=1-0
-#SBATCH --mem=50GB
+#SBATCH --mem=70GB
 #SBATCH --mail-type=ALL
-#SBATCH --output="sonyc-map-%A-%a.out"
-#SBATCH --err="sonyc-map-%A-%a.err"
+#SBATCH --output="sonyc-downsample-%A-%a.out"
+#SBATCH --err="sonyc-downsample-%A-%a.err"
 
 module purge
 source ~/.bashrc
