@@ -117,8 +117,8 @@ def downsample_sonyc_points(feature_dir, dict_dir, output_dir, sample_size, audi
                 outfile = h5py.File(os.path.join(output_dir,
                                                  'sonyc_ndata={}_job={}_split={}.h5'.format(sample_size, jobindex,
                                                                                             splitindex)), 'w')
-                outfile.create_dataset('audio', data=np.array(rawlist))
-                outfile.create_dataset('l3_embedding', data=np.array(accumulator))
+                outfile.create_dataset('audio', data=np.array(rawlist), chunks=True)
+                outfile.create_dataset('l3_embedding', data=np.array(accumulator), chunks=True)
                 end_time = time.time()
                 print(multiprocessing.current_process(), 'Wrote {}/{} files, processing time: {} s'
                       .format(splitindex, num_files_per_job, (end_time - start_time)))
