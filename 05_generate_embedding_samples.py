@@ -90,6 +90,12 @@ def parse_arguments():
                         default=False,
                         help='Set to True is Melspec is included in the model')
 
+    parser.add_argument('-raw',
+                        '--save-raw',
+                        dest='save_raw',
+                        action='store_true',
+                        default=False,
+                        help='Save framed raw audio?')
 
     parser.add_argument('-hs',
                         '--hop-size',
@@ -297,6 +303,7 @@ if __name__ == '__main__':
     n_dft = args['n_dft']
     fmax = args['fmax']
     annotation_path = args['annotation_path']
+    save_raw = args['save_raw']
     saved_model_type = 'keras'
 
     if fold_num is not None:
@@ -413,7 +420,7 @@ if __name__ == '__main__':
         generate_sonyc_ust_data(annotation_path=annotation_path, dataset_dir=data_dir, output_dir=dataset_output_dir,\
                                 l3embedding_model=l3embedding_model, model_type=saved_model_type,\
                                 features=features, hop_size=hop_size, mel_hop_length=n_hop, n_mels=n_mels,
-                                n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
+                                n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec, save_raw=save_raw)
 
     elif dataset_name == 'dcase2013':
         if fold_num is not None:

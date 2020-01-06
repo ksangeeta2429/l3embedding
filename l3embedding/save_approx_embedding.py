@@ -5,6 +5,7 @@ import numpy as np
 import pescador
 import h5py
 import umap_modded as umap
+from cuml.manifold.umap import UMAP as cumlUMAP
 from sklearn.manifold import TSNE
 import time
 import multiprocessing
@@ -14,30 +15,30 @@ import glob
 from sonyc.utils import get_sonyc_filtered_files
 
 
-def get_teacher_embedding(audio_batch):
-    import tensorflow as tf
-    from kapre.time_frequency import Melspectrogram
-    from l3embedding.model import load_embedding
-
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-    import keras
-
-    session_conf = tf.ConfigProto(
-        device_count={'CPU': 1, 'GPU': 0},
-        allow_soft_placement=True,
-        log_device_placement=False
-    )
-
-    try:
-        with tf.Graph().as_default(), tf.Session(config=session_conf).as_default():
-            weight_path = '/scratch/sk7898/l3pruning/embedding/fixed/reduced_input/l3_full_original_48000_256_242_2048.h5'
-            model = keras.models.load_model(weight_path, custom_objects={'Melspectrogram': Melspectrogram})
-            embeddings = model.get_layer('audio_model').predict(audio_batch)
-            return embeddings
-
-    except GeneratorExit:
-        pass
+# def get_teacher_embedding(audio_batch):
+#     import tensorflow as tf
+#     from kapre.time_frequency import Melspectrogram
+#     from l3embedding.model import load_embedding
+#
+#     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+#     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+#     import keras
+#
+#     session_conf = tf.ConfigProto(
+#         device_count={'CPU': 1, 'GPU': 0},
+#         allow_soft_placement=True,
+#         log_device_placement=False
+#     )
+#
+#     try:
+#         with tf.Graph().as_default(), tf.Session(config=session_conf).as_default():
+#             weight_path = '/scratch/sk7898/l3pruning/embedding/fixed/reduced_input/l3_full_original_48000_256_242_2048.h5'
+#             model = keras.models.load_model(weight_path, custom_objects={'Melspectrogram': Melspectrogram})
+#             embeddings = model.get_layer('audio_model').predict(audio_batch)
+#             return embeddings
+#
+#     except GeneratorExit:
+#         pass
 
 
 def write_to_h5(paths, batch, batch_size):
@@ -67,8 +68,8 @@ def save_npz_sonyc_ust(paths, batch, batch_size):
 
 
 # Note: For UMAP, if a saved model is provided, the UMAP params are all ignored
-def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, neighbors=10, metric='euclidean', \
-                          min_dist=0.3, iterations=500):
+def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, neighbors=10, metric='euclidean',
+                          min_dist=0.3, iterations=500, mode='gpu'):
     if len(data) == 0:
         raise ValueError('Data is empty!')
     if emb_len is None:
@@ -76,8 +77,13 @@ def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, neigh
 
     if method == 'umap':
         if umap_estimator is None:
-            embedding = umap.umap_.UMAP(n_neighbors=neighbors, min_dist=min_dist, metric=metric, \
-                                        n_components=emb_len).fit_transform(data)
+            if mode=='gpu':
+                assert metric=='euclidean', 'cuML UMAP currently only supports euclidean distances'
+                embedding = cumlUMAP(n_neighbors=neighbors, min_dist=min_dist,
+                                     n_components=emb_len).fit_transform(data)
+            else:
+                embedding = umap.umap_.UMAP(n_neighbors=neighbors, min_dist=min_dist, metric=metric,
+                                            n_components=emb_len, verbose=True).fit_transform(data)
         else:
             start_time = time.time()
             embedding = umap_estimator.transform(data)
@@ -124,9 +130,8 @@ def get_blob_keys(method, batch_size, emb_len, neighbors_list=None, metric_list=
 
 
 def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap', umap_estimator_path=None,
-                        neighbors_list=None, \
-                        list_files=None, metric_list=None, min_dist_list=None, tsne_iter_list=[500], \
-                        batch_size=1024, random_state=20180123, start_batch_idx=None):
+                        neighbors_list=None, list_files=None, metric_list=None, min_dist_list=None, tsne_iter_list=[500],
+                        batch_size=1024, random_state=20180123, start_batch_idx=None, extraction_mode='gpu'):
     if data_dir == output_dir:
         raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
 
@@ -239,11 +244,12 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                         if umap_estimator_path is None:
                             n_process = len(neighbors_list) * len(metric_list) * len(min_dist_list)
                             results = Parallel(n_jobs=min(multiprocessing.cpu_count(), n_process)) \
-                                (delayed(get_reduced_embedding)(teacher_embedding, 'umap', \
-                                                                emb_len=reduced_emb_len, umap_estimator=None, \
-                                                                neighbors=neighbors, \
-                                                                metric=metric, \
-                                                                min_dist=min_dist) \
+                                (delayed(get_reduced_embedding)(teacher_embedding, 'umap',
+                                                                emb_len=reduced_emb_len, umap_estimator=None,
+                                                                neighbors=neighbors,
+                                                                metric=metric,
+                                                                min_dist=min_dist,
+                                                                mode=extraction_mode) \
                                  for neighbors in neighbors_list for metric in metric_list for min_dist in
                                  min_dist_list)
                         else:
@@ -253,10 +259,11 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                         n_process = len(neighbors_list) * len(metric_list) * len(tsne_iter_list)
 
                         results = Parallel(n_jobs=n_process)(delayed(get_reduced_embedding) \
-                                                                 (teacher_embedding, 'tsne', \
-                                                                  emb_len=reduced_emb_len, \
-                                                                  neighbors=neighbors, \
-                                                                  metric=metric, \
+                                                                 (teacher_embedding, 'tsne',
+                                                                  emb_len=reduced_emb_len,
+                                                                  neighbors=neighbors,
+                                                                  metric=metric,
+                                                                  mode=extraction_mode,
                                                                   iterations=iterations) \
                                                              for neighbors in neighbors_list for metric in metric_list
                                                              for iterations in tsne_iter_list)

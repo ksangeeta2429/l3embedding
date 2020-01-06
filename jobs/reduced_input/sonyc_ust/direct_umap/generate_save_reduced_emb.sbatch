@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+#SBATCH --gres=gpu:p40:1
 #SBATCH --job-name=gen-dir-umap-ust
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
@@ -13,11 +14,12 @@ source ~/.bashrc
 cd `git rev-parse --show-toplevel`
 
 module purge
-module load cudnn/9.0v7.3.0.29
 if [ $USER == "sk7898" ]; then
+    module load cudnn/9.0v7.3.0.29
     source activate l3embedding-tf-12
 else
-    source activate l3embedding-new-cpu
+    # Needs an NVIDIA GPU > 6.0 compute capability, so no K80s
+    source activate rapids  # Create env from envs_yml/rapids.yml
 fi
 
 SRCDIR=.

@@ -399,18 +399,16 @@ def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256,
         left_pad = pad_length // 2
         right_pad= pad_length - left_pad
         audio = np.pad(audio, (left_pad, right_pad), mode='constant')
-    
+
+    # Divide into overlapping 1 second frames
+    frames = librosa.util.utils.frame(audio, frame_length=frame_length, hop_length=hop_length).T
+
     if with_melSpec:
         #print("Melspectrogram is part of the weight file")
-        # Divide into overlapping 1 second frames
-        x = librosa.util.utils.frame(audio, frame_length=frame_length, hop_length=hop_length).T    
         # Add a channel dimension
-        X = x.reshape((x.shape[0], 1, x.shape[-1]))
+        X = frames.reshape((frames.shape[0], 1, frames.shape[-1]))
     
     else:
-        #print("Melspectrogram has been removed from the weight file")
-        frames = librosa.util.utils.frame(audio, frame_length=frame_length, hop_length=hop_length).T
-
         X = []
         for frame in frames:
             S = np.abs(librosa.core.stft(frame, n_fft=n_fft, hop_length=mel_hop_length,
@@ -426,7 +424,7 @@ def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256,
     # Get the L3 embedding for each frame
     l3embedding = l3embedding_model.predict(X)
 
-    return l3embedding
+    return l3embedding, frames
 
 
 def compute_file_features(path, feature_type, l3embedding_model=None, model_type='keras', **feature_args):
@@ -436,9 +434,9 @@ def compute_file_features(path, feature_type, l3embedding_model=None, model_type
             raise ValueError(err_msg.format(feature_type))
         #hop_size = feature_args.get('hop_size', 0.1)
         #samp_rate = feature_args.get('samp_rate', 48000)
-        
+        audio = None
         if model_type == 'keras':
-            file_features = get_l3_frames_uniform(path, l3embedding_model, **feature_args)
+            file_features, audio = get_l3_frames_uniform(path, l3embedding_model, **feature_args)
         elif model_type == 'tflite':
             file_features = get_l3_frames_uniform_tflite(path, interpreter=l3embedding_model, **feature_args)
         else:
@@ -451,7 +449,7 @@ def compute_file_features(path, feature_type, l3embedding_model=None, model_type
     #    hop_size = feature_args.get('hop_size', 0.1)
     #    file_features = get_vggish_frames_uniform(path, hop_size=hop_size)
 
-    return file_features
+    return file_features, audio
 
 
 def flatten_file_frames(X, y):

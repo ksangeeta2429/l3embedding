@@ -6,6 +6,8 @@ sleep 3
 sbatch classify_l3_ust.sbatch 20190723135620_8000_128_64_256_half_fmax_3500
 sleep 3
 sbatch classify_l3_ust.sbatch 20190710131207_16000_64_160_1024
+sleep 3
+sbatch classify_l3_ust.sbatch 20191108201753_8000_64_160_1024_half
 
 # With one hidden layer
 sbatch classify_l3_ust.sbatch 20190723135600_16000_128_128_512_half 1 128
@@ -13,7 +15,8 @@ sleep 3
 sbatch classify_l3_ust.sbatch 20190723135620_8000_128_64_256_half_fmax_3500 1 128
 sleep 3
 sbatch classify_l3_ust.sbatch 20190710131207_16000_64_160_1024 1 128
-sleep 3
+sleep 3 
+sbatch classify_l3_ust.sbatch 20191108201753_8000_64_160_1024_half 1 128 
 
 sbatch classify_l3_ust.sbatch 20190723135600_16000_128_128_512_half 1 256
 sleep 3
@@ -21,6 +24,7 @@ sbatch classify_l3_ust.sbatch 20190723135620_8000_128_64_256_half_fmax_3500 1 25
 sleep 3
 sbatch classify_l3_ust.sbatch 20190710131207_16000_64_160_1024 1 256
 sleep 3
+sbatch classify_l3_ust.sbatch 20191108201753_8000_64_160_1024_half 1 256
 
 # With two hidden layers
 sbatch classify_l3_ust.sbatch 20190723135600_16000_128_128_512_half 2 128
@@ -29,6 +33,7 @@ sbatch classify_l3_ust.sbatch 20190723135620_8000_128_64_256_half_fmax_3500 2 12
 sleep 3
 sbatch classify_l3_ust.sbatch 20190710131207_16000_64_160_1024 2 128
 sleep 3
+sbatch classify_l3_ust.sbatch 20191108201753_8000_64_160_1024_half 2 128
 
 sbatch classify_l3_ust.sbatch 20190723135600_16000_128_128_512_half 2 256
 sleep 3
@@ -36,3 +41,4 @@ sbatch classify_l3_ust.sbatch 20190723135620_8000_128_64_256_half_fmax_3500 2 25
 sleep 3
 sbatch classify_l3_ust.sbatch 20190710131207_16000_64_160_1024 2 256
 sleep 3
+sbatch classify_l3_ust.sbatch 20191108201753_8000_64_160_1024_half 2 256
