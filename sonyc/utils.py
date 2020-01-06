@@ -1,3 +1,4 @@
+import sys
 import csv
 import glob
 import h5py
@@ -58,8 +59,8 @@ def create_dict_audio_tar_to_h5(index_path, out_dir, max_workers=50):
         delayed(process_partition)(list_files, jobindex) for jobindex, list_files in enumerate(all_files, 1))
 
 
-def downsample_sonyc_points(feature_dir, audio_dir, dict_dir, output_dir, sample_size, audio_samp_rate=8000,
-                            random_state=20180123, max_workers=30,
+def downsample_sonyc_points(feature_dir, dict_dir, output_dir, sample_size, audio_samp_rate=8000,
+                            random_state=20180123, max_workers=50,
                             embeddings_per_file=1024):
     def divide_chunks(l, n):
         # looping till length l
@@ -85,8 +86,9 @@ def downsample_sonyc_points(feature_dir, audio_dir, dict_dir, output_dir, sample
                 dataset_index = np.random.randint(0, num_datasets)
                 num_features = f[list(f.keys())[0]][dataset_index]['openl3'].shape[0]
                 # Search dictionary to get filename and row
-                file, row = big_dict[f[list(f.keys())[0]][dataset_index]['filename']]
-                tar_data = io.BytesIO(file['recordings'][row]['data'])
+                audio_file_name, row = big_dict[f[list(f.keys())[0]][dataset_index]['filename']]
+                audio_file = h5py.File(audio_file_name, 'r')
+                tar_data = io.BytesIO(audio_file['recordings'][row]['data'])
                 # Read encrypted audio
                 raw_audio = get_raw_windows_from_encrypted_audio(
                     os.path.join(audio_dir, f[list(f.keys())[0]][dataset_index]['filename']), tar_data,
@@ -267,7 +269,14 @@ def check_sonyc_openl3_points(feature_dir, out_path, verbose=True,
 
 
 if __name__ == '__main__':
-    create_dict_audio_tar_to_h5('/beegfs/jtc440/sonyc_indices_split', '/scratch/dr2915/sonyc_map')
+    if sys.argv[1] == 'create_dict_audio_tar_to_h5':
+        create_dict_audio_tar_to_h5('/beegfs/jtc440/sonyc_indices_split', '/scratch/dr2915/sonyc_map')
+    elif sys.argv[1] == 'downsample_sonyc_points':
+        downsample_sonyc_points('/beegfs/work/sonyc/features/openl3_mel256-music/2017',
+                                '/scratch/dr2915/sonyc_map',
+                                '/scratch/dr2915/sonyc_30mil',
+                                30000000, audio_samp_rate=8000)
+
 # get_sonyc_filtered_files('/scratch/dr2915/reduced_embeddings/sonyc_files_list.csv')
 # check_sonyc_openl3_points('/beegfs/work/sonyc/features/openl3_day_format/2017',
 #                           '/scratch/dr2915/reduced_embeddings/sonyc_files_list.csv',

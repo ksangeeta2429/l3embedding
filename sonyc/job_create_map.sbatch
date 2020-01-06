@@ -14,4 +14,4 @@ module purge
 source ~/.bashrc
 source activate sonyc-research-data
 
-python utils.py
+python utils.py create_dict_audio_tar_to_h5
