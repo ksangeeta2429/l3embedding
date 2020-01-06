@@ -90,8 +90,7 @@ def downsample_sonyc_points(feature_dir, dict_dir, output_dir, sample_size, audi
                 audio_file = h5py.File(audio_file_name, 'r')
                 tar_data = io.BytesIO(audio_file['recordings'][row]['data'])
                 # Read encrypted audio
-                raw_audio = get_raw_windows_from_encrypted_audio(
-                    os.path.join(audio_dir, f[list(f.keys())[0]][dataset_index]['filename']), tar_data,
+                raw_audio = get_raw_windows_from_encrypted_audio(audio_file_name, tar_data,
                     sample_rate=audio_samp_rate)
                 feature_index = np.random.randint(0, num_features)
                 yield f[list(f.keys())[0]][dataset_index]['openl3'][feature_index], raw_audio[feature_index]
