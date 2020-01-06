@@ -2,6 +2,7 @@ import csv
 import glob
 import h5py
 import warnings
+import io
 import os
 import math
 import pescador
@@ -26,12 +27,13 @@ def create_dict_audio_tar_to_h5(index_path, out_dir, max_workers=50):
             f = h5py.File(file)
             if len(f['recording_index']) > 0:
                 for row in range(len(f['recording_index'])):
-                    audio_file = h5py.File(os.path.join('/beegfs/work/sonyc',f['recording_index'][row]['day_hdf5_path'].decode()))
+                    audio_file = h5py.File(
+                        os.path.join('/beegfs/work/sonyc', f['recording_index'][row]['day_hdf5_path'].decode()))
                     print('Adding key {}:({},{})'.format(
                         audio_file['recordings'][f['recording_index'][row]['day_h5_index']]['filename'],
                         f['recording_index'][row]['day_hdf5_path'], f['recording_index'][row]['day_h5_index']))
                     map[audio_file['recordings'][f['recording_index'][row]['day_h5_index']]['filename'].decode()] = (
-                    f['recording_index'][row]['day_hdf5_path'].decode(), f['recording_index'][row]['day_h5_index'])
+                        f['recording_index'][row]['day_hdf5_path'].decode(), f['recording_index'][row]['day_h5_index'])
 
         # Dump dictionary in pickle
         with open(os.path.join(out_dir, 'map_' + str(worker_id) + '.pkl'), 'wb') as f:
@@ -56,8 +58,7 @@ def create_dict_audio_tar_to_h5(index_path, out_dir, max_workers=50):
         delayed(process_partition)(list_files, jobindex) for jobindex, list_files in enumerate(all_files, 1))
 
 
-
-def downsample_sonyc_points(feature_dir, audio_dir, output_dir, sample_size, audio_samp_rate=8000,
+def downsample_sonyc_points(feature_dir, audio_dir, dict_dir, output_dir, sample_size, audio_samp_rate=8000,
                             random_state=20180123, max_workers=30,
                             embeddings_per_file=1024):
     def divide_chunks(l, n):
@@ -83,8 +84,13 @@ def downsample_sonyc_points(feature_dir, audio_dir, output_dir, sample_size, aud
             while True:
                 dataset_index = np.random.randint(0, num_datasets)
                 num_features = f[list(f.keys())[0]][dataset_index]['openl3'].shape[0]
+                # Search dictionary to get filename and row
+                file, row = big_dict[f[list(f.keys())[0]][dataset_index]['filename']]
+                tar_data = io.BytesIO(file['recordings'][row]['data'])
+                # Read encrypted audio
                 raw_audio = get_raw_windows_from_encrypted_audio(
-                    os.path.join(audio_dir, f[list(f.keys())[0]][dataset_index]['filename']))
+                    os.path.join(audio_dir, f[list(f.keys())[0]][dataset_index]['filename']), tar_data,
+                    sample_rate=audio_samp_rate)
                 feature_index = np.random.randint(0, num_features)
                 yield f[list(f.keys())[0]][dataset_index]['openl3'][feature_index], raw_audio[feature_index]
 
@@ -122,6 +128,13 @@ def downsample_sonyc_points(feature_dir, audio_dir, output_dir, sample_size, aud
 
     random.seed(random_state)
 
+    # Merge pickle dictionaries in dict_path
+    dict_list = glob.glob(os.path.join(dict_dir, '*.pkl'))
+    big_dict = dict()
+    for d in dict_list:
+        with open(d, 'rb') as f:
+            big_dict.update(pickle.load(f))
+
     all_files = glob.glob(os.path.join(feature_dir, '*/*.h5'))
 
     if not os.path.isdir(output_dir):
@@ -142,12 +155,13 @@ def downsample_sonyc_points(feature_dir, audio_dir, output_dir, sample_size, aud
         delayed(process_partition)(list_files, jobindex) for jobindex, list_files in enumerate(all_files, 1))
 
 
-def get_raw_windows_from_encrypted_audio(audio_path, sample_rate=8000, clip_duration=10,
+def get_raw_windows_from_encrypted_audio(audio_path, tar_data, sample_rate=8000, clip_duration=10,
                                          decrypt_url='https://decrypt-sonyc.engineering.nyu.edu/decrypt',
                                          cacert_path='/home/jtc440/sonyc/decrypt/CA.pem',
                                          cert_path='/home/jtc440/sonyc/decrypt/jason_data.pem',
                                          key_path='/home/jtc440/sonyc/decrypt/sonyc_key.pem'):
     audio = read_encrypted_tar_audio_file(audio_path.decode(),
+                                          enc_tar_filebuf=tar_data,
                                           sample_rate=sample_rate,
                                           url=decrypt_url,
                                           cacert=cacert_path,
