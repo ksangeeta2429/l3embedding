@@ -71,9 +71,14 @@ def create_feature_file_partitions(feature_dir, output_dir, num_partitions = 30,
 
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
-
-    list_partitions = list(divide_chunks(list_files, num_partitions))
-
+    
+    partition_length = math.ceil(len(list_files)/num_partitions)
+    list_partitions = list(divide_chunks(list_files, partition_length))
+    
+    for i, partition in enumerate(list_partitions):
+        with open(os.path.join(output_dir, str(i)+'.csv'), 'w') as f:
+             wr = csv.writer(f, quoting=csv.QUOTE_ALL)
+             wr.writerow(partition)
 
 
 # Streamer weights are proportional to the number of datasets in the corresponding file
@@ -360,6 +365,8 @@ if __name__ == '__main__':
                                 '/scratch/dr2915/sonyc_map',
                                 '/scratch/dr2915/sonyc_30mil',
                                 30000128, audio_samp_rate=8000)
+    elif sys.argv[1] == 'create_feature_file_partitions':
+        create_feature_file_partitions('/beegfs/work/sonyc/features/openl3_mel256-music/2017', '/scratch/dr2915/sonyc_feature_partitions')
 
 # get_sonyc_filtered_files('/scratch/dr2915/reduced_embeddings/sonyc_files_list.csv')
 # check_sonyc_openl3_points('/beegfs/work/sonyc/features/openl3_day_format/2017',
