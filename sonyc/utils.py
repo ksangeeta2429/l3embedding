@@ -59,6 +59,83 @@ def create_dict_audio_tar_to_h5(index_path, out_dir, max_workers=50):
         delayed(process_partition)(list_files, jobindex) for jobindex, list_files in enumerate(all_files, 1))
 
 
+# Streamer weights are proportional to the number of datasets in the corresponding file
+def generate_pescador_stream_weights(list_files):
+    num_datasets = []
+    for file in list_files:
+        f = h5py.File(file)
+        num_datasets.append(f[list(f.keys())[0]].shape[0])
+
+    num_datasets = np.array(num_datasets)
+    return num_datasets.astype(float) / num_datasets.sum()
+
+
+def downsample_sonyc_singlethread(feature_dir, dict_dir, output_dir, sample_size, audio_samp_rate=8000,
+                                  random_state=20180123, embeddings_per_file=1024):
+    @pescador.streamable
+    def random_feature_generator(h5_path):
+        f = h5py.File(h5_path, 'r')
+        num_datasets = f[list(f.keys())[0]].shape[0]
+        while True:
+            dataset_index = np.random.randint(0, num_datasets)
+            num_features = f[list(f.keys())[0]][dataset_index]['openl3'].shape[0]
+            # Search dictionary to get filename and row
+            audio_file_name, row = big_dict[f[list(f.keys())[0]][dataset_index]['filename'].decode()]
+            audio_file = h5py.File(os.path.join('/beegfs/work/sonyc', audio_file_name), 'r')
+            tar_data = io.BytesIO(audio_file['recordings'][row]['data'])
+            # Read encrypted audio
+            raw_audio = get_raw_windows_from_encrypted_audio(os.path.join('/beegfs/work/sonyc', audio_file_name),
+                                                             tar_data,
+                                                             sample_rate=audio_samp_rate)
+            feature_index = np.random.randint(0, num_features)
+            yield f[list(f.keys())[0]][dataset_index]['openl3'][feature_index], raw_audio[feature_index]
+
+    assert sample_size > 0
+
+    random.seed(random_state)
+
+    # Merge pickle dictionaries in dict_path
+    dict_list = glob.glob(os.path.join(dict_dir, '*.pkl'))
+    big_dict = dict()
+    for d in dict_list:
+        with open(d, 'rb') as f:
+            big_dict.update(pickle.load(f))
+
+    list_files = glob.glob(os.path.join(feature_dir, '*/*.h5'))
+
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+
+    streams = [random_feature_generator(x) for x in list_files]
+    rate = math.ceil(sample_size / len(streams))
+    print(multiprocessing.current_process(),
+          'Num. of pescador streams: {}; Rate: {}'.format(len(streams), rate))
+
+    mux = pescador.StochasticMux(streams, weights=generate_pescador_stream_weights(list_files), n_active=50,
+                                 rate=rate, mode='exhaustive')
+
+    num_files = sample_size // embeddings_per_file
+
+    accumulator = []
+    rawlist = []
+    splitindex = 1
+    start_time = time.time()
+    for data, raw in mux(max_iter=sample_size):
+        accumulator += [data]
+        rawlist += [raw]
+        if len(accumulator) == embeddings_per_file:
+            outfile = h5py.File(os.path.join(output_dir,
+                                             'sonyc_ndata={}_split={}.h5'.format(sample_size, splitindex)), 'w')
+            outfile.create_dataset('audio', data=np.array(rawlist), chunks=True)
+            outfile.create_dataset('l3_embedding', data=np.array(accumulator), chunks=True)
+            end_time = time.time()
+            print('Wrote {}/{} files, processing time: {} s'.format(splitindex, num_files,
+                                                                    (end_time - start_time)))
+            accumulator = []
+            splitindex += 1
+            start_time = time.time()
+
+
 def downsample_sonyc_points(feature_dir, dict_dir, output_dir, sample_size, audio_samp_rate=8000,
                             random_state=20180123, max_workers=50,
                             embeddings_per_file=1024):
@@ -66,16 +143,6 @@ def downsample_sonyc_points(feature_dir, dict_dir, output_dir, sample_size, audi
         # looping till length l
         for i in range(0, len(l), n):
             yield l[i:i + n]
-
-    # Streamer weights are proportional to the number of datasets in the corresponding file
-    def generate_pescador_stream_weights(list_files):
-        num_datasets = []
-        for file in list_files:
-            f = h5py.File(file)
-            num_datasets.append(f[list(f.keys())[0]].shape[0])
-
-        num_datasets = np.array(num_datasets)
-        return num_datasets.astype(float) / num_datasets.sum()
 
     def process_partition(list_files, jobindex):
         @pescador.streamable
@@ -272,10 +339,10 @@ if __name__ == '__main__':
     if sys.argv[1] == 'create_dict_audio_tar_to_h5':
         create_dict_audio_tar_to_h5('/beegfs/jtc440/sonyc_indices_split', '/scratch/dr2915/sonyc_map')
     elif sys.argv[1] == 'downsample_sonyc_points':
-        downsample_sonyc_points('/beegfs/work/sonyc/features/openl3_mel256-music/2017',
+        downsample_sonyc_singlethread('/beegfs/work/sonyc/features/openl3_mel256-music/2017',
                                 '/scratch/dr2915/sonyc_map',
                                 '/scratch/dr2915/sonyc_30mil',
-                                30000000, audio_samp_rate=8000)
+                                30000128, audio_samp_rate=8000)
 
 # get_sonyc_filtered_files('/scratch/dr2915/reduced_embeddings/sonyc_files_list.csv')
 # check_sonyc_openl3_points('/beegfs/work/sonyc/features/openl3_day_format/2017',
