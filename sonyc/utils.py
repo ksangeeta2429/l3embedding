@@ -32,8 +32,8 @@ def create_dict_audio_tar_to_h5(index_path, out_dir, max_workers=50):
                     print('Adding key {}:({},{})'.format(
                         audio_file['recordings'][f['recording_index'][row]['day_h5_index']]['filename'],
                         f['recording_index'][row]['day_hdf5_path'], f['recording_index'][row]['day_h5_index']))
-                    map[audio_file['recordings'][f['recording_index'][row]['day_h5_index']]['filename'].decode()] = (
-                        f['recording_index'][row]['day_hdf5_path'].decode(), f['recording_index'][row]['day_h5_index'])
+                    map[audio_file['recordings'][f['recording_index'][row]['day_h5_index']]['filename']] = (
+                        f['recording_index'][row]['day_hdf5_path'], f['recording_index'][row]['day_h5_index'])
 
         # Dump dictionary in pickle
         with open(os.path.join(out_dir, 'map_' + str(worker_id) + '.pkl'), 'wb') as f:
