@@ -15,7 +15,6 @@ import pickle
 from joblib import Parallel, delayed, dump, load
 from decrypt import read_encrypted_tar_audio_file
 
-
 def create_dict_audio_tar_to_h5(index_path, out_dir, max_workers=50):
     def divide_chunks(l, n):
         # looping till length l
@@ -91,7 +90,6 @@ def generate_pescador_stream_weights(list_files):
     num_datasets = np.array(num_datasets)
     return num_datasets.astype(float) / num_datasets.sum()
 
-
 def downsample_sonyc_singlethread(feature_partitions_dir, dict_dir, output_dir, sample_size, partition_num,
                                   audio_samp_rate=8000, random_state=20180123, embeddings_per_file=1024):
     @pescador.streamable
@@ -157,6 +155,7 @@ def downsample_sonyc_singlethread(feature_partitions_dir, dict_dir, output_dir, 
             print('Wrote {}/{} files, processing time: {} s'.format(splitindex, num_files,
                                                                     (end_time - start_time)))
             accumulator = []
+            rawlist = []
             splitindex += 1
             start_time = time.time()
 
@@ -275,7 +274,7 @@ def get_raw_windows_from_encrypted_audio(audio_path, tar_data, sample_rate=8000,
     return get_audio_windows(audio, sr=sample_rate)
 
 
-def get_audio_windows(audio, sr=8000, center=True, hop_size=0.1):
+def get_audio_windows(audio, sr=8000, center=True, hop_size=0.5):
     """
     Similar to openl3.get_embedding(...)
     """
