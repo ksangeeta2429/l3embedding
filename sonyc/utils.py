@@ -92,10 +92,8 @@ def generate_pescador_stream_weights(list_files):
     return num_datasets.astype(float) / num_datasets.sum()
 
 
-def downsample_sonyc_singlethread(feature_dir, dict_dir, output_dir, sample_size, partition_num,
-                                  feature_partitions_dir='/scratch/dr2915/sonyc_feature_partitions',
-                                  audio_samp_rate=8000,
-                                  random_state=20180123, embeddings_per_file=1024):
+def downsample_sonyc_singlethread(feature_partitions_dir, dict_dir, output_dir, sample_size, partition_num,
+                                  audio_samp_rate=8000, random_state=20180123, embeddings_per_file=1024):
     @pescador.streamable
     def random_feature_generator(h5_path):
         f = h5py.File(h5_path, 'r')
@@ -135,8 +133,7 @@ def downsample_sonyc_singlethread(feature_dir, dict_dir, output_dir, sample_size
 
     streams = [random_feature_generator(x) for x in list_files]
     rate = math.ceil(sample_size / len(streams))
-    print(multiprocessing.current_process(),
-          'Num. of pescador streams: {}; Rate: {}'.format(len(streams), rate))
+    print('Num. of pescador streams: {}; Rate: {}'.format(len(streams), rate))
 
     mux = pescador.StochasticMux(streams, weights=generate_pescador_stream_weights(list_files), n_active=50,
                                  rate=rate, mode='exhaustive')
@@ -152,7 +149,8 @@ def downsample_sonyc_singlethread(feature_dir, dict_dir, output_dir, sample_size
         rawlist += [raw]
         if len(accumulator) == embeddings_per_file:
             outfile = h5py.File(os.path.join(output_dir,
-                                             'sonyc_ndata={}_split={}.h5'.format(sample_size, splitindex)), 'w')
+                                             'sonyc_ndata={}_part={}_split={}.h5'.format(sample_size, partition_num,
+                                                                                         splitindex)), 'w')
             outfile.create_dataset('audio', data=np.array(rawlist), chunks=True)
             outfile.create_dataset('l3_embedding', data=np.array(accumulator), chunks=True)
             end_time = time.time()
@@ -366,10 +364,8 @@ if __name__ == '__main__':
     if sys.argv[1] == 'create_dict_audio_tar_to_h5':
         create_dict_audio_tar_to_h5('/beegfs/jtc440/sonyc_indices_split', '/scratch/dr2915/sonyc_map')
     elif sys.argv[1] == 'downsample_sonyc_points':
-        downsample_sonyc_singlethread('/beegfs/work/sonyc/features/openl3_mel256-music/2017',
-                                      '/scratch/dr2915/sonyc_map',
-                                      '/scratch/dr2915/sonyc_30mil',
-                                      1024000, sys.argv[2], audio_samp_rate=8000)
+        downsample_sonyc_singlethread('/scratch/dr2915/sonyc_feature_partitions', '/scratch/dr2915/sonyc_map',
+                                      '/scratch/dr2915/sonyc_30mil', 1024000, sys.argv[2], audio_samp_rate=8000)
     elif sys.argv[1] == 'create_feature_file_partitions':
         create_feature_file_partitions('/beegfs/work/sonyc/features/openl3_mel256-music/2017',
                                        '/scratch/dr2915/sonyc_feature_partitions')
