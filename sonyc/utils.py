@@ -85,7 +85,7 @@ def create_feature_file_partitions(feature_dir, output_dir, num_partitions=30, r
 def generate_pescador_stream_weights(list_files):
     num_datasets = []
     for file in list_files:
-        f = h5py.File(file)
+        f = h5py.File(file, 'r')
         num_datasets.append(f[list(f.keys())[0]].shape[0])
 
     num_datasets = np.array(num_datasets)
