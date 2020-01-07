@@ -59,7 +59,7 @@ def create_dict_audio_tar_to_h5(index_path, out_dir, max_workers=50):
         delayed(process_partition)(list_files, jobindex) for jobindex, list_files in enumerate(all_files, 1))
 
 
-def create_feature_file_partitions(feature_dir, output_dir, num_partitions = 30, random_state=20180123):
+def create_feature_file_partitions(feature_dir, output_dir, num_partitions=30, random_state=20180123):
     def divide_chunks(l, n):
         # looping till length l
         for i in range(0, len(l), n):
@@ -71,14 +71,14 @@ def create_feature_file_partitions(feature_dir, output_dir, num_partitions = 30,
 
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
-    
-    partition_length = math.ceil(len(list_files)/num_partitions)
+
+    partition_length = math.ceil(len(list_files) / num_partitions)
     list_partitions = list(divide_chunks(list_files, partition_length))
-    
+
     for i, partition in enumerate(list_partitions):
-        with open(os.path.join(output_dir, str(i)+'.csv'), 'w') as f:
-             wr = csv.writer(f, quoting=csv.QUOTE_ALL)
-             wr.writerow(partition)
+        with open(os.path.join(output_dir, str(i) + '.csv'), 'w') as f:
+            wr = csv.writer(f, quoting=csv.QUOTE_ALL)
+            wr.writerow(partition)
 
 
 # Streamer weights are proportional to the number of datasets in the corresponding file
@@ -92,7 +92,9 @@ def generate_pescador_stream_weights(list_files):
     return num_datasets.astype(float) / num_datasets.sum()
 
 
-def downsample_sonyc_singlethread(feature_dir, dict_dir, output_dir, sample_size, audio_samp_rate=8000,
+def downsample_sonyc_singlethread(feature_dir, dict_dir, output_dir, sample_size, partition_num,
+                                  feature_partitions_dir='/scratch/dr2915/sonyc_feature_partitions',
+                                  audio_samp_rate=8000,
                                   random_state=20180123, embeddings_per_file=1024):
     @pescador.streamable
     def random_feature_generator(h5_path):
@@ -123,7 +125,10 @@ def downsample_sonyc_singlethread(feature_dir, dict_dir, output_dir, sample_size
         with open(d, 'rb') as f:
             big_dict.update(pickle.load(f))
 
-    list_files = glob.glob(os.path.join(feature_dir, '*/*.h5'))
+    with open(os.path.join(feature_partitions_dir, str(partition_num) + '.csv'), 'r') as f:
+        rdr = csv.reader(f, quoting=csv.QUOTE_ALL)
+        for row in rdr:
+            list_files = row
 
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
@@ -362,11 +367,12 @@ if __name__ == '__main__':
         create_dict_audio_tar_to_h5('/beegfs/jtc440/sonyc_indices_split', '/scratch/dr2915/sonyc_map')
     elif sys.argv[1] == 'downsample_sonyc_points':
         downsample_sonyc_singlethread('/beegfs/work/sonyc/features/openl3_mel256-music/2017',
-                                '/scratch/dr2915/sonyc_map',
-                                '/scratch/dr2915/sonyc_30mil',
-                                30000128, audio_samp_rate=8000)
+                                      '/scratch/dr2915/sonyc_map',
+                                      '/scratch/dr2915/sonyc_30mil',
+                                      1024000, sys.argv[2], audio_samp_rate=8000)
     elif sys.argv[1] == 'create_feature_file_partitions':
-        create_feature_file_partitions('/beegfs/work/sonyc/features/openl3_mel256-music/2017', '/scratch/dr2915/sonyc_feature_partitions')
+        create_feature_file_partitions('/beegfs/work/sonyc/features/openl3_mel256-music/2017',
+                                       '/scratch/dr2915/sonyc_feature_partitions')
 
 # get_sonyc_filtered_files('/scratch/dr2915/reduced_embeddings/sonyc_files_list.csv')
 # check_sonyc_openl3_points('/beegfs/work/sonyc/features/openl3_day_format/2017',

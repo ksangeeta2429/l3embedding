@@ -14,4 +14,4 @@ module purge
 source ~/.bashrc
 source activate sonyc-research-data
 
-python -u utils.py downsample_sonyc_points
+python -u utils.py downsample_sonyc_points $SLURM_ARRAY_TASK_ID
