@@ -59,6 +59,23 @@ def create_dict_audio_tar_to_h5(index_path, out_dir, max_workers=50):
         delayed(process_partition)(list_files, jobindex) for jobindex, list_files in enumerate(all_files, 1))
 
 
+def create_feature_file_partitions(feature_dir, output_dir, num_partitions = 30, random_state=20180123):
+    def divide_chunks(l, n):
+        # looping till length l
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
+
+    random.seed(random_state)
+
+    list_files = glob.glob(os.path.join(feature_dir, '*/*.h5'))
+
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+
+    list_partitions = list(divide_chunks(list_files, num_partitions))
+
+
+
 # Streamer weights are proportional to the number of datasets in the corresponding file
 def generate_pescador_stream_weights(list_files):
     num_datasets = []
