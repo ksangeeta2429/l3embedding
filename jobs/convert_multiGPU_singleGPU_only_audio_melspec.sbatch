@@ -30,7 +30,7 @@ NUM_MELS=$3
 HOP_LEN=$4
 DFT=$5
 NUM_GPUS=4
-OUTPUT_DIR=$SCRATCH/l3pruning/embedding/fixed/reduced_input
+OUTPUT_DIR=$SCRATCH/models/embedding/fixed/reduced_input
 
 # For halved filters, pass additional parameter "half. Optionally, pass last parameter as desired fmax value"
 if ([ $# -gt 6 ] && [ "$6" = "half" ]); then
