@@ -51,7 +51,7 @@ def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embeddin
         filename = row['audio_filename']
 
         if input_type=='mel':
-            filename.replace('.wav', '.npz')
+            filename = filename.replace('.wav', '.npz')
 
         split_str = row['split']
         audio_path = os.path.join(dataset_dir, split_str, filename)
