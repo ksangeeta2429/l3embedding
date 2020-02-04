@@ -192,6 +192,14 @@ def parse_arguments():
                         nargs='+',
                         help='Set the sparsity list for layerwise pruning')
 
+    parser.add_argument('-inp',
+                        '--input-type',
+                        dest='input_type',
+                        choices=['raw', 'mel'],
+                        default='raw',
+                        action='store',
+                        help='Path to UrbanSound8K metadata file')
+
     parser.add_argument('-ump',
                         '--us8k-metadata-path',
                         dest='us8k_metadata_path',
@@ -305,6 +313,7 @@ if __name__ == '__main__':
     annotation_path = args['annotation_path']
     save_raw = args['save_raw']
     saved_model_type = 'keras'
+    input_type = args['input_type']
 
     if fold_num is not None:
         fold_num = int(fold_num)
@@ -420,7 +429,7 @@ if __name__ == '__main__':
         generate_sonyc_ust_data(annotation_path=annotation_path, dataset_dir=data_dir, output_dir=dataset_output_dir,\
                                 l3embedding_model=l3embedding_model, model_type=saved_model_type,\
                                 features=features, hop_size=hop_size, mel_hop_length=n_hop, n_mels=n_mels,
-                                n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec, save_raw=save_raw)
+                                n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec, save_raw=save_raw, input_type=input_type)
 
     elif dataset_name == 'dcase2013':
         if fold_num is not None:
