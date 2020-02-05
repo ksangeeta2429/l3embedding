@@ -27,13 +27,13 @@ OUTDIR=$SCRATCH/embeddings/db_mel_classifier/sonyc_ust/mlp
 #module load ffmpeg/intel/3.2.2
 #module load rubberband/intel/1.8.1
 
-if [ $# -gt 1 ]; then
-    NUM_HIDDEN=$1
-    HIDDEN_SIZE=$2
-else
-    NUM_HIDDEN=0
-    HIDDEN_SIZE=0
-fi
+#if [ $# -gt 1 ]; then
+NUM_HIDDEN=$1
+HIDDEN_SIZE=$2
+#else
+#    NUM_HIDDEN=0
+#    HIDDEN_SIZE=0
+#fi
 
 EXPDIR=$OUTDIR/20191108201753_8000_64_160_1024_half_for_quantization_flattenOp/${NUM_HIDDEN}_${HIDDEN_SIZE}
 OUTPUTDIR=$EXPDIR/results
@@ -53,6 +53,7 @@ python classifier/sonyc_ust/classify.py $ANNPATH $TAXPATH $EMBDIR $EXPDIR result
     --label_mode coarse \
     --target_mode framewise \
     --no_timestamp \
+    --no_standardize \
     --optimizer adam
 
 PYTHONPATH='.' python classifier/sonyc_ust/evaluate_predictions.py $OUTPUTDIR/output_mean.csv $ANNPATH $TAXPATH $OUTPUTDIR $GSHEET_ID $GOOGLE_DEV_APP_NAME
