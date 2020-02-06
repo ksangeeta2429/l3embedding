@@ -436,8 +436,14 @@ def compute_file_features(path, feature_type, l3embedding_model=None, model_type
         #samp_rate = feature_args.get('samp_rate', 48000)
         audio = None
         if model_type == 'keras':
-            file_features, audio = get_l3_frames_uniform(path, l3embedding_model, **feature_args)
+            # Handling CMSIS mel inputs
+            if os.path.splitext(path)[-1]=='.npz':
+                x = np.load(path)
+                file_features = l3embedding_model.predict(x['db_mels'][:,:,:,np.newaxis])
+            else:
+                file_features, audio = get_l3_frames_uniform(path, l3embedding_model, **feature_args)
         elif model_type == 'tflite':
+            #TODO: Add logic for '.npz' (CMSIS mel input) handling
             file_features = get_l3_frames_uniform_tflite(path, interpreter=l3embedding_model, **feature_args)
         else:
             raise ValueError('Model type not supported!')
