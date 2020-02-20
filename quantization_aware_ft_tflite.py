@@ -167,9 +167,8 @@ def restore_save_quantized_model(model_path, output_dir):
         saver = tf.train.Saver()
         saver.restore(eval_sess, os.path.join(output_dir, os.path.basename(output_dir)))
 
-        print(eval_model.input.op.name)
-        print(eval_model.output.op.name)
-        exit(0)
+        #print(eval_model.input.op.name)
+        #print(eval_model.output.op.name)
         
         frozen_graph_def = tf.graph_util.convert_variables_to_constants(
                                                                         eval_sess,
@@ -215,8 +214,8 @@ def train_quantized_model(model_path, train_dir, valid_dir, output_dir, target_l
                                                   save_best_only=True,
                                                   monitor='val_loss'))
         # early stopping
-        cb.append(keras.callbacks.EarlyStopping(monitor='val_loss',
-                                                patience=patience))
+        # cb.append(keras.callbacks.EarlyStopping(monitor='val_loss',
+        #                                        patience=patience))
 
         # monitor losses
         history_csv_file = os.path.join(output_dir, 'history.csv')
