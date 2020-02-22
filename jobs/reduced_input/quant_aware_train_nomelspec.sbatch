@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:4
 #SBATCH --job-name=quant-aware-train-melspec2
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
@@ -19,7 +19,7 @@ VAL_DATA_DIR=/beegfs/work/AudioSetSamples_environmental/environmental_valid #Aud
 OUTPUT_DIR=$SCRATCH/models/reduced_input
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
-NUM_GPUS=2
+NUM_GPUS=4
 ASR=8000
 NUM_MELS=64
 HOP_LEN=160

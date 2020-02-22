@@ -441,7 +441,7 @@ def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1,
     #train graph
     train_graph = tf.Graph()
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
+    #os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3"
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
     train_sess = tf.Session(config=config, graph=train_graph)
