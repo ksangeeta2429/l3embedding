@@ -11,12 +11,11 @@
 #SBATCH --err="quant-aware-train-melspec2-%j.err"
 
 source ~/.bashrc
-source activate l3embedding-new-cpu
 cd `git rev-parse --show-toplevel`
 
 SRCDIR=.
-TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples/music_train
-VAL_DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
+TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples_environmental/environmental_train #AudioSetSamples/music_train
+VAL_DATA_DIR=/beegfs/work/AudioSetSamples_environmental/environmental_valid #AudioSetSamples/music_valid
 OUTPUT_DIR=$SCRATCH/models/reduced_input
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
@@ -33,13 +32,14 @@ echo "DFT=$DFT"
 
 module purge
 module load cudnn/10.0v7.4.2.24
+#source activate l3embedding-tf-12-gpu
 source activate l3embedding-tf-14-gpu
 
 python $SRCDIR/03_train_quant_embedding.py \
     --num-epochs 300 \
     --train-epoch-size 4096 \
     --train-batch-size 64 \
-    --model-type cnn_L3_melspec2 \
+    --model-type cnn_L3_nomelspec \
     --validation-epoch-size 1024 \
     --validation-batch-size 64 \
     --checkpoint-interval 10 \
@@ -51,9 +51,9 @@ python $SRCDIR/03_train_quant_embedding.py \
     --halved-filters \
     --learning-rate 0.00001 \
     --random-state 20180216 \
+    --verbose \
     --gsheet-id $GSHEET_ID \
     --google-dev-app-name $GOOGLE_DEV_APP_NAME \
-    --verbose \
     $TRAIN_DATA_DIR \
     $VAL_DATA_DIR \
     $OUTPUT_DIR

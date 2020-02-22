@@ -79,7 +79,7 @@ class LogTimer(object):
 
         # Make the message out of the given description and the duration
         msg = "{0} took {1} seconds".format(self.desc, duration)
-
+        
         # Log at the appropriate level
         if self.log_level == logging.DEBUG:
             self.logger.debug(msg)

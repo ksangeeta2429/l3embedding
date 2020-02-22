@@ -4,14 +4,14 @@
 #SBATCH --job-name=classify-ust-mlp
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=20GB
+#SBATCH --mem=16GB
 #SBATCH --time=1-0
 #SBATCH --mail-type=FAIL
-#SBATCH --output="classify-ust-mlp-%j.out"
+#SBATCH --output="evaluate-ust-tflite-%j.out"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
-source activate l3embedding-new-cpu
+source activate l3embedding-tf-14-gpu
 
 module purge
 module load cudnn/9.0v7.3.0.29
@@ -36,7 +36,7 @@ HIDDEN_SIZE=128 #$2
 #fi
 
 #EXPDIR=$OUTDIR/20191108201753_8000_64_160_1024_half_for_quantization_flattenOp/${NUM_HIDDEN}_${HIDDEN_SIZE}
-OUTPUTDIR=/scratch/dr2915/pi_ml_container/output/sonyc_ust/cmsis_test
+OUTPUTDIR=/scratch/sk7898/quantization/pipeline_cmsis/20200220101611/output/sonyc_ust/cmsis_val
 
 echo "NUM_HIDDEN=$NUM_HIDDEN"
 echo "HIDDEN_SIZE=$HIDDEN_SIZE"
