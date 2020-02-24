@@ -57,6 +57,25 @@ def write_to_output(output_path, test_file_list, y_pred, taxonomy):
             row += list(y)
 
             csvwriter.writerow(row)
+
+def convert_pb_to_tflite(pb_model_dir=None, tflite_out_path=None):
+    # A list of the names of the model's input tensors
+    input_arrays = ['input_1']
+    # A list of the names of the model's output tensors
+    output_arrays = ['urban_sound_classifier/output/Sigmoid']
+
+    converter = tf.compat.v1.lite.TFLiteConverter.from_frozen_graph(os.path.join(pb_model_dir, 'frozen_pipeline_cmsis_mels_quant.pb'),
+                                                                    input_arrays = input_arrays,\
+                                                                    output_arrays = output_arrays)
+
+    #converter.inference_type = tf.int8
+    #converter.inference_input_type = tf.int8
+    input_arrays = converter.get_input_arrays()
+
+    flatbuffer = converter.convert()
+
+    with open(tflite_out_path, 'wb') as outfile:
+        outfile.write(flatbuffer)
             
 def process_cmsis_mels(file_list, taxonomy, output_path, model_path):
     
@@ -126,22 +145,25 @@ def evaluate_all(prediction_path, annotation_path, yaml_path, mode='coarse'):
 if __name__=='__main__':
     
     model_dir = '/scratch/sk7898/quantization/pipeline_cmsis/'
-    model_ts = '20200220101611'
+    model_ts = '20200224110114'
     MODEL_DIR = os.path.join(model_dir, model_ts)
-    MODEL_PATH = os.path.join(MODEL_DIR, 'qa_cmsis_model.tflite')
     OUTPUT_DIR = os.path.join(MODEL_DIR, 'output/sonyc_ust/cmsis_val')
-        
-    if not os.path.isdir(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
-        
+    tflite_path = os.path.join(MODEL_DIR, 'qa_cmsis_model.tflite')
+ 
     DATA_DIR = '/beegfs/dr2915/sonyc_ust'
     annotation_path = os.path.join(DATA_DIR, 'annotations.csv')
     yaml_path = os.path.join(DATA_DIR, 'dcase-ust-taxonomy.yaml')
     test_data = glob.glob(os.path.join(DATA_DIR, 'db_mels/validate/*.npz'))
     prediction_path = os.path.join(OUTPUT_DIR, 'predictions.csv')
     output_path = os.path.join(OUTPUT_DIR, 'output_mean.csv')
+    
+    if not os.path.isdir(OUTPUT_DIR):
+        os.makedirs(OUTPUT_DIR)
 
     with open(yaml_path) as f:
         taxonomy = yaml.load(f, Loader=yaml.FullLoader)
 
-    process_cmsis_mels(test_data, taxonomy, output_path, model_path=MODEL_PATH)
+    if not os.path.exists(tflite_path):
+        convert_pb_to_tflite(pb_model_dir=MODEL_DIR, tflite_out_path=tflite_path)
+        
+    process_cmsis_mels(test_data, taxonomy, output_path, model_path=tflite_path)
