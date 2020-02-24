@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=classify-ust-mlp
+#SBATCH --job-name=evaluate-ust-mlp
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=16GB
@@ -36,7 +36,7 @@ HIDDEN_SIZE=128 #$2
 #fi
 
 #EXPDIR=$OUTDIR/20191108201753_8000_64_160_1024_half_for_quantization_flattenOp/${NUM_HIDDEN}_${HIDDEN_SIZE}
-OUTPUTDIR=/scratch/sk7898/quantization/pipeline_cmsis/20200220101611/output/sonyc_ust/cmsis_val
+OUTPUTDIR=/scratch/sk7898/quantization/pipeline_cmsis/8k_size_quant/output/sonyc_ust/cmsis_val
 
 echo "NUM_HIDDEN=$NUM_HIDDEN"
 echo "HIDDEN_SIZE=$HIDDEN_SIZE"

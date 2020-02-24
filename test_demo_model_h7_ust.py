@@ -145,10 +145,12 @@ def evaluate_all(prediction_path, annotation_path, yaml_path, mode='coarse'):
 if __name__=='__main__':
     
     model_dir = '/scratch/sk7898/quantization/pipeline_cmsis/'
-    model_ts = '20200224110114'
+    model_ts = '8k_size_quant'
+    #model_ts = '20200224110114'
     MODEL_DIR = os.path.join(model_dir, model_ts)
     OUTPUT_DIR = os.path.join(MODEL_DIR, 'output/sonyc_ust/cmsis_val')
-    tflite_path = os.path.join(MODEL_DIR, 'qa_cmsis_model.tflite')
+    tflite_path = '/scratch/sk7898/quantization/pipeline_cmsis_mels/tf_2_full_quantized_size_float32.tflite'
+    #tflite_path = os.path.join(MODEL_DIR, 'qa_cmsis_model.tflite')
  
     DATA_DIR = '/beegfs/dr2915/sonyc_ust'
     annotation_path = os.path.join(DATA_DIR, 'annotations.csv')
