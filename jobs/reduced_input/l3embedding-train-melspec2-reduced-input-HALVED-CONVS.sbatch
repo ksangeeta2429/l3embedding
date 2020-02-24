@@ -59,7 +59,6 @@ then
     --random-state 20180216 \
     --gsheet-id $GSHEET_ID \
     --google-dev-app-name $GOOGLE_DEV_APP_NAME \
-    --verbose \
     $TRAIN_DATA_DIR \
     $VAL_DATA_DIR \
     $OUTPUT_DIR

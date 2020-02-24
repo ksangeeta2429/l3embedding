@@ -229,7 +229,7 @@ def train_quantized_model(model_path, train_dir, valid_dir, output_dir, target_l
         #print(model.summary())
             
         model.compile(opt, loss=loss)
-        tf.contrib.quantize.create_training_graph(input_graph=train_graph, quant_delay=2)
+        tf.contrib.quantize.create_training_graph(input_graph=train_graph, quant_delay=1500)
         initialize_uninitialized_variables(train_sess)
 
         history = model.fit_generator(train_gen, steps_per_epoch=steps_per_epoch, epochs=num_epochs,\
@@ -249,8 +249,8 @@ def train_quantized_model(model_path, train_dir, valid_dir, output_dir, target_l
 if __name__=='__main__':
     
     batch_size = 64
-    epochs = 1500
-    patience=100
+    epochs = 2000
+    patience=500
     
     DATA_DIR = '/beegfs/dr2915/sonyc_ust'
     MODEL_DIR = '/scratch/sk7898/quantization/pipeline_cmsis/'
