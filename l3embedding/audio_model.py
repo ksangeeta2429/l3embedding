@@ -881,6 +881,112 @@ def load_student_audio_model_withFFT(include_layers, num_filters = [64, 64, 128,
     return m, x_a, y_a
 
 
+def construct_cnn_L3_nomelspec_audio_model(n_mels=64, n_hop=160, n_dft=1024, fmax=None,
+                                           asr = 8000, halved_convs=True, audio_window_dur=1):
+    """
+    Constructs a model that replicates the audio subnetwork  used in Look,
+    Listen and Learn
+    Relja Arandjelovic and (2017). Look, Listen and Learn. CoRR, abs/1705.08168, .
+    Returns
+    -------
+    model:  L3 CNN model
+            (Type: keras.models.Model)
+    inputs: Model inputs
+            (Type: list[keras.layers.Input])
+    outputs: Model outputs
+            (Type: keras.layers.Layer)
+    """
+    weight_decay = 1e-5
+
+    n_frames = 1 + int((asr * audio_window_dur) / float(n_hop))
+    x_a = Input(shape=(n_mels, n_frames, 1), dtype='float32')
+    y_a = BatchNormalization()(x_a)
+
+    # CONV BLOCK 1
+    n_filter_a_1 = 64
+    if halved_convs:
+        n_filter_a_1 //= 2
+
+    filt_size_a_1 = (3, 3)
+    pool_size_a_1 = (2, 2)
+    y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
+                 kernel_initializer='he_normal',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = Conv2D(n_filter_a_1, filt_size_a_1, padding='same',
+                 kernel_initializer='he_normal',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = MaxPooling2D(pool_size=pool_size_a_1, strides=2)(y_a)
+
+    # CONV BLOCK 2
+    n_filter_a_2 = 128
+    if halved_convs:
+        n_filter_a_2 //= 2
+
+    filt_size_a_2 = (3, 3)
+    pool_size_a_2 = (2, 2)
+    y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
+                 kernel_initializer='he_normal',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = Conv2D(n_filter_a_2, filt_size_a_2, padding='same',
+                 kernel_initializer='he_normal',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = MaxPooling2D(pool_size=pool_size_a_2, strides=2)(y_a)
+
+    # CONV BLOCK 3
+    n_filter_a_3 = 256
+    if halved_convs:
+        n_filter_a_3 //= 2
+
+    filt_size_a_3 = (3, 3)
+    pool_size_a_3 = (2, 2)
+    y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
+                 kernel_initializer='he_normal',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = Conv2D(n_filter_a_3, filt_size_a_3, padding='same',
+                 kernel_initializer='he_normal',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = MaxPooling2D(pool_size=pool_size_a_3, strides=2)(y_a)
+
+    # CONV BLOCK 4
+    n_filter_a_4 = 512
+    if halved_convs:
+        n_filter_a_4 //= 2
+
+    filt_size_a_4 = (3, 3)
+    y_a = Conv2D(n_filter_a_4, filt_size_a_4, padding='same',
+                 kernel_initializer='he_normal',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+    y_a = Conv2D(n_filter_a_4, filt_size_a_4,
+                 kernel_initializer='he_normal',
+                 name='audio_embedding_layer', padding='same',
+                 kernel_regularizer=regularizers.l2(weight_decay))(y_a)  
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+
+    pool_size_a_4 = tuple(y_a.get_shape().as_list()[1:3]) #(32, 24) for orig l3 audio
+    y_a = MaxPooling2D(pool_size=pool_size_a_4)(y_a)
+
+    y_a = Flatten()(y_a)
+    
+    m = Model(inputs=x_a, outputs=y_a)
+    m.name = 'audio_model'
+
+    return m, x_a, y_a
+
 def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
                                           asr = 48000, fmax=None, halved_convs=False, audio_window_dur = 1):
     """

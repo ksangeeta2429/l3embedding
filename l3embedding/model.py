@@ -568,11 +568,30 @@ def construct_cnn_L3_melspec2(**kwargs):
     vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
     audio_model, x_a, y_a = construct_cnn_L3_melspec2_audio_model(**kwargs)
 
-    print(audio_model.summary)
-
     m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_kapredbinputbn')
     return m
 
+@gpu_wrapper
+def construct_cnn_L3_nomelspec(**kwargs):
+    """
+    Constructs a model that replicates that used in Look, Listen and Learn
+
+    Relja Arandjelovic and (2017). Look, Listen and Learn. CoRR, abs/1705.08168, .
+
+    Returns
+    -------
+    model:  L3 CNN model
+            (Type: keras.models.Model)
+    inputs: Model inputs
+            (Type: list[keras.layers.Input])
+    outputs: Model outputs
+            (Type: keras.layers.Layer)
+    """
+    vision_model, x_i, y_i = construct_cnn_L3_orig_inputbn_vision_model()
+    audio_model, x_a, y_a = construct_cnn_L3_nomelspec_audio_model(**kwargs)
+
+    m = L3_merge_audio_vision_models(vision_model, x_i, audio_model, x_a, 'cnn_L3_kapredbinputbn')
+    return m
 
 @gpu_wrapper
 def construct_cnn_L3_melspec2_masked(thresholds):
@@ -650,6 +669,7 @@ MODELS = {
     'cnn_L3_kapredbinputbn': construct_cnn_L3_kapredbinputbn,
     'cnn_L3_melspec1': construct_cnn_L3_melspec1,
     'cnn_L3_melspec2': construct_cnn_L3_melspec2,
+    'cnn_L3_nomelspec': construct_cnn_L3_nomelspec,
     'cnn_L3_melspec2_audioonly': construct_cnn_L3_melspec2_audio_model
 }
 

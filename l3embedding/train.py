@@ -95,8 +95,8 @@ class GSheetLogger(keras.callbacks.Callback):
         latest_epoch = epoch
         latest_train_loss = logs.get('loss')
         latest_valid_loss = logs.get('val_loss')
-        latest_train_acc = logs.get('acc')
-        latest_valid_acc = logs.get('val_acc')
+        latest_train_acc = logs.get('accuracy')
+        latest_valid_acc = logs.get('val_accuracy')
 
         if latest_train_loss < self.best_train_loss:
             self.best_train_loss = latest_train_loss
@@ -130,7 +130,7 @@ class TimeHistory(keras.callbacks.Callback):
 
     def on_epoch_end(self, batch, logs=None):
         t = time.time() - self.epoch_time_start
-        LOGGER.info('Epoch took {} seconds'.format(t))
+        #LOGGER.info('Epoch took {} seconds'.format(t))
         self.epoch_times.append(t)
 
     def on_batch_begin(self, batch, logs=None):
@@ -138,7 +138,7 @@ class TimeHistory(keras.callbacks.Callback):
 
     def on_batch_end(self, batch, logs=None):
         t = time.time() - self.batch_time_start
-        LOGGER.info('Batch took {} seconds'.format(t))
+        #LOGGER.info('Batch took {} seconds'.format(t))
         self.batch_times.append(t)
 
 
@@ -227,7 +227,7 @@ def get_restart_info(history_path):
         for row in reader:
             last = row
 
-    return int(last['epoch']), float(last['val_acc']), float(last['val_loss'])
+    return int(last['epoch']), float(last['val_accuracy']), float(last['val_loss'])
 
 
 def train(train_data_dir, validation_data_dir, output_dir,
@@ -354,26 +354,28 @@ def train(train_data_dir, validation_data_dir, output_dir,
                                               verbose=1))
 
     best_val_acc_cb = keras.callbacks.ModelCheckpoint(best_valid_acc_weight_path,
-                                              save_weights_only=True,
-                                              save_best_only=True,
-                                              verbose=1,
-                                              monitor='val_acc')
+                                                      save_weights_only=True,
+                                                      save_best_only=True,
+                                                      verbose=1,
+                                                      monitor='val_accuracy',
+                                                      mode='max')
     if continue_model_dir is not None:
         best_val_acc_cb.best = last_val_acc
     cb.append(best_val_acc_cb)
 
     best_val_loss_cb = keras.callbacks.ModelCheckpoint(best_valid_loss_weight_path,
-                                              save_weights_only=True,
-                                              save_best_only=True,
-                                              verbose=1,
-                                              monitor='val_loss')
+                                                       save_weights_only=True,
+                                                       save_best_only=True,
+                                                       verbose=1,
+                                                       monitor='val_loss',
+                                                       mode='min')
     if continue_model_dir is not None:
         best_val_loss_cb.best = last_val_loss
     cb.append(best_val_loss_cb)
 
     checkpoint_cb = keras.callbacks.ModelCheckpoint(checkpoint_weight_path,
-                                              save_weights_only=True,
-                                              period=checkpoint_interval)
+                                                    save_weights_only=True,
+                                                    period=checkpoint_interval)
     if continue_model_dir is not None:
         checkpoint_cb.epochs_since_last_save = (last_epoch_idx + 1) % checkpoint_interval
     cb.append(checkpoint_cb)
