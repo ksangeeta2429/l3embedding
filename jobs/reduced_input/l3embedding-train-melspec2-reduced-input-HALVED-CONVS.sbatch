@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:4
-#SBATCH --job-name=8k-train-melspec2-reduced-input-Sangeeta
+#SBATCH --job-name=halved-conv-melspec2-reduced-input-Sangeeta
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=ALL
-#SBATCH --output="8k-train-melspec2-reduced-input-%j.out"
-#SBATCH --err="8k-train-melspec2-reduced-input-%j.err"
+#SBATCH --output="halved-conv-melspec2-reduced-input-%j.out"
+#SBATCH --err="halved-conv-melspec2-reduced-input-%j.err"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`

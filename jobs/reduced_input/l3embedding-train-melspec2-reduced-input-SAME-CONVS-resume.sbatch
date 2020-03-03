@@ -1,23 +1,22 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:4
-#SBATCH --job-name=l3embedding-train-melspec2-reduced-input-Sangeeta
+#SBATCH --job-name=same-conv-melspec2-continue
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=ALL
-#SBATCH --output="l3embedding-train-melspec2-reduced-input-%j.out"
-#SBATCH --err="l3embedding-train-melspec2-reduced-input-%j.err"
+#SBATCH --output="same-conv-melspec2-continue-%j.out"
+#SBATCH --err="same-conv-melspec2-continue-%j.err"
 
 source ~/.bashrc
 source activate l3embedding-new-cpu
 cd `git rev-parse --show-toplevel`
 
 SRCDIR=. #/home/sk7898/l3embedding
-#WEIGHT_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
-TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples/music_train
-VAL_DATA_DIR=/beegfs/work/AudioSetSamples/music_valid
+TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples_environmental/environmental_train #/beegfs/work/AudioSetSamples/music_train
+VAL_DATA_DIR=/beegfs/work/AudioSetSamples_environmental/environmental_valid #/beegfs/work/AudioSetSamples/music_valid
 OUTPUT_DIR=$SCRATCH/models/reduced_input
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
