@@ -95,8 +95,8 @@ class GSheetLogger(keras.callbacks.Callback):
         latest_epoch = epoch
         latest_train_loss = logs.get('loss')
         latest_valid_loss = logs.get('val_loss')
-        latest_train_acc = logs.get('accuracy')
-        latest_valid_acc = logs.get('val_accuracy')
+        latest_train_acc = logs.get('acc')
+        latest_valid_acc = logs.get('val_acc')
 
         if latest_train_loss < self.best_train_loss:
             self.best_train_loss = latest_train_loss
@@ -227,7 +227,7 @@ def get_restart_info(history_path):
         for row in reader:
             last = row
 
-    return int(last['epoch']), float(last['val_accuracy']), float(last['val_loss'])
+    return int(last['epoch']), float(last['val_acc']), float(last['val_loss'])
 
 
 def train(train_data_dir, validation_data_dir, output_dir,
@@ -286,7 +286,7 @@ def train(train_data_dir, validation_data_dir, output_dir,
         m, inputs, outputs = load_model(latest_model_path, model_type, return_io=True, src_num_gpus=gpus,
                                         n_mels=n_mels, n_hop=n_hop, n_dft=n_dft,asr=samp_rate,
                                         fmax=fmax, halved_convs=halved_convs)
-
+        exit(0)
     else:
         m, inputs, outputs = MODELS[model_type](n_mels=n_mels, n_hop=n_hop, n_dft=n_dft,
                                                 asr=samp_rate, fmax=fmax, halved_convs=halved_convs, num_gpus=gpus)
@@ -358,7 +358,7 @@ def train(train_data_dir, validation_data_dir, output_dir,
                                                       save_weights_only=True,
                                                       save_best_only=True,
                                                       verbose=1,
-                                                      monitor='val_accuracy',
+                                                      monitor='val_acc',
                                                       mode='max')
     if continue_model_dir is not None:
         best_val_acc_cb.best = last_val_acc
