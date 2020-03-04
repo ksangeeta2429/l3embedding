@@ -11,7 +11,6 @@
 #SBATCH --err="halved-conv-melspec2-continue-%j.err"
 
 source ~/.bashrc
-source activate l3embedding-new-cpu
 cd `git rev-parse --show-toplevel`
 
 SRCDIR=. #/home/sk7898/l3embedding
@@ -36,6 +35,12 @@ echo "CONTINUE_MODEL_DIRECTORY=$CONTINUE_MODEL_DIRECTORY"
 
 module purge
 module load cudnn/9.0v7.3.0.29
+
+if [ $USER == "sk7898" ]; then
+    source activate l3embedding-tf-12-gpu
+else
+    source activate l3embedding-new-cpu
+fi
 
 if [ $# -gt 5 ]
 then

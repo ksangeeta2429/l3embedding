@@ -33,7 +33,11 @@ echo "DFT=$DFT"
 
 module purge
 module load cudnn/9.0v7.3.0.29
-source activate l3embedding-new-cpu
+if [ $USER == "sk7898" ]; then
+    source activate l3embedding-tf-12-gpu
+else
+    source activate l3embedding-new-cpu
+fi
 
 if [ $# -gt 4 ]
 then
