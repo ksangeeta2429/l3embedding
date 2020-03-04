@@ -34,12 +34,7 @@ echo "DFT=$DFT"
 echo "CONTINUE_MODEL_DIRECTORY=$CONTINUE_MODEL_DIRECTORY"
 
 module purge
-if [ $USER == "sk7898" ]; then
-  module load cuda/8.0.44
-  module load cudnn/8.0v6.0
-else
-  module load cudnn/9.0v7.3.0.29
-fi
+module load cudnn/9.0v7.3.0.29
 
 if [ $# -gt 5 ]
 then

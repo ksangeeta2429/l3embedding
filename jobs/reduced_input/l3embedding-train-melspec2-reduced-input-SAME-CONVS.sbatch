@@ -32,8 +32,8 @@ echo "HOP LENGTH=$HOP_LEN"
 echo "DFT=$DFT"
 
 module purge
-module load cudnn/10.0v7.4.2.24
-source activate l3embedding-tf-14-gpu
+module load cudnn/9.0v7.3.0.29
+source activate l3embedding-new-cpu
 
 if [ $# -gt 4 ]
 then

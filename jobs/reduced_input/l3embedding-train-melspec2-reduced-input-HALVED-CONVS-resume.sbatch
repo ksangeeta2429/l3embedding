@@ -35,8 +35,7 @@ echo "DFT=$DFT"
 echo "CONTINUE_MODEL_DIRECTORY=$CONTINUE_MODEL_DIRECTORY"
 
 module purge
-module load cudnn/10.0v7.4.2.24
-source activate l3embedding-tf-14-gpu
+module load cudnn/9.0v7.3.0.29
 
 if [ $# -gt 5 ]
 then
