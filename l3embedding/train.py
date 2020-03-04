@@ -286,6 +286,7 @@ def train(train_data_dir, validation_data_dir, output_dir,
         m, inputs, outputs = load_model(latest_model_path, model_type, return_io=True, src_num_gpus=gpus,
                                         n_mels=n_mels, n_hop=n_hop, n_dft=n_dft,asr=samp_rate,
                                         fmax=fmax, halved_convs=halved_convs)
+
     else:
         m, inputs, outputs = MODELS[model_type](n_mels=n_mels, n_hop=n_hop, n_dft=n_dft,
                                                 asr=samp_rate, fmax=fmax, halved_convs=halved_convs, num_gpus=gpus)
