@@ -33,7 +33,7 @@ def get_spl_frame_vector(spl_vector, spl_iterable=[4*k for k in range(20)]):
     spl_frames = [0.25*sum([spl_vector[i+k] for k in range(4)]) for i in spl_iterable]
     return dict({'spl_frames': spl_frames})
   
-def get_2_hr_prob_dict(row):
+def get_2_hr_relevance_dict(row):
     d = {}
     spl_frames_2_hr = np.array(row['spl_frames'])
     unq, unq_indices = np.unique(spl_frames_2_hr, return_index=True)
@@ -42,12 +42,12 @@ def get_2_hr_prob_dict(row):
     d = {spl_frames_2_hr[i]: ranked_spl[i]/total_frames for i in unq_indices}
     return d
 
-def get_frame_prob(row):
-    prob_dict = row['prob_dict_2_hr']
-    lst = [prob_dict[i] for i in row['spl_frames_emb']]
+def get_frame_relevance(row):
+    relevance_dict = row['relevance_dict_2_hr']
+    lst = [relevance_dict[i] for i in row['spl_frames_emb']]
     return lst
 
-def get_rel_loudness_probs(ts, spl_vecs):
+def get_relevance_scores(ts, spl_vecs):
 
     # Get the spl avg value of 4 consecutive values from spl_vector
     spl_arr = np.apply_along_axis(get_spl_frame_vector, 1, spl_vecs)
@@ -61,18 +61,18 @@ def get_rel_loudness_probs(ts, spl_vecs):
     spl_df = pd.DataFrame(list(spl_arr)) 
     df = pd.concat([t_df, spl_df], axis=1)
     
-    # Round off the SPL values to 2 decimal places to increase the probability of 
+    # Round off the SPL values to 2 decimal places
     df['spl_frames'] = df['spl_frames'].apply(lambda x: list(np.around(np.array(x), decimals=2)))
     
     # Group by 2-hour window
     res = df.groupby(['day_id'], as_index = False).agg({'spl_frames': 'sum'}).reset_index() 
     
-    # Form a dictionary with spl values mapped to its probability in 2-hour window
-    res['prob_dict_2_hr'] = res.apply(get_2_hr_prob_dict, axis = 1)
+    # Form a dictionary with spl values mapped to its relevance score in 2-hour window
+    res['relevance_dict_2_hr'] = res.apply(get_2_hr_relevance_dict, axis = 1)
     
     final = pd.merge(df, res, on='day_id', how='outer', suffixes=('_emb', '_2_hr'))
     
-    # From the 2-hr dictionary, get the probability of the 20 embedding frames corresponding to one entry in blob
-    final['prob_spl_frames'] = final.apply(get_frame_prob, axis = 1)
+    # From the 2-hr dictionary, get the relevance score of the 20 embedding frames corresponding to one entry in blob
+    final['relevance_spl_frames'] = final.apply(get_frame_relevance, axis = 1)
      
-    return final['prob_spl_frames']
+    return final['relevance_spl_frames']

@@ -165,6 +165,13 @@ def parse_arguments():
                         action='store',
                         type=str,
                         help='Path to directory containing a model with which to resume training')
+    
+    parser.add_argument('-md',
+                        '--model-dir',
+                        dest='trained_model_dir',
+                        action='store',
+                        type=str,
+                        help='Path to directory containing a model which needs to be quantized')        
 
     parser.add_argument('-lp',
                         '--log-path',

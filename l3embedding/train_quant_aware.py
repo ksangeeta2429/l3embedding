@@ -13,7 +13,6 @@ import pescador
 import tensorflow as tf
 import h5py
 import librosa
-from tqdm.keras import TqdmCallback
 from keras import backend as K
 from skimage import img_as_float
 from keras import activations
@@ -128,7 +127,7 @@ class TimeHistory(keras.callbacks.Callback):
 
     def on_epoch_end(self, batch, logs=None):
         t = time.time() - self.epoch_time_start
-        LOGGER.info('Epoch took {} seconds'.format(t))
+        #LOGGER.info('Epoch took {} seconds'.format(t))
         self.epoch_times.append(t)
 
     def on_batch_begin(self, batch, logs=None):
@@ -193,8 +192,8 @@ def cycle_shuffle(iterable, shuffle=True):
         if shuffle:
             random.shuffle(lst)
 
-def data_generator(data_dir, batch_size=512, random_state=20180123, samp_rate=48000,
-                   n_mels=64, n_hop=160, n_dft=1064,  start_batch_idx=None, keys=None):
+def data_generator_nomelspec(data_dir, batch_size=512, random_state=20180123, samp_rate=48000,
+                             n_mels=64, n_hop=160, n_dft=1064,  start_batch_idx=None, keys=None):
     
     random.seed(random_state)
     batch = None
@@ -256,6 +255,64 @@ def data_generator(data_dir, batch_size=512, random_state=20180123, samp_rate=48
                 curr_batch_size = 0
                 batch = None
 
+def data_generator(data_dir, batch_size=512, random_state=20180123, samp_rate=48000,
+                   start_batch_idx=None, keys=None):
+    random.seed(random_state)
+
+    batch = None
+    curr_batch_size = 0
+    batch_idx = 0
+
+    # Limit keys to avoid producing batches with all of the metadata fields
+    if not keys:
+        keys = ['audio', 'video', 'label']
+
+    for fname in cycle_shuffle(os.listdir(data_dir)):
+        batch_path = os.path.join(data_dir, fname)
+        blob_start_idx = 0
+
+        blob = h5py.File(batch_path, 'r')
+        blob_size = len(blob['label'])
+
+        while blob_start_idx < blob_size:
+            blob_end_idx = min(blob_start_idx + batch_size - curr_batch_size, blob_size)
+
+            # If we are starting from a particular batch, skip computing all of
+            # the prior batches
+            if start_batch_idx is None or batch_idx >= start_batch_idx:
+                if batch is None:
+                    batch = {k:blob[k][blob_start_idx:blob_end_idx]
+                             for k in keys}
+                else:
+                    for k in keys:
+                        batch[k] = np.concatenate([batch[k],
+                                                   blob[k][blob_start_idx:blob_end_idx]])
+
+            curr_batch_size += blob_end_idx - blob_start_idx
+            blob_start_idx = blob_end_idx
+
+            if blob_end_idx == blob_size:
+                blob.close()
+
+            if curr_batch_size == batch_size:
+                # If we are starting from a particular batch, skip yielding all
+                # of the prior batches
+                if start_batch_idx is None or batch_idx >= start_batch_idx:
+                    # Preprocess video so samples are in [-1,1]
+                    batch['video'] = 2 * img_as_float(batch['video']).astype('float32') - 1
+
+                    # Convert audio to float
+                    if(samp_rate==48000):
+                        batch['audio'] = pcm2float(batch['audio'], dtype='float32')
+                    else:
+                        batch['audio'] = resample(pcm2float(batch['audio'], dtype='float32'), sr_orig=48000,
+                                                  sr_new=samp_rate)
+                    #print('Shape of audio batch:', np.shape(batch['audio']))
+                    yield batch
+
+                batch_idx += 1
+                curr_batch_size = 0
+                batch = None
 
 def single_epoch_data_generator(data_dir, epoch_size, **kwargs):
     while True:
@@ -305,10 +362,10 @@ def restore_save_quantized_model(model_path, output_dir):
             
 def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1, 
           train_epoch_size=512, validation_epoch_size=1024, train_batch_size=64,
-          validation_batch_size=64, model_type='cnn_L3_nomelspec', random_state=20180123,
+          validation_batch_size=64, model_type='cnn_L3_melspec2', random_state=20180123,
           learning_rate=1e-4, verbose=False, checkpoint_interval=10, n_mels=64, n_hop=160, n_dft=1024,
           samp_rate=8000, fmax=None, halved_convs=True, log_path=None, disable_logging=False, 
-          gpus=2, continue_model_dir=None, gsheet_id=None, google_dev_app_name=None):
+          gpus=4, continue_model_dir=None, trained_model_dir=None, gsheet_id=None, google_dev_app_name=None):
 
     init_console_logger(LOGGER, verbose=verbose)
     if not disable_logging:
@@ -318,7 +375,7 @@ def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1,
     # Form model ID
     data_subset_name = os.path.basename(train_data_dir)
     data_subset_name = data_subset_name[:data_subset_name.rindex('_')]
-    model_id = os.path.join(data_subset_name, model_type + '_quant')
+    model_id = os.path.join(data_subset_name, model_type+'_quant')
 
     param_dict = {
           'username': getpass.getuser(),
@@ -354,7 +411,8 @@ def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1,
     if continue_model_dir:
         model_dir = continue_model_dir
     else:
-        model_dir = os.path.join(output_dir, 'embedding', model_id, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+        #Retrieve the model_dir from the path of the model that has to be quantized
+        model_dir = os.path.join(trained_model_dir, 'quantized')
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir)
 
@@ -398,10 +456,7 @@ def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1,
                                batch_size=train_batch_size,
                                random_state=random_state,
                                start_batch_idx=train_start_batch_idx,
-                               samp_rate=samp_rate,
-                               n_mels=n_mels,
-                               n_hop=n_hop,
-                               n_dft=n_dft)
+                               samp_rate=samp_rate)
 
     train_gen = pescador.maps.keras_tuples(train_gen,
                                            ['video', 'audio'],
@@ -412,10 +467,7 @@ def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1,
                                           validation_epoch_size,
                                           batch_size=validation_batch_size,
                                           random_state=random_state,
-                                          samp_rate=samp_rate,
-                                          n_mels=n_mels,
-                                          n_hop=n_hop,
-                                          n_dft=n_dft)
+                                          samp_rate=samp_rate)
 
     val_gen = pescador.maps.keras_tuples(val_gen,
                                          ['video', 'audio'],
@@ -438,7 +490,7 @@ def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1,
     #train graph
     train_graph = tf.Graph()
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    #os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3"
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
     train_sess = tf.Session(config=config, graph=train_graph)
@@ -447,11 +499,13 @@ def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1,
     with train_graph.as_default():       
         if continue_model_dir:
             latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
-            m = keras.models.load_model(latest_model_path)
         else:
-            m, inputs, outputs = MODELS[model_type](n_mels=n_mels, n_hop=n_hop, n_dft=n_dft,
-                                                    asr=samp_rate, fmax=fmax, halved_convs=halved_convs, num_gpus=1)
+            latest_model_path = os.path.join(trained_model_dir, 'model_best_valid_accuracy_multiGPU.h5') #model_best_valid_accuracy.h5
        
+        m, inputs, outputs = load_model(latest_model_path, model_type, return_io=True, src_num_gpus=gpus,
+                                        n_mels=n_mels, n_hop=n_hop, n_dft=n_dft,asr=samp_rate,
+                                        fmax=fmax, halved_convs=halved_convs)
+            
         # Save the model
         model_spec_path = os.path.join(model_dir, 'model_spec.pkl')
         model_spec = keras.utils.serialize_keras_object(m)
@@ -465,30 +519,28 @@ def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1,
             
         # Set up callbacks
         cb = []
-
-        cb.append(MultiGPUCheckpointCallback(latest_weight_path,
-                                             m,
-                                             save_weights_only=False,
-                                             verbose=1))
-
-        best_val_acc_cb = MultiGPUCheckpointCallback(best_valid_acc_weight_path,
-                                                     m,
-                                                     save_weights_only=False,\
-                                                     save_best_only=True,\
-                                                     verbose=1,
-                                                     monitor='val_acc')
+        
+        cb.append(keras.callbacks.ModelCheckpoint(latest_weight_path,
+                                                  save_weights_only=True,
+                                                  verbose=1))
+            
+        best_val_acc_cb = keras.callbacks.ModelCheckpoint(best_valid_acc_weight_path,
+                                                          save_weights_only=True,
+                                                          save_best_only=True,
+                                                          verbose=1,
+                                                          monitor='val_acc',
+                                                          mode='max')
             
         if continue_model_dir is not None:
             best_val_acc_cb.best = last_val_acc
         cb.append(best_val_acc_cb)
 
-        # Callback for multi-gpu model
-        best_val_loss_cb = MultiGPUCheckpointCallback(best_valid_loss_weight_path,
-                                                      m,
-                                                      save_weights_only=False,
-                                                      save_best_only=True,
-                                                      verbose=1,
-                                                      monitor='val_loss')
+        best_val_loss_cb = keras.callbacks.ModelCheckpoint(best_valid_loss_weight_path,
+                                                           save_weights_only=True,
+                                                           save_best_only=True,
+                                                           verbose=1,
+                                                           monitor='val_loss',
+                                                           mode='min')
             
         if continue_model_dir is not None:
             best_val_loss_cb.best = last_val_loss
@@ -520,29 +572,23 @@ def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1,
 
         cb.append(earlyStopping)
         cb.append(reduceLR)
-        cb.append(TqdmCallback(epochs=num_epochs, batch_size=train_batch_size, verbose=1))
-        
-        #Convert the base (single-GPU) model to Multi-GPU model
-        if gpus == 1:
-            model = m
-        else:
-            model = multi_gpu_model(m, gpus=gpus)
             
         loss = 'categorical_crossentropy'
         metrics = ['accuracy']
     
         LOGGER.info('Compiling model...')
-        model.compile(Adam(lr=learning_rate), loss=loss, metrics=metrics)
+        m.compile(Adam(lr=learning_rate), loss=loss, metrics=metrics)
         
-        tf.contrib.quantize.create_training_graph(input_graph=train_graph, quant_delay=50)
+        #Since we are loading pre-trained model, start quantization from very first epoch i.e. quant_delay = 0
+        tf.contrib.quantize.create_training_graph(input_graph=train_graph, quant_delay=0)
         initialize_uninitialized_variables(train_sess)
         
-        history = model.fit_generator(train_gen, train_epoch_size, num_epochs,
-                                      validation_data=val_gen,
-                                      validation_steps=validation_epoch_size,
-                                      callbacks=cb,
-                                      verbose=0, #verbosity,
-                                      initial_epoch=initial_epoch)
+        history = m.fit_generator(train_gen, train_epoch_size, num_epochs,
+                                  validation_data=val_gen,
+                                  validation_steps=validation_epoch_size,
+                                  callbacks=cb,
+                                  verbose=verbosity,
+                                  initial_epoch=initial_epoch)
 
         #save graph and checkpoints
         saver = tf.train.Saver()
