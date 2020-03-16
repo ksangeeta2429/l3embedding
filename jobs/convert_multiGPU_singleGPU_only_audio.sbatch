@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:4
-#SBATCH --job-name=l3embedding-convert-multiGPU-singleGPU-audio
+#SBATCH --job-name=convert-multiGPU-singleGPU-audio
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64GB
 #SBATCH --time=1:00:00
 #SBATCH --mail-type=ALL
-#SBATCH --output="l3embedding-convert-multiGPU-singleGPU-audio-%j.out"
-#SBATCH --err="l3embedding-convert-multiGPU-singleGPU-audio-%j.err"
+#SBATCH --output="convert-multiGPU-singleGPU-audio-%j.out"
+#SBATCH --err="convert-multiGPU-singleGPU-audio-%j.err"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
@@ -18,8 +18,9 @@ SRCDIR=.
 module purge
 echo 'Using tensorflow 1.12'
 module load cudnn/9.0v7.3.0.29
+
 if [ $USER == "sk7898" ]; then
-  source activate l3embedding-tf-12
+  source activate l3embedding-tf-12-gpu
 else
   source activate l3embedding-new-cpu
 fi
@@ -30,7 +31,7 @@ NUM_MELS=$3
 HOP_LEN=$4
 DFT=$5
 NUM_GPUS=4
-OUTPUT_DIR=$SCRATCH/models/embedding/fixed/reduced_input
+OUTPUT_DIR=$SCRATCH/models/reduced_input/embedding/environmental/audio_models
 
 # For halved filters, pass additional parameter "half. Optionally, pass last parameter as desired fmax value"
 if ([ $# -gt 6 ] && [ "$6" = "half" ]); then

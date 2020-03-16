@@ -1,31 +1,33 @@
 #!/usr/bin/env bash
 
-#SBATCH --job-name=gen-embedding-tflite-melspec2-sonyc
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=gen-emb-tflite-ust
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=64GB
+#SBATCH --mem=32GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=ALL
-#SBATCH --output="gen-embedding-tflite-melspec2-sonyc-%A-%a.out"
-#SBATCH --err="gen-embedding-tflite-melspec2-sonyc-%A-%a.err"
+#SBATCH --output="gen-emb-tflite-ust-%A-%a.out"
+#SBATCH --err="gen-emb-tflite-ust-%A-%a.err"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
 
 module purge
-echo 'Using tensorflow 1.14.0 CPU version'
+echo 'Using tensorflow 2.0 GPU version'
     
 if [ $USER == "sk7898" ]; then
-  source activate l3embedding-tf-14-cpu
+  module load cudnn/10.1v7.6.5.32
+  source activate l3embedding-tf-2-gpu
 else
-  echo 'If you have tensorflow 1.14.0 (required) in your environment, please make the changes to the script to activate that'
+  echo 'If you have tensorflow 2.0 (required) in your environment, please make the changes to the script to activate that'
   exit 0
 fi
 
 # Process args
-weight_file=$1
-QUANT_MODE=$2
-weight_dir="$(cut -d'.' -f1 <<<"$weight_file")"
+weight_dir=$1 #l3_audio_20200304152812_8000_64_160_1024_half
+QUANT_MODE=$2 #size/default
+#weight_dir="$(cut -d'.' -f1 <<<"$weight_file")"
 
 IFS='_' 
 read -ra SPLITS <<< "$weight_dir" 
@@ -35,21 +37,20 @@ HOP_LEN=${SPLITS[5]}
 NUM_DFT=${SPLITS[6]}
 IFS=' '
 
-tflite_model="quantized_model_${QUANT_MODE}.tflite"
+tflite_model="quantized_${QUANT_MODE}.tflite"
+
+SRCDIR=.
+L3_MODEL_PATH=$SCRATCH/quantization/${weight_dir}/${tflite_model}
+SONYC_UST_PATH=/beegfs/dr2915/sonyc_ust
+DATA_DIR=$SONYC_UST_PATH
+METADATA_PATH=$DATA_DIR/annotations.csv
+DATASET='sonyc_ust'
+OUTPUT_DIR=$SCRATCH/embeddings/features/sonyc_ust/quantized_l3/${QUANT_MODE}/${weight_dir}
 
 echo "ASR=$ASR"
 echo "NUM MELS=$NUM_MELS"
 echo "HOP LENGTH=$HOP_LEN"
 echo "DFT=$NUM_DFT"
-
-SRCDIR=.
-L3_MODEL_PATH=$SCRATCH/quantization/${weight_dir}/${tflite_model}
-SONYC_UST_PATH=/beegfs/jtc440/sonyc_ust
-DATA_DIR=$SONYC_UST_PATH/data
-METADATA_PATH=$DATA_DIR/annotations.csv
-DATASET='sonyc_ust'
-OUTPUT_DIR=$SCRATCH/embeddings/features/sonyc_ust/quantized_l3/${QUANT_MODE}/${weight_dir}
-
 echo "WEIGHT FILE=$L3_MODEL_PATH"
 
 if [[ ${#SPLITS[@]} -eq 10 ]]

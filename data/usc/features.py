@@ -266,27 +266,10 @@ def amplitude_to_db(S, amin=1e-10, dynamic_range=80.0):
     return log_spec
 
 
-def get_l3_frames_uniform_tflite(audio, interpreter=None, n_fft=2048, n_mels=256,\
-                                 mel_hop_length=242, hop_size=0.1, sr=48000, fmax=None, **kwargs):
-    """
-    Get L3 embedding from tflite model for each frame in the given audio file
-
-    Args:
-        audio: Audio data or path to audio file
-               (Type: np.ndarray or str)
-
-        l3embedding_model:  Audio embedding model
-                            (keras.engine.training.Model)
-
-    Keyword Args:
-        hop_size: Hop size in seconds
-                  (Type: float)
-
-    Returns:
-        features:  Array of embedding vectors
-                   (Type: np.ndarray)
-    """
-
+def get_l3_frames_uniform_tflite(audio, interpreter, input_index, output_index, output_shape,
+                                 n_fft=2048, n_mels=256, mel_hop_length=242, hop_size=0.1, 
+                                 sr=48000, fmax=None, embedding_length=256, **kwargs):
+    
     if type(audio) == str:
         audio = load_audio(audio, sr)
 
@@ -319,43 +302,18 @@ def get_l3_frames_uniform_tflite(audio, interpreter=None, n_fft=2048, n_mels=256
                                            power=1.0, htk=True)
         S = amplitude_to_db(np.array(S))
         X.append(S)
-
-    #X = np.array(X)[:, :, :, np.newaxis].astype(np.float32)
-
-    # Get the L3 embedding for each frame
-    batch_size = len(X)
-
-    interpreter.allocate_tensors()
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
-
-    input_shape = input_details[0]['shape'][1:]
-    output_shape = output_details[0]['shape'][1:]
-    input_index = input_details[0]['index']
-    output_index = output_details[0]['index']
-    embedding_length = output_shape[-1]
-    
-    #interpreter.resize_tensor_input(input_index, ((batch_size, ) + tuple(input_shape)))
-    #interpreter.resize_tensor_input(output_index, ((batch_size, ) + tuple(output_shape)))
-     
-    #print("== Input details ==")
-    #print(interpreter.get_input_details()[0])
-    #print("type:", input_details[0]['dtype'])
-    #print("\n== Output details ==")
-    #print(interpreter.get_output_details()[0])
-    
-    predictions = np.zeros((batch_size, embedding_length), dtype=np.float32)
+   
+    predictions = np.zeros((len(X), embedding_length), dtype=np.float16)
     for idx in range(len(X)):
-        #predictions per batch
         #print(np.array(X[idx]).shape)
         x = np.array(X[idx])[np.newaxis, :, :, np.newaxis].astype(np.float32)
         interpreter.set_tensor(input_index, x)
         interpreter.invoke()
-        #print('Interpreter Invoked!')
         output = interpreter.get_tensor(output_index)
         predictions[idx] = np.reshape(output, (output.shape[0], output.shape[-1]))
 
     return predictions
+
 
 def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256,
                           mel_hop_length=242, hop_size=0.1, sr=48000, with_melSpec=None, fmax=None, **kwargs):
@@ -415,7 +373,7 @@ def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256,
                                          window='hann', center=True,
                                          pad_mode='constant'))
             S = librosa.feature.melspectrogram(sr=sr, S=S, n_mels=n_mels, fmax=fmax,
-                                           power=1.0, htk=True)
+                                               power=1.0, htk=True)
             S = amplitude_to_db(np.array(S))
             X.append(S)
 
@@ -432,8 +390,7 @@ def compute_file_features(path, feature_type, l3embedding_model=None, model_type
         if not l3embedding_model:
             err_msg = 'Must provide L3 embedding model to use {} features'
             raise ValueError(err_msg.format(feature_type))
-        #hop_size = feature_args.get('hop_size', 0.1)
-        #samp_rate = feature_args.get('samp_rate', 48000)
+
         audio = None
         if model_type == 'keras':
             # Handling CMSIS mel inputs
@@ -442,18 +399,28 @@ def compute_file_features(path, feature_type, l3embedding_model=None, model_type
                 file_features = l3embedding_model.predict(x['db_mels'][:,:,:,np.newaxis])
             else:
                 file_features, audio = get_l3_frames_uniform(path, l3embedding_model, **feature_args)
+                
         elif model_type == 'tflite':
             #TODO: Add logic for '.npz' (CMSIS mel input) handling
-            file_features = get_l3_frames_uniform_tflite(path, interpreter=l3embedding_model, **feature_args)
+            interpreter = l3embedding_model
+            input_details = interpreter.get_input_details()
+            output_details = interpreter.get_output_details()
+
+            input_shape = input_details[0]['shape'][1:]
+            output_shape = output_details[0]['shape'][1:]
+            input_index = input_details[0]['index']
+            output_index = output_details[0]['index']
+            emb_len = output_shape[-1]
+
+            interpreter.allocate_tensors()
+            
+            file_features = get_l3_frames_uniform_tflite(path, interpreter, input_index, output_index,
+                                                         output_shape, embedding_length=emb_len, **feature_args)
         else:
             raise ValueError('Model type not supported!')
             
     else:
         raise ValueError('Invalid feature type: {}'.format(feature_type))
-        #hop_size=hop_size, sr=samp_rate)
-    #elif feature_type == 'vggish':
-    #    hop_size = feature_args.get('hop_size', 0.1)
-    #    file_features = get_vggish_frames_uniform(path, hop_size=hop_size)
 
     return file_features, audio
 

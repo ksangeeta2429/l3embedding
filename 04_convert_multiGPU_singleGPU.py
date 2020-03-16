@@ -193,6 +193,13 @@ def construct_cnn_L3_melspec2_spec_model(n_mels=256, n_hop = 242, n_dft = 2048,
                  kernel_initializer='he_normal',
                  name='audio_embedding_layer', padding='same',
                  kernel_regularizer=regularizers.l2(weight_decay))(y_a)
+    y_a = BatchNormalization()(y_a)
+    y_a = Activation('relu')(y_a)
+
+    pool_size_a_4 = tuple(y_a.get_shape().as_list()[1:3])
+    y_a = MaxPooling2D(pool_size=pool_size_a_4)(y_a)
+
+    y_a = Flatten()(y_a)
     
     m = Model(inputs=x_a, outputs=y_a)
     m.name = 'audio_model'
@@ -245,7 +252,6 @@ if __name__ == '__main__':
         audio_spec_embed_model.set_weights(m.get_weights()[3:])
         audio_spec_embed_model.save(model_output_path)
         print(model_output_path)
-        exit(0)
 
     if args['only_audio'] and not melSpec:
         model_output_path = os.path.join(output_dir, 'l3_audio_{}_{}.h5'.format(model_id, input_repr))

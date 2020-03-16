@@ -312,9 +312,11 @@ if __name__ == '__main__':
     fmax = args['fmax']
     annotation_path = args['annotation_path']
     save_raw = args['save_raw']
-    saved_model_type = 'keras'
     input_type = args['input_type']
 
+    _, model_ext = os.path.splitext(os.path.basename(model_path))
+    saved_model_type = 'tflite' if model_ext == '.tflite' else 'keras'
+        
     if fold_num is not None:
         fold_num = int(fold_num)
 
@@ -330,8 +332,8 @@ if __name__ == '__main__':
     if (is_l3_feature or is_l3_comp) and not model_path:
         raise ValueError('Must provide model path is L3 embedding features are used')
 
-    print('is_l3_feature', is_l3_feature)
-    print('is_l3_comp', is_l3_comp)
+    print('is_l3_feature?', is_l3_feature)
+    print('is_l3_comp?', is_l3_comp)
 
     if is_l3_comp:
         if 'fixed' in model_path:
@@ -364,10 +366,7 @@ if __name__ == '__main__':
                                            include_layers=layers, num_filters=filters, from_convlayer=from_conv_layer,
                                            n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, fmax=fmax, asr=samp_rate, with_melSpec=with_melSpec)
 
-    elif is_l3_feature:
-        _, model_ext = os.path.splitext(os.path.basename(model_path))
-        saved_model_type = 'tflite' if model_ext == '.tflite' else 'keras'
-        
+    elif is_l3_feature:       
         dataset_output_dir = get_output_dir(model_path, output_dir, dataset_name, saved_model_type=saved_model_type)
         l3embedding_model = get_l3model(model_path, saved_model_type=saved_model_type)
     else:

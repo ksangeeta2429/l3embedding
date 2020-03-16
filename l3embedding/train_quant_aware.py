@@ -367,6 +367,7 @@ def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1,
           samp_rate=8000, fmax=None, halved_convs=True, log_path=None, disable_logging=False, 
           gpus=4, continue_model_dir=None, trained_model_dir=None, gsheet_id=None, google_dev_app_name=None):
 
+    K.clear_session()
     init_console_logger(LOGGER, verbose=verbose)
     if not disable_logging:
         init_file_logger(LOGGER, log_path=log_path)
@@ -423,19 +424,6 @@ def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1,
     with open(train_config_path, 'w') as fd:
         json.dump(param_dict, fd, indent=2)
 
-
-    param_dict.update({
-          'latest_epoch': '-',
-          'latest_train_loss': '-',
-          'latest_validation_loss': '-',
-          'latest_train_acc': '-',
-          'latest_validation_acc': '-',
-          'best_train_loss': '-',
-          'best_validation_loss': '-',
-          'best_train_acc': '-',
-          'best_validation_acc': '-',
-    })
-
     latest_weight_path = os.path.join(model_dir, 'model_latest.h5')
     best_valid_acc_weight_path = os.path.join(model_dir, 'model_best_valid_accuracy.h5')
     best_valid_loss_weight_path = os.path.join(model_dir, 'model_best_valid_loss.h5')
@@ -488,15 +476,27 @@ def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1,
     K.clear_session()
     
     #train graph
-    train_graph = tf.Graph()
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3"
+    train_graph = tf.Graph()
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
     train_sess = tf.Session(config=config, graph=train_graph)
     K.set_session(train_sess)
     
     with train_graph.as_default():       
+        param_dict.update({
+            'latest_epoch': '-',
+            'latest_train_loss': '-',
+            'latest_validation_loss': '-',
+            'latest_train_acc': '-',
+            'latest_validation_acc': '-',
+            'best_train_loss': '-',
+            'best_validation_loss': '-',
+            'best_train_acc': '-',
+            'best_validation_acc': '-',
+        })
+
         if continue_model_dir:
             latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
         else:
@@ -573,16 +573,17 @@ def train(train_data_dir, validation_data_dir, output_dir, num_epochs=1,
         cb.append(earlyStopping)
         cb.append(reduceLR)
             
+        #Since we are loading pre-trained model, start quantization from very first epoch i.e. quant_delay = 0
+        tf.contrib.quantize.create_training_graph(input_graph=train_graph, quant_delay=int(0))
+        initialize_uninitialized_variables(train_sess)
+        
         loss = 'categorical_crossentropy'
         metrics = ['accuracy']
     
         LOGGER.info('Compiling model...')
-        m.compile(Adam(lr=learning_rate), loss=loss, metrics=metrics)
-        
-        #Since we are loading pre-trained model, start quantization from very first epoch i.e. quant_delay = 0
-        tf.contrib.quantize.create_training_graph(input_graph=train_graph, quant_delay=0)
-        initialize_uninitialized_variables(train_sess)
-        
+        m.compile(loss='categorical_crossentropy', optimizer='SGD', metrics=['accuracy'])
+        #m.compile(Adam(lr=learning_rate), loss=loss, metrics=metrics)
+
         history = m.fit_generator(train_gen, train_epoch_size, num_epochs,
                                   validation_data=val_gen,
                                   validation_steps=validation_epoch_size,

@@ -4,8 +4,8 @@
 #SBATCH --job-name=quant-aware-train-same-conv
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=64GB
-#SBATCH --time=7-0
+#SBATCH --mem=128GB
+#SBATCH --time=1-0
 #SBATCH --mail-type=ALL
 #SBATCH --output="quant-aware-same-conv-%j.out"
 #SBATCH --err="quant-aware-same-conv-%j.err"
@@ -42,12 +42,12 @@ else
 fi
 
 python $SRCDIR/03_train_quant_embedding.py \
-    --num-epochs 2 \
+    --num-epochs 5 \
     --train-epoch-size 4096 \
-    --train-batch-size 64 \
+    --train-batch-size 32 \
     --model-type cnn_L3_melspec2 \
     --validation-epoch-size 1024 \
-    --validation-batch-size 64 \
+    --validation-batch-size 32 \
     --checkpoint-interval 10 \
     --gpus $NUM_GPUS \
     --samp-rate $ASR \
