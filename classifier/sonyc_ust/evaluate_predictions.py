@@ -69,7 +69,7 @@ if __name__ == '__main__':
         macro_auprc, class_auprc = macro_averaged_auprc(df_dict, return_classwise=True)
 
         # Get index of first threshold that is at least 0.5
-        thresh_0pt5_idx = (eval_df['threshold'] >= 0.5).nonzero()[0][0]
+        thresh_0pt5_idx = (eval_df['threshold'] >= 0.5).to_numpy().nonzero()[0][0]
 
         metrics[mode]["micro_auprc"] = micro_auprc
         metrics[mode]["micro_f1"] = eval_df["F"][thresh_0pt5_idx]

@@ -26,7 +26,7 @@ fi
 
 # Process args
 weight_dir=$1 #l3_audio_20200304152812_8000_64_160_1024_half
-QUANT_MODE=$2 #size/default
+QUANT_MODE=$2 #default_int8_uint8
 #weight_dir="$(cut -d'.' -f1 <<<"$weight_file")"
 
 IFS='_' 
