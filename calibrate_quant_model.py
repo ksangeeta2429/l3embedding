@@ -104,7 +104,7 @@ def single_epoch_test_data_generator(data_dir, epoch_size, **kwargs):
         x = quant_data_generator(data_dir, **kwargs)
         yield x
         
-def quantize_keras_to_tflite(tflite_model_file, keras_model, quant_mode='default', quantized_op=False,\
+def quantize_keras_to_tflite(tflite_model_file, keras_model, quant_mode='default',\
                              n_mels=256, n_hop=242, n_dft=2048, asr=48000, halved_convs=False,\
                              quant_type='int8', calibrate_data_dir=None, calibration_steps=1024):
 
@@ -128,8 +128,6 @@ def quantize_keras_to_tflite(tflite_model_file, keras_model, quant_mode='default
         else:
             converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_LATENCY]
             
-        if quantized_op:
-            converter.inference_output_type = tf.uint8 
         if quant_type == 'int8':
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]        
         if quant_type == 'float16':
@@ -141,7 +139,7 @@ def quantize_keras_to_tflite(tflite_model_file, keras_model, quant_mode='default
         if quant_type == 'float16':
             converter.target_spec.supported_types = [tf.float16]
         converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
-    
+        converter.representative_dataset = representative_dataset_gen
     else:
         raise ValueError('Unrecognized Quantization mode!')
 
@@ -149,11 +147,10 @@ def quantize_keras_to_tflite(tflite_model_file, keras_model, quant_mode='default
     with open(tflite_model_file, "wb") as f:
         f.write(tflite_model)
         
-def post_training_quantization(model_path, calibrate_data_dir, quant_mode='default', quantized_op=False,\
+def post_training_quantization(model_path, calibrate_data_dir, quant_mode='default',\
                                n_mels=256, n_hop=242, n_dft=2048, asr=48000, halved_convs=False,\
                                quant_type='int8', calibration_steps=1024):
     
-    #1. Convert l3model to keras model for quantization (with maxpooling layer but flatten removed)
     dir_prefix = '/scratch/sk7898/quantization/' + os.path.basename(model_path).strip('.h5')
     
     if not os.path.isdir(dir_prefix):
@@ -163,13 +160,12 @@ def post_training_quantization(model_path, calibrate_data_dir, quant_mode='defau
     #keras_model.summary()
     
     print('Quantizing keras model and saving as tflite')
-    quant_op_type = '_uint8' if quantized_op else ''
     tflite_model_file = os.path.join(dir_prefix, 
-                                     'quantized_'+ quant_mode + '_'+ quant_type + quant_op_type + '.tflite')
+                                     'quantized_'+ quant_mode + '_'+ quant_type + '.tflite')
     
     quantize_keras_to_tflite(tflite_model_file, keras_model, quant_mode=quant_mode,\
-                             quantized_op=quantized_op, quant_type=quant_type, asr=asr,\
-                             n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, halved_convs=halved_convs, \
+                             quant_type=quant_type, asr=asr, n_mels=n_mels,
+                             n_hop=n_hop, n_dft=n_dft, halved_convs=halved_convs, \
                              calibrate_data_dir=calibrate_data_dir, calibration_steps=calibration_steps)
     
     return tflite_model_file
@@ -177,10 +173,9 @@ def post_training_quantization(model_path, calibrate_data_dir, quant_mode='defau
 if __name__ == '__main__':
     model_path ='/scratch/sk7898/models/reduced_input/embedding/environmental/audio_models/l3_audio_20200304152812_8000_64_160_1024_half.h5'
     calibrate_data_dir = '/beegfs/work/AudioSetSamples_environmental/environmental_train'
-    calibration_steps = 8000
+    calibration_steps = 5 #8000
 
     quant_mode = 'default' #Options: {'size', 'default', 'latency'}
-    quantized_op = False
     n_mels = 64
     n_hop = 160
     n_dft = 1024
@@ -189,9 +184,9 @@ if __name__ == '__main__':
     quant_type = 'int8'
 
     quant_output_path = post_training_quantization(model_path, calibrate_data_dir, quant_mode=quant_mode,
-                                                   quantized_op=quantized_op, n_mels=n_mels,
-                                                   n_hop=n_hop, n_dft=n_dft, asr=asr, halved_convs=halved_convs,
-                                                   quant_type=quant_type, calibration_steps=calibration_steps)
+                                                   n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, asr=asr,
+                                                   halved_convs=halved_convs, quant_type=quant_type,
+                                                   calibration_steps=calibration_steps)
 
     interpreter = tf.lite.Interpreter(model_path=str(quant_output_path))
     input_details = interpreter.get_input_details()
