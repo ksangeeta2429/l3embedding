@@ -52,7 +52,7 @@ def quant_data_generator(data_dir, batch_size=512, samp_rate=48000, n_fft=2048, 
     batch_idx = 0
        
     for fname in shuffle_files(os.listdir(data_dir)):
-        print(fname)
+        #print(fname)
         data_batch_path = os.path.join(data_dir, fname)
         blob_start_idx = 0
 
@@ -177,10 +177,10 @@ def post_training_quantization(model_path, calibrate_data_dir, quant_mode='defau
 if __name__ == '__main__':
     model_path ='/scratch/sk7898/models/reduced_input/embedding/environmental/audio_models/l3_audio_20200304152812_8000_64_160_1024_half.h5'
     calibrate_data_dir = '/beegfs/work/AudioSetSamples_environmental/environmental_train'
-    calibration_steps = 4096
+    calibration_steps = 8000
 
     quant_mode = 'default' #Options: {'size', 'default', 'latency'}
-    quantized_op = True
+    quantized_op = False
     n_mels = 64
     n_hop = 160
     n_dft = 1024
