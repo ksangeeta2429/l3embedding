@@ -246,16 +246,13 @@ if __name__ == '__main__':
         _, x_a = inputs
     else:
         m = keras.models.load_model(weight_file, custom_objects={'Melspectrogram': Melspectrogram})
-        model_output_path = os.path.join(output_dir, 'l3_audio_{}_{}.h5'.format(model_id, input_repr))
-        audio_spec_embed_model, _, _ = construct_cnn_L3_melspec2_spec_model(n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, \
-                                                                            halved_convs=halved_convs, asr=samp_rate)
-        audio_spec_embed_model.set_weights(m.get_weights()[3:])
-        audio_spec_embed_model.save(model_output_path)
-        print(model_output_path)
 
     if args['only_audio'] and not melSpec:
         model_output_path = os.path.join(output_dir, 'l3_audio_{}_{}.h5'.format(model_id, input_repr))
-        audio_model_output = m.get_layer('audio_model').get_layer('audio_embedding_layer').output
+        emb_layer = m.get_layer('audio_model').get_layer('audio_embedding_layer')
+        audio_model_output = emb_layer.output
+        pool_size = tuple(emb_layer.get_output_shape_at(0)[1:3])
+    
         audio_embed_model = Model(inputs=x_a, outputs=audio_model_output)
         
         weights = audio_embed_model.get_weights()[3:]
@@ -264,7 +261,11 @@ if __name__ == '__main__':
         audio_spec_embed_model, _, _ = construct_cnn_L3_melspec2_spec_model(n_mels=n_mels, n_hop=n_hop, n_dft=n_dft, \
                                                                             halved_convs=halved_convs, asr=samp_rate)
         audio_spec_embed_model.set_weights(weights)
-        audio_spec_embed_model.save(model_output_path)
+        
+        y_a = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(audio_spec_embed_model.output)
+        y_a = keras.layers.Flatten()(y_a)
+        model = Model(inputs=audio_spec_embed_model.input, outputs=y_a)
+        model.save(model_output_path)
     
     elif args['only_audio'] and melSpec:
         model_output_path = os.path.join(output_dir, 'l3_audio_melSpec_{}_{}.h5'.format(model_id, input_repr))
