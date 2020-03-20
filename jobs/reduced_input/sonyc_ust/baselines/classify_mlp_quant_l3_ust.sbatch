@@ -36,7 +36,7 @@ OUTDIR=$SCRATCH/embeddings/classifier/sonyc_ust/mlp
 #module load ffmpeg/intel/3.2.2
 #module load rubberband/intel/1.8.1
 
-if [ $# -gt 1 ]; then
+if [ $# -gt 2 ]; then
     NUM_HIDDEN=$3
     HIDDEN_SIZE=$4
 else
