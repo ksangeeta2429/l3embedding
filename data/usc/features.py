@@ -6,6 +6,7 @@ import scipy as sp
 import soundfile as sf
 import resampy
 import tensorflow as tf
+import multiprocessing
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 #from .vggish import vggish_input
 #from .vggish import vggish_postprocess
@@ -264,8 +265,7 @@ def amplitude_to_db(S, amin=1e-10, dynamic_range=80.0):
     log_spec = np.maximum(log_spec, -dynamic_range)
 
     return log_spec
-
-
+        
 def get_l3_frames_uniform_tflite(audio, interpreter, input_index, output_index, output_shape,
                                  n_fft=2048, n_mels=256, mel_hop_length=242, hop_size=0.1, 
                                  sr=48000, fmax=None, embedding_length=256, **kwargs):

@@ -22,10 +22,13 @@ else
     source activate l3embedding-new-cpu
 fi
 
+#sample job: sbatch classify_mlp_quant_l3_ust.sbatch default_int8 l3_audio_20200304152812_8000_64_160_1024_half
 SRCDIR=.
+QUANT_MODE=$1
+MODEL_DIR=$2
 ANNPATH=/beegfs/dr2915/sonyc_ust/annotations.csv
 TAXPATH=/beegfs/dr2915/sonyc_ust/dcase-ust-taxonomy.yaml
-EMBDIR=$SCRATCH/embeddings/features/sonyc_ust/quantized_l3/size/$1 #$SCRATCH/embeddings/features/sonyc_ust/l3/reduced_input/$1
+EMBDIR=$SCRATCH/embeddings/features/sonyc_ust/quantized_l3/${QUANT_MODE}/${MODEL_DIR} #$SCRATCH/embeddings/features/sonyc_ust/l3/reduced_input/$1
 OUTDIR=$SCRATCH/embeddings/classifier/sonyc_ust/mlp
 
 #module purge
@@ -34,8 +37,8 @@ OUTDIR=$SCRATCH/embeddings/classifier/sonyc_ust/mlp
 #module load rubberband/intel/1.8.1
 
 if [ $# -gt 1 ]; then
-    NUM_HIDDEN=$2
-    HIDDEN_SIZE=$3
+    NUM_HIDDEN=$3
+    HIDDEN_SIZE=$4
 else
     NUM_HIDDEN=0
     HIDDEN_SIZE=0

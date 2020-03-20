@@ -157,7 +157,7 @@ def post_training_quantization(model_path, calibrate_data_dir, quant_mode='defau
         os.makedirs(dir_prefix)
     
     keras_model = tf.keras.models.load_model(model_path)
-    #keras_model.summary()
+    print(keras_model.summary())
     
     print('Quantizing keras model and saving as tflite')
     tflite_model_file = os.path.join(dir_prefix, 
@@ -173,7 +173,7 @@ def post_training_quantization(model_path, calibrate_data_dir, quant_mode='defau
 if __name__ == '__main__':
     model_path ='/scratch/sk7898/models/reduced_input/embedding/environmental/audio_models/l3_audio_20200304152812_8000_64_160_1024_half.h5'
     calibrate_data_dir = '/beegfs/work/AudioSetSamples_environmental/environmental_train'
-    calibration_steps = 5 #8000
+    calibration_steps = 8000
 
     quant_mode = 'default' #Options: {'size', 'default', 'latency'}
     n_mels = 64

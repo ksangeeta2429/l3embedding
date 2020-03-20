@@ -183,6 +183,14 @@ def parse_arguments():
                         type=int,
                         help='Fold number to generate. If unused, generate all folds')
 
+    parser.add_argument('-pt',
+                        '--partition-num',
+                        dest='partition_to_run',
+                        action='store',
+                        type=int,
+                        default=None,
+                        help='Partition of the dataset to run')
+
     parser.add_argument('-th',
                         '--thresholds',
                         dest='thresholds',
@@ -313,6 +321,7 @@ if __name__ == '__main__':
     annotation_path = args['annotation_path']
     save_raw = args['save_raw']
     input_type = args['input_type']
+    partition_to_run = args['partition_to_run']
 
     _, model_ext = os.path.splitext(os.path.basename(model_path))
     saved_model_type = 'tflite' if model_ext == '.tflite' else 'keras'
@@ -426,7 +435,7 @@ if __name__ == '__main__':
             raise ValueError('Must provide path to annotation file for SONYC_UST')
 
         generate_sonyc_ust_data(annotation_path=annotation_path, dataset_dir=data_dir, output_dir=dataset_output_dir,\
-                                l3embedding_model=l3embedding_model, model_type=saved_model_type,\
+                                l3embedding_model=l3embedding_model, model_type=saved_model_type, partition_to_run=partition_to_run,\
                                 features=features, hop_size=hop_size, mel_hop_length=n_hop, n_mels=n_mels,
                                 n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec, save_raw=save_raw, input_type=input_type)
 

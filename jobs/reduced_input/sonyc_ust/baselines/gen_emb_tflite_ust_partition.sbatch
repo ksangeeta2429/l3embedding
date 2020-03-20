@@ -1,24 +1,23 @@
 #!/usr/bin/env bash
 
-#SBATCH --gres=gpu:1
-#SBATCH --job-name=gen-emb-tflite-ust
+#SBATCH --job-name=gen-emb-tflite-ust-p
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64GB
-#SBATCH --time=2-0
+#SBATCH --time=1-0
 #SBATCH --mail-type=ALL
-#SBATCH --output="gen-emb-tflite-ust-%A-%a.out"
-#SBATCH --err="gen-emb-tflite-ust-%A-%a.err"
+#SBATCH --output="gen-emb-tflite-ust-p-%A-%a.out"
+#SBATCH --err="gen-emb-tflite-ust-p-%A-%a.err"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
 
 module purge
-echo 'Using tensorflow 2.0 GPU version'
+echo 'Using tensorflow 2.0 CPU version'
     
 if [ $USER == "sk7898" ]; then
-  module load cudnn/10.1v7.6.5.32
-  source activate l3embedding-tf-2-gpu
+  #module load cudnn/10.1v7.6.5.32
+  source activate l3embedding-tf-2-cpu    
 else
   echo 'If you have tensorflow 2.0 (required) in your environment, please make the changes to the script to activate that'
   exit 0
@@ -27,7 +26,7 @@ fi
 # Process args
 weight_dir=$1 #l3_audio_20200304152812_8000_64_160_1024_half
 QUANT_MODE=$2 #default_int8_uint8
-#weight_dir="$(cut -d'.' -f1 <<<"$weight_file")"
+PARTITION_NUM=$3
 
 IFS='_' 
 read -ra SPLITS <<< "$weight_dir" 
@@ -52,6 +51,7 @@ echo "NUM MELS=$NUM_MELS"
 echo "HOP LENGTH=$HOP_LEN"
 echo "DFT=$NUM_DFT"
 echo "WEIGHT FILE=$L3_MODEL_PATH"
+echo "PARTITION_NUM=$PARTITION_NUM"
 
 if [[ ${#SPLITS[@]} -eq 10 ]]
 then
@@ -70,6 +70,7 @@ then
         --mel-hop-length $HOP_LEN \
         --num-dft $NUM_DFT \
         --freq-max $FMAX \
+	--partition-num $PARTITION_NUM \
         --sonyc-ust-annotation-path $METADATA_PATH \
         $DATASET \
         $DATA_DIR \
@@ -86,6 +87,7 @@ else
         --num-mels $NUM_MELS \
         --mel-hop-length $HOP_LEN \
         --num-dft $NUM_DFT \
+	--partition-num $PARTITION_NUM \
         --sonyc-ust-annotation-path $METADATA_PATH \
         $DATASET \
         $DATA_DIR \
