@@ -16,7 +16,7 @@ LOGGER.setLevel(logging.DEBUG)
 
 def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embedding_model, model_type='keras',
                             hop_size=0.1, features='l3', timestamps=False, save_raw=False, input_type='raw',
-                            partition_to_run=None, num_partitions=10, **feature_args):
+                            partition_to_run=None, num_partitions=15, **feature_args):
     """
     Extract embeddings for files annotated in the SONYC annotation file and save them to disk.
     Parameters
@@ -45,26 +45,19 @@ def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embeddin
 
     df = annotation_data[['split', 'audio_filename']].drop_duplicates()
     
-    # Skip the files for which embedding already exists
-    df['output_path'] = df['audio_filename'].apply(lambda x: os.path.join(output_dir, os.path.splitext(x)[0] + '.npz'))
-    output_paths = list(df['output_path'])
-    list_files = [os.path.join(output_dir, filename) for filename in os.listdir(output_dir)]
-    rem_files = [x for x in output_paths if x not in list_files]
-    df_new = df[df['output_path'].isin(rem_files)]
-    
     if partition_to_run is None:
-        df_subset = df_new
+        df_subset = df
     else:
-        n_rows = df_new.shape[0]
+        n_rows = df.shape[0]
         partition_size = math.ceil(n_rows / num_partitions)
         start_idx = partition_to_run * partition_size
         end_idx = min(n_rows, (partition_to_run + 1) * partition_size)
-        df_subset = df_new.iloc[start_idx:end_idx]   
+        df_subset = df.iloc[start_idx:end_idx]   
 
     row_iter = df_subset.iterrows()
     
     LOGGER.info('* Extracting embeddings.')
-    LOGGER.info('* Processing {} out of total {} reamining files'.format(df_subset.shape[0] , len(rem_files)))
+    LOGGER.info('* Processing {} files'.format(df_subset.shape[0]))
 
     for _, row in row_iter:
         filename = row['audio_filename']
@@ -74,8 +67,6 @@ def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embeddin
 
         split_str = row['split']
         audio_path = os.path.join(dataset_dir, split_str, filename)
-        
-        # Can also extract from row['output_path']
         output_path = os.path.join(output_dir, os.path.splitext(filename)[0] + '.npz')
 
         if not os.path.exists(audio_path):
@@ -83,7 +74,7 @@ def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embeddin
             continue
 
         if os.path.exists(output_path):
-            LOGGER.info('Output file {} already exists'.format(output_path))
+            #LOGGER.info('Output file {} already exists'.format(output_path))
             continue
 
         X, audio = cls_features.compute_file_features(audio_path, features, l3embedding_model=l3embedding_model,

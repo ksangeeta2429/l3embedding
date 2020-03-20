@@ -70,7 +70,7 @@ then
         --mel-hop-length $HOP_LEN \
         --num-dft $NUM_DFT \
         --freq-max $FMAX \
-	--partition-num $PARTITION_NUM \
+        --partition-num $PARTITION_NUM \
         --sonyc-ust-annotation-path $METADATA_PATH \
         $DATASET \
         $DATA_DIR \
@@ -87,7 +87,7 @@ else
         --num-mels $NUM_MELS \
         --mel-hop-length $HOP_LEN \
         --num-dft $NUM_DFT \
-	--partition-num $PARTITION_NUM \
+        --partition-num $PARTITION_NUM \
         --sonyc-ust-annotation-path $METADATA_PATH \
         $DATASET \
         $DATA_DIR \

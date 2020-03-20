@@ -1,0 +1,44 @@
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 0
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 1
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 2
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 3
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 4
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 5
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 6
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 7
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 8
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 9
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 10
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 11
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 12
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 13
+sleep 5
+
+sbatch gen_emb_tflite_ust_partition.sbatch l3_audio_20200304152812_8000_64_160_1024_half default_int8 14
+
