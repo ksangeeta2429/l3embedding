@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=classify-quant-db-mels
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=32GB
+#SBATCH --time=1-0
+#SBATCH --mail-type=FAIL
+#SBATCH --output="classify-quant-db-mels-mlp-%j.out"
+#SBATCH --err="classify-quant-db-mels-mlp-%j.err"
+
+source ~/.bashrc
+cd `git rev-parse --show-toplevel`
+
+module purge
+module load cudnn/9.0v7.3.0.29
+
+if [ $USER == "sk7898" ]; then
+    source activate l3embedding-tf-12-gpu
+else
+    source activate l3embedding-new-cpu
+fi
+
+#sample job: sbatch classify_mlp_quant_l3_ust.sbatch default_int8 l3_audio_20200304152812_8000_64_160_1024_half
+SRCDIR=.
+QUANT_MODE=$1
+MODEL_DIR=$2
+ANNPATH=/beegfs/dr2915/sonyc_ust/annotations.csv
+TAXPATH=/beegfs/dr2915/sonyc_ust/dcase-ust-taxonomy.yaml
+EMBDIR=$SCRATCH/embeddings/db_mel/sonyc_ust/quantized_l3/${QUANT_MODE}/${MODEL_DIR} #$SCRATCH/embeddings/features/sonyc_ust/l3/reduced_input/$1
+OUTDIR=$SCRATCH/embeddings/classifier/sonyc_ust/mlp/db_mel
+
+if [ $# -gt 2 ]; then
+    NUM_HIDDEN=$3
+    HIDDEN_SIZE=$4
+else
+    NUM_HIDDEN=0
+    HIDDEN_SIZE=0
+fi
+
+EXPDIR=$OUTDIR/$1/${NUM_HIDDEN}_${HIDDEN_SIZE}
+OUTPUTDIR=$EXPDIR/results
+
+echo "NUM_HIDDEN=$NUM_HIDDEN"
+echo "HIDDEN_SIZE=$HIDDEN_SIZE"
+
+GOOGLE_DEV_APP_NAME='l3compression'
+GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo'
+
+python classifier/sonyc_ust/classify.py $ANNPATH $TAXPATH $EMBDIR $EXPDIR results \
+    --hidden_layer_size $HIDDEN_SIZE \
+    --num_hidden_layers $NUM_HIDDEN \
+    --batch_size 64 \
+    --num_epochs 1500 \
+    --patience 1500 \
+    --label_mode coarse \
+    --target_mode framewise \
+    --no_timestamp \
+    --optimizer adam
+
+PYTHONPATH='.' python classifier/sonyc_ust/evaluate_predictions.py $OUTPUTDIR/output_mean.csv $ANNPATH $TAXPATH $OUTPUTDIR $GSHEET_ID $GOOGLE_DEV_APP_NAME
