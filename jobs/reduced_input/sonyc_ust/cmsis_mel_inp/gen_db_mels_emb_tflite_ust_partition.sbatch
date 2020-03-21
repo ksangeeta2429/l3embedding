@@ -41,11 +41,11 @@ tflite_model="quantized_${QUANT_MODE}.tflite"
 SRCDIR=.
 L3_MODEL_PATH=$SCRATCH/quantization/${weight_dir}/${tflite_model}
 SONYC_UST_PATH=/beegfs/dr2915/sonyc_ust
-DATA_DIR=$SONYC_UST_PATH
-METADATA_PATH=$DATA_DIR/annotations.csv
+DATA_DIR=$SONYC_UST_PATH/db_mels
+METADATA_PATH=$SONYC_UST_PATH/annotations.csv
 DATASET='sonyc_ust'
 #OUTPUT_DIR=$SCRATCH/embeddings/features/sonyc_ust/quantized_l3/${QUANT_MODE}/${weight_dir}
-OUTPUT_DIR=$SCRATCH/embeddings/features/sonyc_ust/quantized_l3/default_int8_toco/${weight_dir}
+OUTPUT_DIR=$SCRATCH/embeddings/db_mel/sonyc_ust/quantized_l3/default_int8_toco/${weight_dir}
 
 echo "ASR=$ASR"
 echo "NUM MELS=$NUM_MELS"
@@ -67,6 +67,7 @@ then
         --hop-size 0.1 \
         --gpus 0 \
         --samp-rate $ASR \
+        --input-type mel \
         --num-mels $NUM_MELS \
         --mel-hop-length $HOP_LEN \
         --num-dft $NUM_DFT \
@@ -85,6 +86,7 @@ else
         --hop-size 0.1 \
         --gpus 0 \
         --samp-rate $ASR \
+        --input-type mel \
         --num-mels $NUM_MELS \
         --mel-hop-length $HOP_LEN \
         --num-dft $NUM_DFT \

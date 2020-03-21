@@ -303,7 +303,7 @@ def get_l3_frames_uniform_tflite(audio, interpreter, input_index, output_index, 
         S = amplitude_to_db(np.array(S))
         X.append(S)
    
-    predictions = np.zeros((len(X), embedding_length), dtype=np.float16)
+    predictions = np.zeros((len(X), embedding_length), dtype=np.float32)
     for idx in range(len(X)):
         #print(np.array(X[idx]).shape)
         x = np.array(X[idx])[np.newaxis, :, :, np.newaxis].astype(np.float32)
@@ -314,9 +314,25 @@ def get_l3_frames_uniform_tflite(audio, interpreter, input_index, output_index, 
 
     return predictions
 
+def get_cmsis_l3_tflite(cmsis_path, interpreter, input_index, output_index, output_shape,
+                        embedding_length=256, **kwargs):
+    
+    X = np.load(cmsis_path)
+    X = X['db_mels']
+    
+    predictions = np.zeros((X.shape[0], embedding_length), dtype=np.float32)
+    for idx in range(X.shape[0]):
+        x = X[idx][np.newaxis,:,:,np.newaxis].astype(np.float32)
+        interpreter.set_tensor(input_index, x)
+        interpreter.invoke()
+        output = interpreter.get_tensor(output_index)
+        predictions[idx] = np.reshape(output, (output.shape[0], output.shape[-1]))
 
-def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256,
-                          mel_hop_length=242, hop_size=0.1, sr=48000, with_melSpec=None, fmax=None, **kwargs):
+    return predictions
+
+
+def get_l3_frames_uniform(audio, l3embedding_model, n_fft=2048, n_mels=256, mel_hop_length=242,
+                          hop_size=0.1, sr=48000, with_melSpec=None, fmax=None, **kwargs):
     """
     Get L3 embedding for each frame in the given audio file
 
@@ -401,7 +417,6 @@ def compute_file_features(path, feature_type, l3embedding_model=None, model_type
                 file_features, audio = get_l3_frames_uniform(path, l3embedding_model, **feature_args)
                 
         elif model_type == 'tflite':
-            #TODO: Add logic for '.npz' (CMSIS mel input) handling
             interpreter = l3embedding_model
             input_details = interpreter.get_input_details()
             output_details = interpreter.get_output_details()
@@ -414,8 +429,13 @@ def compute_file_features(path, feature_type, l3embedding_model=None, model_type
 
             interpreter.allocate_tensors()
             
-            file_features = get_l3_frames_uniform_tflite(path, interpreter, input_index, output_index,
-                                                         output_shape, embedding_length=emb_len, **feature_args)
+            if os.path.splitext(path)[-1]=='.npz':
+                # Handling CMSIS mel inputs
+                file_features = get_cmsis_l3_tflite(path, interpreter, input_index, output_index,
+                                                    output_shape, embedding_length=emb_len, **feature_args)
+            else:        
+                file_features = get_l3_frames_uniform_tflite(path, interpreter, input_index, output_index,
+                                                             output_shape, embedding_length=emb_len, **feature_args)
         else:
             raise ValueError('Model type not supported!')
             

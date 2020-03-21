@@ -4,7 +4,7 @@
 #SBATCH --job-name=classifyquant--ust-mlp
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=20GB
+#SBATCH --mem=32GB
 #SBATCH --time=1-0
 #SBATCH --mail-type=FAIL
 #SBATCH --output="classify-quant-ust-mlp-%j.out"
