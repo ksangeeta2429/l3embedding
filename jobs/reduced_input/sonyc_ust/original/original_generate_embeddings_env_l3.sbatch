@@ -25,7 +25,7 @@ else
   source activate l3embedding-new-cpu
 fi
 
-MODEL_PATH=$1
+MODEL_PATH=/scratch/dr2915/models/reduced_input/embedding/environmental/cnn_L3_melspec2/20200304183233
 SAMPLING_RATE=48000
 NUM_MELS=256
 HOP_LEN=242
@@ -43,3 +43,28 @@ python $SRCDIR/04_convert_multiGPU_singleGPU.py \
 	--only-audio \
 	--melSpec \
 	$OUTPUT_DIR
+
+L3_MODEL_PATH=$OUTPUT_DIR/l3_audio_melSpec_20200304183233_48000_256_242_2048.h5
+SONYC_UST_PATH=/beegfs/dr2915/sonyc_ust
+DATA_DIR=$SONYC_UST_PATH #$SONYC_UST_PATH/data
+METADATA_PATH=$SONYC_UST_PATH/annotations.csv
+OUTPUT_DIR=$SCRATCH/embeddings
+DATASET='sonyc_ust'
+
+python $SRCDIR/05_generate_embedding_samples.py \
+        --random-state 20180302 \
+        --verbose \
+        --features 'l3' \
+        --l3embedding-model-path $L3_MODEL_PATH \
+        --hop-size 0.1 \
+        --gpus 0 \
+        --save-raw \
+        --samp-rate $ASR \
+        --num-mels $NUM_MELS \
+        --mel-hop-length $HOP_LEN \
+        --num-dft $NUM_DFT \
+        --sonyc-ust-annotation-path $METADATA_PATH \
+        --with-melSpec \
+        $DATASET \
+        $DATA_DIR \
+        $OUTPUT_DIR
