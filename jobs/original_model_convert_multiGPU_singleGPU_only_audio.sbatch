@@ -41,4 +41,5 @@ python $SRCDIR/04_convert_multiGPU_singleGPU.py \
 	--hop-length $HOP_LEN \
 	--num-dft $DFT \
 	--only-audio \
+	--melSpec \
 	$OUTPUT_DIR
