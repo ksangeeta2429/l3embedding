@@ -112,7 +112,6 @@ dependencies:
   - openjpeg=2.3.1=h21c5421_1
   - openssl=1.1.1d=h516909a_0
   - packaging=19.2=py_0
-  - pandas=0.24.2=py36hb3f55d8_1
   - parquet-cpp=1.5.1=2
   - partd=1.1.0=py_0
   - pcre=8.43=he1b5a44_0
@@ -197,6 +196,8 @@ dependencies:
     - nbconvert==5.6.1
     - nbformat==4.4.0
     - notebook==6.0.2
+    - numexpr==2.7.0
+    - pandas==0.25.3
     - pandocfilters==1.4.2
     - parso==0.5.2
     - pexpect==4.7.0
@@ -209,6 +210,7 @@ dependencies:
     - pyzmq==18.1.1
     - qtconsole==4.6.0
     - send2trash==1.5.0
+    - tables==3.6.1
     - terminado==0.8.3
     - testpath==0.4.4
     - traitlets==4.3.3
