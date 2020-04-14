@@ -65,6 +65,13 @@ def parse_arguments():
                         default=20171021,
                         help='Random seed used to set the RNG state')
 
+    parser.add_argument('-trans-dir',
+                        '--transform-data-dir',
+                        dest='transform_data_dir',
+                        action='store',
+                        type=str,
+                        help='Path to directory where data to be transformed is stored')
+
     parser.add_argument('data_dir',
                         action='store',
                         type=str,

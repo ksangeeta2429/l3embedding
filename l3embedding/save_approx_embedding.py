@@ -12,7 +12,7 @@ import multiprocessing
 from joblib import Parallel, delayed, dump, load
 import re
 import glob
-from sonyc.utils import get_sonyc_filtered_files
+#from sonyc.utils import get_sonyc_filtered_files
 
 
 # def get_teacher_embedding(audio_batch):
@@ -68,7 +68,8 @@ def save_npz_sonyc_ust(paths, batch, batch_size):
 
 
 # Note: For UMAP, if a saved model is provided, the UMAP params are all ignored
-def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, neighbors=10, metric='euclidean',
+def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, transform_data=None, neighbors=10,
+                          metric='euclidean',
                           min_dist=0.3, iterations=500, mode='gpu'):
     if len(data) == 0:
         raise ValueError('Data is empty!')
@@ -77,13 +78,20 @@ def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, neigh
 
     if method == 'umap':
         if umap_estimator is None:
-            if mode=='gpu':
-                assert metric=='euclidean', 'cuML UMAP currently only supports euclidean distances'
-                embedding = cumlUMAP(n_neighbors=neighbors, min_dist=min_dist,
-                                     n_components=emb_len).fit_transform(data)
+            if mode == 'gpu':
+                assert metric == 'euclidean', 'cuML UMAP currently only supports euclidean distances'
+                reducer = cumlUMAP(n_neighbors=neighbors, min_dist=min_dist,
+                                     n_components=emb_len)
             else:
-                embedding = umap.umap_.UMAP(n_neighbors=neighbors, min_dist=min_dist, metric=metric,
-                                            n_components=emb_len, verbose=True).fit_transform(data)
+                reducer = umap.umap_.UMAP(n_neighbors=neighbors, min_dist=min_dist, metric=metric,
+                                            n_components=emb_len, verbose=True)
+
+            # Learn model
+            embedding = reducer.fit_transform(data)
+
+            # If transform dataset provided, transform it instead
+            if transform_data is not None:
+                embedding = reducer.transform(transform_data)
         else:
             start_time = time.time()
             embedding = umap_estimator.transform(data)
@@ -129,8 +137,66 @@ def get_blob_keys(method, batch_size, emb_len, neighbors_list=None, metric_list=
     return blob_keys
 
 
-def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap', umap_estimator_path=None,
-                        neighbors_list=None, list_files=None, metric_list=None, min_dist_list=None, tsne_iter_list=[500],
+def get_transform_data_all(data_dir, output_dir, is_sonyc_ust=True, random_state=20180123):
+    random.seed(random_state)
+
+    batch = None
+    embedding_out_paths = []
+    curr_batch_size = 0
+
+    list_files = os.listdir(data_dir)
+    random.shuffle(list_files)
+
+    last_file = list_files[-1]
+    print('Last file on the list: ', last_file)
+
+    for fname in list_files:
+        batch_path = os.path.join(data_dir, fname)
+        blob_start_idx = 0
+
+        if is_sonyc_ust:
+            blob = np.load(batch_path)
+            blob_size = len(blob['embedding'])
+        else:
+            blob = h5py.File(batch_path, 'r')
+            blob_size = len(blob['l3_embedding'])
+
+        embedding_out_paths.append(os.path.join(output_dir, fname))
+
+        read_start = time.time()
+        while blob_start_idx < blob_size:
+            blob_end_idx = blob_size
+
+            if batch is None:
+                if is_sonyc_ust:
+                    batch = {'l3_embedding': blob['embedding'][blob_start_idx:blob_end_idx]}
+                else:
+                    batch = {'l3_embedding': blob['l3_embedding'][blob_start_idx:blob_end_idx]}
+            else:
+                if is_sonyc_ust:
+                    batch['l3_embedding'] = np.concatenate(
+                        [batch['l3_embedding'], blob['embedding'][blob_start_idx:blob_end_idx]])
+                else:
+                    batch['l3_embedding'] = np.concatenate(
+                        [batch['l3_embedding'], blob['l3_embedding'][blob_start_idx:blob_end_idx]])
+
+            curr_batch_size += blob_end_idx - blob_start_idx
+            blob_start_idx = blob_end_idx
+
+            if blob_end_idx == blob_size and not is_sonyc_ust:
+                blob.close()
+
+            if fname == last_file and blob_end_idx == blob_size:
+                read_end = time.time()
+                print('Batch reading: {} seconds'.format((read_end - read_start)))
+
+                return embedding_out_paths, batch['l3_embedding']  # get_teacher_embedding(batch['audio'])
+
+
+def embedding_generator(data_dir, output_dir, reduced_emb_len, transform_data_dir=None, approx_mode='umap',
+                        umap_estimator_path=None,
+                        neighbors_list=None, list_files=None, metric_list=None, min_dist_list=None,
+                        tsne_iter_list=[500],
                         batch_size=1024, random_state=20180123, start_batch_idx=None, extraction_mode='gpu'):
     if data_dir == output_dir:
         raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
@@ -156,7 +222,14 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
         os.makedirs(output_dir)
 
     # Check if dataset is sonyc_ust
-    is_sonyc_ust = 'sonyc_ust' in data_dir
+    is_sonyc_ust = 'sonyc_ust' in data_dir or (transform_data_dir is not None and 'sonyc_ust' in transform_data_dir)
+
+    # Get data to be transformed, if provided
+    if transform_data_dir is not None:
+        print('Reading transformation data from', transform_data_dir)
+        transform_out_paths, transform_data = get_transform_data_all(transform_data_dir, output_dir,
+                                                                     is_sonyc_ust=is_sonyc_ust,
+                                                                     random_state=random_state)
 
     # Infer UMAP params if path provided
     if umap_estimator_path is not None:
@@ -246,6 +319,7 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                             results = Parallel(n_jobs=min(multiprocessing.cpu_count(), n_process)) \
                                 (delayed(get_reduced_embedding)(teacher_embedding, 'umap',
                                                                 emb_len=reduced_emb_len, umap_estimator=None,
+                                                                transform_data=transform_data,
                                                                 neighbors=neighbors,
                                                                 metric=metric,
                                                                 min_dist=min_dist,
@@ -284,6 +358,9 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, approx_mode='umap
                             blob_embeddings[blob_keys[0]] = results
                         else:
                             blob_embeddings[blob_keys[0]] = results
+
+                    if transform_data_dir is not None:
+                        embedding_out_paths = transform_out_paths
 
                     write_start = time.time()
                     if is_sonyc_ust:
@@ -366,7 +443,8 @@ def sanity_check_downsampled_l3_dataset(data_dir, verbose=True):
                                                                                      f["feature_index"][i]))
                 orig_data = orig_f[list(orig_f.keys())[0]][f["feature_index"][i]]
             else:
-                print('\tFeature {} drawn from file {}, dataset_index {}, feature_index {}'.format(i, orig_data_paths[i],
+                print(
+                    '\tFeature {} drawn from file {}, dataset_index {}, feature_index {}'.format(i, orig_data_paths[i],
                                                                                                  f["dataset_index"][i],
                                                                                                  f["feature_index"][i]))
                 orig_data = orig_f[list(orig_f.keys())[0]][f["dataset_index"][i]][1][f["feature_index"][i]]
