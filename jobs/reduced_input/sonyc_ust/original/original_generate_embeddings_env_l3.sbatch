@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64GB
-#SBATCH --time=1:00:00
+#SBATCH --time=5:00:00
 #SBATCH --mail-type=ALL
 #SBATCH --output="convert-multiGPU-singleGPU-audio-%j.out"
 #SBATCH --err="convert-multiGPU-singleGPU-audio-%j.err"
@@ -59,10 +59,10 @@ python $SRCDIR/05_generate_embedding_samples.py \
         --hop-size 0.1 \
         --gpus 0 \
         --save-raw \
-        --samp-rate $ASR \
+        --samp-rate $SAMPLING_RATE \
         --num-mels $NUM_MELS \
         --mel-hop-length $HOP_LEN \
-        --num-dft $NUM_DFT \
+        --num-dft $DFT \
         --sonyc-ust-annotation-path $METADATA_PATH \
         --with-melSpec \
         $DATASET \
