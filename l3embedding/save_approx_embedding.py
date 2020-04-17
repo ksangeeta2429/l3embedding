@@ -87,10 +87,12 @@ def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, trans
                                             n_components=emb_len, verbose=True)
 
             # Learn model
+            print("Training UMAP model...")
             embedding = reducer.fit_transform(data)
 
             # If transform dataset provided, transform it instead
             if transform_data is not None:
+                print("Transforming data...")
                 embedding = reducer.transform(transform_data)
         else:
             start_time = time.time()
@@ -151,9 +153,10 @@ def get_transform_data_all(data_dir, output_dir, is_sonyc_ust=True, random_state
     print('Last file on the list: ', last_file)
 
     for fname in list_files:
+        if os.path.splitext(fname)[1] not in ['.npz', '.h5']:
+            continue
         batch_path = os.path.join(data_dir, fname)
         blob_start_idx = 0
-
         if is_sonyc_ust:
             blob = np.load(batch_path)
             blob_size = len(blob['embedding'])
@@ -221,16 +224,21 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, transform_data_di
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
-    # Check if dataset is sonyc_ust
-    is_sonyc_ust = 'sonyc_ust' in data_dir or (transform_data_dir is not None and 'sonyc_ust' in transform_data_dir)
+    # Check if training or transformation dataset is sonyc_ust
+    is_sonyc_ust = 'sonyc_ust' in data_dir
+
+    if transform_data_dir is not None:
+        is_transf_data_sonyc_ust = 'sonyc_ust' in transform_data_dir
+    else:
+        is_transf_data_sonyc_ust = is_sonyc_ust
 
     # Get data to be transformed, if provided
     if transform_data_dir is not None:
         print('Reading transformation data from', transform_data_dir)
         transform_out_paths, transform_data = get_transform_data_all(transform_data_dir, output_dir,
-                                                                     is_sonyc_ust=is_sonyc_ust,
-                                                                     random_state=random_state)
-
+                                                                     is_sonyc_ust=is_transf_data_sonyc_ust, random_state=random_state)
+    else:
+        transform_data = None
     # Infer UMAP params if path provided
     if umap_estimator_path is not None:
         # Infer training params from filename
@@ -254,7 +262,8 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, transform_data_di
                                   min_dist_list=min_dist_list, tsne_iter_list=tsne_iter_list)
 
     print('Embedding Blob Keys: {}'.format(blob_keys))
-
+    
+    print('Reading training data from:', data_dir)
     # If a list of files is not provided, use all files in data_dir
     if list_files == None:
         list_files = os.listdir(data_dir)
@@ -363,7 +372,7 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, transform_data_di
                         embedding_out_paths = transform_out_paths
 
                     write_start = time.time()
-                    if is_sonyc_ust:
+                    if is_transf_data_sonyc_ust:
                         save_npz_sonyc_ust(embedding_out_paths, blob_embeddings, batch_size)
                     else:
                         write_to_h5(embedding_out_paths, blob_embeddings, batch_size)

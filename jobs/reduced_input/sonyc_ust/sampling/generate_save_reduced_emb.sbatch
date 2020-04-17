@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
-#SBATCH --gres=gpu:p40:1
-#SBATCH --job-name=gen-dir-umap-ust
+#SBATCH --gres=gpu:v100:1
+#SBATCH --job-name=gen-samp-umap-ust
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=32GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=FAIL
-#SBATCH --output="gen-dir-umap-ust-%j.out"
-#SBATCH --err="gen-dir-umap-ust-%j.err"
+#SBATCH --output="gen-samp-umap-ust-%j.out"
+#SBATCH --err="gen-samp-umap-ust-%j.err"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
@@ -27,19 +27,24 @@ BATCH_SIZE=200000
 EMB_LEN=256
 
 APPROX_MODE="umap"
-NEIGHBORS_LIST=( $1 ) #( 50 100 200 300 )
+NEIGHBORS_LIST=( $1 ) #( 500 1000 5000 )
 METRIC_LIST=( 'euclidean' )
-MIN_DIST_LIST=( $2 ) #( 0.3 0.5 )
+MIN_DIST_LIST=( $2 ) #( 0.3 0.5 0.7 )
 
-DATA_DIR=/scratch/dr2915/sonyc_samples/spl/ndata=200000/timescale=day
+SAMPLING=spl
+TIMESCALE=day
+NDATA=200000
+
+DATA_DIR=/scratch/dr2915/sonyc_samples/$SAMPLING/ndata=$NDATA/timescale=$TIMESCALE
 TRANSFORM_DATA_DIR=/scratch/dr2915/embeddings/features/sonyc_ust/l3/melSpec_20200304183233_48000_256_242_2048
 #OUTPUT_DIR=$SCRATCH/reduced_embeddings/music_train_${BATCH_SIZE}_${NEIGHBORS_LIST[0]}
-OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/umap_direct_ust/umap_emb=256_nbrs=${NEIGHBORS_LIST[0]}_mindist=${MIN_DIST_LIST[0]}_mtrc=${METRIC_LIST[0]}
+OUTPUT_DIR=$SCRATCH/reduced_embeddings/umap/samp_umap_ust/$SAMPLING/ndata=$NDATA/timescale=$TIMESCALE/umap_emb=256_nbrs=${NEIGHBORS_LIST[0]}_mindist=${MIN_DIST_LIST[0]}_mtrc=${METRIC_LIST[0]}
 #For testing
 #DATA_DIR=$SCRATCH/temp_data
 #OUTPUT_DIR=$SCRATCH/reduced_embeddings
 echo "DATA_DIR: "$DATA_DIR
 echo "OUTPUT_DIR: "$OUTPUT_DIR
+echo "TRANSFORM_DATA_DIR:" $TRANSFORM_DATA_DIR
 
 #alias nogpu='export CUDA_VISIBLE_DEVICES=-1;'
 
