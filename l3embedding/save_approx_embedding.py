@@ -4,7 +4,7 @@ import random
 import numpy as np
 import pescador
 import h5py
-import umap_modded as umap
+import umap
 from cuml.manifold.umap import UMAP as cumlUMAP
 from sklearn.manifold import TSNE
 import time
@@ -70,7 +70,7 @@ def save_npz_sonyc_ust(paths, batch, batch_size):
 # Note: For UMAP, if a saved model is provided, the UMAP params are all ignored
 def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, transform_data=None, neighbors=10,
                           metric='euclidean',
-                          min_dist=0.3, iterations=500, mode='gpu'):
+                          min_dist=0.3, iterations=500, mode='cpu'):
     if len(data) == 0:
         raise ValueError('Data is empty!')
     if emb_len is None:
@@ -79,21 +79,31 @@ def get_reduced_embedding(data, method, emb_len=None, umap_estimator=None, trans
     if method == 'umap':
         if umap_estimator is None:
             if mode == 'gpu':
+                print("Running UMAP in GPU mode")
                 assert metric == 'euclidean', 'cuML UMAP currently only supports euclidean distances'
                 reducer = cumlUMAP(n_neighbors=neighbors, min_dist=min_dist,
                                      n_components=emb_len)
             else:
-                reducer = umap.umap_.UMAP(n_neighbors=neighbors, min_dist=min_dist, metric=metric,
+                print("Running UMAP in CPU mode")
+                reducer = umap.UMAP(n_neighbors=neighbors, min_dist=min_dist, metric=metric,
                                             n_components=emb_len, verbose=True)
 
             # Learn model
             print("Training UMAP model...")
+            start_time = time.time()
             embedding = reducer.fit_transform(data)
+            end_time = time.time()
+
+            print('UMAP training time: {} seconds'.format((end_time - start_time)))
 
             # If transform dataset provided, transform it instead
             if transform_data is not None:
                 print("Transforming data...")
+                start_time = time.time()
                 embedding = reducer.transform(transform_data)
+                end_time = time.time()
+
+                print('UMAP transformation time: {} seconds'.format((end_time - start_time)))
         else:
             start_time = time.time()
             embedding = umap_estimator.transform(data)
