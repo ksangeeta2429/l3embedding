@@ -5,7 +5,7 @@ import numpy as np
 import pescador
 import h5py
 import umap
-from cuml.manifold.umap import UMAP as cumlUMAP
+#from cuml.manifold.umap import UMAP as cumlUMAP
 from sklearn.manifold import TSNE
 import time
 import multiprocessing
@@ -210,7 +210,7 @@ def embedding_generator(data_dir, output_dir, reduced_emb_len, transform_data_di
                         umap_estimator_path=None,
                         neighbors_list=None, list_files=None, metric_list=None, min_dist_list=None,
                         tsne_iter_list=[500],
-                        batch_size=1024, random_state=20180123, start_batch_idx=None, extraction_mode='gpu'):
+                        batch_size=1024, random_state=20180123, start_batch_idx=None, extraction_mode='cpu'):
     if data_dir == output_dir:
         raise ValueError('Output path should not be same as data path to avoid overwriting data files!')
 
