@@ -1,12 +1,12 @@
 #!/bin/bash
 
-#SBATCH --job-name=sonyc-ust-extract_l3_emb512
+#SBATCH --job-name=sonyc-ust-extract-edgel3-emb512
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=40GB
 #SBATCH --time=1-0
 #SBATCH --mail-type=ALL
-#SBATCH --output="sonyc-ust-ext-l3-emb512-%j.out"
+#SBATCH --output="sonyc-ust-ext-edgel3-emb512-%j.out"
 
 source ~/.bashrc
 source activate ust
