@@ -17,6 +17,7 @@ from vggish import vggish_input
 from vggish import vggish_postprocess
 from vggish import vggish_slim
 
+import edgel3
 
 def make_extract_vggish_embedding(frame_duration, hop_duration, input_op_name='vggish/input_features',
                                   output_op_name='vggish/embedding', embedding_size=128, resources_dir=None):
@@ -280,7 +281,6 @@ def extract_embeddings_edgel3(annotation_path, dataset_dir, output_dir, hop_dura
     -------
 
     """
-    import edgel3
 
     if hop_duration is None:
         hop_duration = 1.0
@@ -288,7 +288,7 @@ def extract_embeddings_edgel3(annotation_path, dataset_dir, output_dir, hop_dura
     print("* Loading annotations.")
     annotation_data = pd.read_csv(annotation_path).sort_values('audio_filename')
 
-    out_dir = os.path.join(output_dir, 'edgel3-{}-sp_{}-{}'.format(retrain_type, sparsity, 512))
+    out_dir = os.path.join(output_dir, 'edgel3-{}-{}-{}'.format(retrain_type, sparsity, 512))
     os.makedirs(out_dir, exist_ok=True)
 
     # Load model
@@ -426,7 +426,7 @@ if __name__ == "__main__":
     parser.add_argument("annotation_path")
     parser.add_argument("dataset_dir")
     parser.add_argument("output_dir")
-    parser.add_argument("embedding_type", choices=["vggish", "l3", "mfcc"])
+    parser.add_argument("embedding_type", choices=["vggish", "l3", "mfcc", "edgel3"])
 
     parser.add_argument("--vggish_resource_dir")
     parser.add_argument("--vggish_embedding_size", type=int, default=128)
