@@ -9,7 +9,7 @@
 #SBATCH --output="sonyc-ust-ext-edgel3-emb512-%j.out"
 
 source ~/.bashrc
-source activate ust
+source activate edgel3
 
 module purge
 module load sox/intel/14.4.2      
