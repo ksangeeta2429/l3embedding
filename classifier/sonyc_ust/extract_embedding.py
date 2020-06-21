@@ -284,9 +284,11 @@ def extract_embeddings_edgel3(annotation_path, dataset_dir, output_dir, hop_dura
     annotation_data = pd.read_csv(annotation_path).sort_values('audio_filename')
 
     out_dir = os.path.join(output_dir, 'edgel3-{}-{}-{}'.format(retrain_type, sparsity, 512))
+    print('Embedding path: {}'.format(out_dir))
     os.makedirs(out_dir, exist_ok=True)
 
     # Load model
+    print("Loading edgel3 with retrain_type={}, sparsity={}".format(retrain_type, sparsity))
     model = edgel3.models.load_embedding_model(retrain_type=retrain_type, sparsity=sparsity)
 
     df = annotation_data[['split', 'audio_filename']].drop_duplicates()

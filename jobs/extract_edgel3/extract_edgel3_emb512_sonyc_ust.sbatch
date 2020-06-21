@@ -27,7 +27,6 @@ TAXPATH=$DATAPATH/dcase-ust-taxonomy.yaml
 EMBDIR=$SCRATCH/embeddings/features/sonyc_ust/l3/edgel3
 
 echo "DATA_DIR=$DATAPATH"
-echo "EMB_DIR=$EMBDIR"
 
 python extract_embedding.py $ANNPATH $DATAPATH $EMBDIR edgel3 \
     --retrain_type $1 \
