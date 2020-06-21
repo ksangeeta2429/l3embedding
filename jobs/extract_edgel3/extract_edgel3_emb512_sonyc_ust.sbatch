@@ -13,10 +13,10 @@ source ~/.bashrc
 source activate edgel3
 
 module purge
-module load cuda/10.1.105
-module load sox/intel/14.4.2      
-module load ffmpeg/intel/3.2.2    
-module load rubberband/intel/1.8.1
+module load cudnn/10.1v7.6.5.32
+#module load sox/intel/14.4.2
+#module load ffmpeg/intel/3.2.2
+#module load rubberband/intel/1.8.1
 
 SRCDIR=`git rev-parse --show-toplevel`/classifier/sonyc_ust
 
