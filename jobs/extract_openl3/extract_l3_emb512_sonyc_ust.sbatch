@@ -19,12 +19,13 @@ module load rubberband/intel/1.8.1
 SRCDIR=`git rev-parse --show-toplevel`/classifier/sonyc_ust
 
 cd $SRCDIR
-DATAPATH=/beegfs/jtc440/sonyc_ust/data
+DATAPATH=/beegfs/dr2915/sonyc_ust/data
+AUDIOPATH=$DATAPATH/audio
 ANNPATH=$DATAPATH/annotations.csv 
 TAXPATH=$DATAPATH/dcase-ust-taxonomy.yaml 
 EMBDIR=$SCRATCH/embeddings/features/sonyc_ust/l3/openl3
 
-python extract_embedding.py $ANNPATH $DATAPATH $EMBDIR l3 \
+python extract_embedding.py $ANNPATH $AUDIOPATH $EMBDIR l3 \
     --l3_input_repr mel256 \
     --l3_content_type music \
     --l3_embedding_size 512 \
