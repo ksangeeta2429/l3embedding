@@ -20,12 +20,11 @@ SRCDIR=`git rev-parse --show-toplevel`/classifier/sonyc_ust
 
 cd $SRCDIR
 DATAPATH=/beegfs/dr2915/sonyc_ust/data
-AUDIOPATH=$DATAPATH/audio
 ANNPATH=$DATAPATH/annotations.csv 
 TAXPATH=$DATAPATH/dcase-ust-taxonomy.yaml 
 EMBDIR=$SCRATCH/embeddings/features/sonyc_ust/l3/edgel3
 
-python extract_embedding.py $ANNPATH $AUDIOPATH $EMBDIR edgel3 \
+python extract_embedding.py $ANNPATH $DATAPATH $EMBDIR edgel3 \
     --retrain_type $1 \
     --sparsity 95.45 \
     --hop_duration 0.1 \
