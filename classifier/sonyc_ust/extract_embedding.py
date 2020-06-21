@@ -261,6 +261,55 @@ def get_l3_embedding_model(input_repr, content_type, embedding_size, load_weight
     return m
 
 
+def extract_embeddings_edgel3(annotation_path, dataset_dir, output_dir, hop_duration=None, progress=True,
+                          retrain_type='ft', sparsity=95.45):
+    """
+    Extract embeddings for files annotated in the SONYC annotation file and save them to disk.
+
+    Parameters
+    ----------
+    annotation_path
+    dataset_dir
+    output_dir
+    vggish_resource_dir
+    frame_duration
+    hop_duration
+    progress
+
+    Returns
+    -------
+
+    """
+    import edgel3
+
+    if hop_duration is None:
+        hop_duration = 1.0
+
+    print("* Loading annotations.")
+    annotation_data = pd.read_csv(annotation_path).sort_values('audio_filename')
+
+    out_dir = os.path.join(output_dir, 'edgel3-{}-sp_{}-{}'.format(retrain_type, sparsity, 512))
+    os.makedirs(out_dir, exist_ok=True)
+
+    # Load model
+    model = edgel3.models.load_embedding_model(retrain_type=retrain_type, sparsity=sparsity)
+
+    df = annotation_data[['split', 'audio_filename']].drop_duplicates()
+    row_iter = df.iterrows()
+
+    if progress:
+        row_iter = tqdm(row_iter, total=len(df))
+
+    print("* Extracting embeddings.")
+    for _, row in row_iter:
+        filename = row['audio_filename']
+        split_str = row['split']
+        audio_path = os.path.join(dataset_dir, split_str, filename)
+
+        # Extract embeddings
+        edgel3.process_file(audio_path, model=model, output_dir=out_dir, hop_size=hop_duration)
+
+
 def extract_embeddings_l3(annotation_path, dataset_dir, output_dir, hop_duration=None, progress=True,
                           input_repr='mel256', content_type='music', embedding_size=512,
                           load_l3_weights=True, resume=False):
@@ -281,7 +330,6 @@ def extract_embeddings_l3(annotation_path, dataset_dir, output_dir, hop_duration
     -------
 
     """
-    import openl3
 
     if hop_duration is None:
         hop_duration = 1.0
@@ -395,6 +443,10 @@ if __name__ == "__main__":
     parser.add_argument("--hop_duration", type=float)
     parser.add_argument("--progress", action="store_const", const=True, default=False)
     parser.add_argument("--resume", action="store_const", const=True, default=False)
+    parser.add_argument("--retrain_type", type=str,
+                        choices=["ft", "kd"], default="ft")
+    parser.add_argument("--sparsity", type=float,
+                        choices=[53.5, 63.5, 72.3, 81.0, 87.0, 90.5, 95.45], default=95.45)
 
     args = parser.parse_args()
 
@@ -424,3 +476,11 @@ if __name__ == "__main__":
                                output_dir=args.output_dir,
                                hop_duration=args.hop_duration,
                                progress=args.progress)
+    elif args.embedding_type == "edgel3":
+        extract_embeddings_edgel3(annotation_path=args.annotation_path,
+                               dataset_dir=args.dataset_dir,
+                               output_dir=args.output_dir,
+                               hop_duration=args.hop_duration,
+                               progress=args.progress,
+                               retrain_type=args.retrain_type,
+                               sparsity=args.sparsity)
