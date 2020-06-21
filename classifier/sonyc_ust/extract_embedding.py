@@ -12,11 +12,6 @@ from tqdm import tqdm
 
 import tensorflow as tf
 
-
-from vggish import vggish_input
-from vggish import vggish_postprocess
-from vggish import vggish_slim
-
 import edgel3
 
 def make_extract_vggish_embedding(frame_duration, hop_duration, input_op_name='vggish/input_features',
@@ -451,6 +446,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.embedding_type == "vggish":
+        from vggish import vggish_input
+        from vggish import vggish_postprocess
+        from vggish import vggish_slim
+        
         extract_embeddings_vggish(annotation_path=args.annotation_path,
                                   dataset_dir=args.dataset_dir,
                                   output_dir=args.output_dir,
