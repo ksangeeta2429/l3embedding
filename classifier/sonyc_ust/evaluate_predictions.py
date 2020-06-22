@@ -100,6 +100,8 @@ if __name__ == '__main__':
 
     if 'mae' in hyp['emb_dir']:
         model_type = 'MAE'
+    elif 'edgel3' in hyp['emb_dir']:
+        model_type = 'EDGEL3'
     elif 'umap' in hyp['emb_dir']:
         model_type = 'UMAP'
     else:
