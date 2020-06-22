@@ -107,7 +107,7 @@ if __name__ == '__main__':
     else:
         model_type = 'BASELINE'
 
-    if '/music/' in hyp['emb_dir'] or model_type == 'BASELINE':
+    if '/music/' in hyp['emb_dir'] or model_type in ['BASELINE', 'EDGEL3']:
         upstream_data = 'music'
     elif '/sonyc/' in hyp['emb_dir']:
         upstream_data = 'sonyc'
