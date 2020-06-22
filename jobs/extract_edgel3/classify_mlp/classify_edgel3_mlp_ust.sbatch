@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=classify-ust-loso
+#SBATCH --job-name=classify-ust-edgel3-mlp
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=20GB
 #SBATCH --time=1-0
 #SBATCH --mail-type=FAIL
-#SBATCH --output="classify-ust-mil-%j.out"
+#SBATCH --output="classify-ust-edgel3-mlp-%j.out"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
