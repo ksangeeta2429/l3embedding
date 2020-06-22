@@ -15,7 +15,7 @@ sleep 3
 sbatch classify_edgel3_mlp_ust.sbatch ft 2 128
 sleep 3
 sbatch classify_edgel3_mlp_ust.sbatch ft 2 256
-
+sleep 3
 
 
 ###### Retrain type: knowledge distillation ########
