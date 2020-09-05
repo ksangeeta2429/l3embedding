@@ -106,7 +106,7 @@ def get_melspectrogram(frame, n_fft=2048, mel_hop_length=242, samp_rate=48000, n
     return S
 
 def get_embedding_key(method, batch_size, emb_len, neighbors=None, \
-                      metric=None, min_dist=None, iteration=None):
+                      metric=None, min_dist=None, pca_kernel=None):
     
     if method == 'umap':
         if neighbors is None or metric is None or min_dist is None:
@@ -118,17 +118,16 @@ def get_embedding_key(method, batch_size, emb_len, neighbors=None, \
               '_metric_' + metric +\
               '_dist|iter_' + str(min_dist)
          
-                    
-    elif method == 'tsne':
-        if neighbors is None or metric is None or iteration is None:
-            raise ValueError('Either neighbors or metric or iteration is missing')
-        
-        key = 'tsne_batch_' + str(batch_size) +\
-              '_len_' + str(emb_len) +\
-              '_batch_' + str(batch_size) +\
-              '_k_' + str(neighbors) +\
-              '_metric_' + metric +\
-              '_dist|iter_' + str(iteration)
+    elif method == 'pca':
+        if pca_kernel is None:
+            raise ValueError('PCA kernel is missing')
+
+        blob_keys.append('pca_batch_' + str(batch_size) + \
+                         '_len_' + str(emb_len) + \
+                         '_kernel_' + str(pca_kernel))
+
+    else:
+        raise ValueError('Only UMAP and PCA is supported as of now!')
 
     return key
 
@@ -142,24 +141,14 @@ def get_restart_info(history_path):
 
     return int(last['epoch']), float(last['val_mean_absolute_error']), float(last['val_loss'])
 
-def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap', approx_train_size=None, neighbors=10, \
-                   min_dist=0.3, metric='euclidean', tsne_iter=500, batch_size=512, melSpec=False,\
-                   n_fft=2048, n_mels=256, n_hop=242, hop_size=0.1, fmax=None,\
-                   student_asr=16000, random_state=20180216, start_batch_idx=None):
-    
-    if student_emb_length is None or approx_train_size is None:
-        raise ValueError('Either student embedding length or reduced embedding training size was not provided')
+def data_generator(data_dir, emb_dir, emb_key, batch_size=512, melSpec=False,
+                   student_asr=8000, n_fft=2048, n_mels=256, n_hop=242, hop_size=0.1, fmax=None,
+                   random_state=20180216, start_batch_idx=None):
 
     random.seed(random_state)
     batch = None
     curr_batch_size = 0
     batch_idx = 0
-
-    if student_emb_length != 512:
-        emb_key = get_embedding_key(approx_mode, approx_train_size, student_emb_length, neighbors=neighbors, \
-                                    metric=metric, min_dist=min_dist, iteration=tsne_iter)
-    else:
-        emb_key = 'l3_embedding'
 
     if type(emb_dir) == list:
         file_list = emb_dir
@@ -179,7 +168,6 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
         except:
             print("Unexpected error:", sys.exc_info()[1])
             continue
-
 
         blob_size = len(emb_blob[emb_key])
 
@@ -209,18 +197,25 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
                 # of the prior batches
                 if start_batch_idx is None or batch_idx >= start_batch_idx:
                     # Convert audio to float
-                    if(student_asr==48000):
-                        batch['audio'] = pcm2float(batch['audio'], dtype='float32')
+                    if not isinstance(batch['audio'][0][0], float):
+                        if len(batch['audio'][0]) == student_asr:
+                            batch['audio'] = pcm2float(batch['audio'], dtype='float32')
+                        else:
+                            batch['audio'] = resample(pcm2float(batch['audio'], dtype='float32'), sr_orig=48000,
+                                                    sr_new=student_asr) 
                     else:
-                        batch['audio'] = resample(pcm2float(batch['audio'], dtype='float32'), sr_orig=48000,
-                                                  sr_new=student_asr)
-                        
+                        batch['audio'] = np.array(batch['audio'])[:, np.newaxis, :]
+
                     if melSpec:
-                        X = [get_melspectrogram(batch['audio'][i].flatten(), n_fft=n_fft, mel_hop_length=n_hop,\
-                                                samp_rate=student_asr, n_mels=n_mels, fmax=fmax) for i in range(batch_size)]
+                        X = [get_melspectrogram(
+                                            batch['audio'][i].flatten(), 
+                                            n_fft=n_fft, mel_hop_length=n_hop,
+                                            samp_rate=student_asr, n_mels=n_mels, 
+                                            fmax=fmax
+                                        ) for i in range(batch_size)
+                            ]
 
                         batch['audio'] = np.array(X)[:, :, :, np.newaxis]
-                        #print(np.shape(batch)) #(64, 256, 191, 1)
                     yield batch
 
                 batch_idx += 1
@@ -228,9 +223,9 @@ def data_generator(data_dir, emb_dir, student_emb_length=None, approx_mode='umap
                 batch = None
 
 
-def single_epoch_data_generator(data_dir, emb_dir, epoch_size, **kwargs):
+def single_epoch_data_generator(data_dir, emb_dir, emb_key, epoch_size, **kwargs):
     while True:
-        data_gen = data_generator(data_dir, emb_dir, **kwargs)
+        data_gen = data_generator(data_dir, emb_dir, emb_key, **kwargs)
 
         for idx, item in enumerate(data_gen):
             yield item
@@ -249,14 +244,18 @@ def get_dir_splits(data_dir, split=0.017):
     val_files = data_files[split_index:]
     
     return train_files, val_files
-    
-def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, output_dir, student_weight_path=None, \
-          approx_mode='umap', approx_train_size=None, neighbors=10, min_dist=0.3, metric='euclidean', tsne_iter=300,\
-          num_epochs=300, train_epoch_size=4096, validation_epoch_size=1024, train_batch_size=64, validation_batch_size=64,\
-          model_type='cnn_L3_melspec2', n_mels=256, n_hop=242, n_dft=2048, samp_rate=48000, fmax=None, halved_convs=False,\
-          log_path=None, disable_logging=False, random_state=20180216,learning_rate=0.00001, verbose=True, checkpoint_interval=10,\
-          gpus=1, continue_model_dir=None, gsheet_id=None, google_dev_app_name=None, melSpec=False):
 
+def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, output_dir,
+          student_weight_path=None, approx_mode='umap', 
+          approx_train_size=None, neighbors=None, min_dist=None, metric='euclidean', pca_kernel='linear',
+          num_epochs=300, learning_rate=0.00001, 
+          train_epoch_size=4096, validation_epoch_size=1024, 
+          train_batch_size=64, validation_batch_size=64,
+          model_type='cnn_L3_melspec2', n_mels=64, n_hop=160, n_dft=1024, samp_rate=8000, 
+          fmax=None, halved_convs=True, melSpec=False,
+          log_path=None, disable_logging=False, random_state=20180216, 
+          verbose=True, checkpoint_interval=10, gpus=1, 
+          continue_model_dir=None, gsheet_id=None, google_dev_app_name=None):
 
     init_console_logger(LOGGER, verbose=verbose)
     if not disable_logging:
@@ -264,30 +263,10 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
 
     LOGGER.debug('Initialized logging.')
     LOGGER.info('Embedding Reduction Mode: %s', approx_mode)
-
-    #reduced_emb_dir_train = os.path.join(reduced_emb_dir, os.path.basename(train_data_dir))
-    #reduced_emb_dir_valid = os.path.join(reduced_emb_dir, os.path.basename(validation_data_dir))
-    if 'music_train' in train_data_dir:
-        dataset = 'music'
-    else:
-        dataset = 'sonyc'
     
-    if approx_mode == 'umap':
-        if min_dist is None:
-            min_dist = 0.3
-        if metric is None:
-            metric='euclidean'
-        model_attribute = 'umap_train_' + str(approx_train_size) + '_neighbors_' + str(neighbors)+\
-                            '_dist_' + str(min_dist) + '_metric_' + metric
-    elif approx_mode == 'tsne':
-        model_attribute = 'tsne_train_' + str(approx_train_size) + '_perplexity_' + str(neighbors) + '_metric_' + metric
-    elif approx_mode == 'mse':
-        model_attribute = 'mse_original'
-    else:
-        raise ValueError('Invalid approximation mode: {}'.format(approx_mode))
-    
+    model_desc = ''
     if continue_model_dir:
-        model_desc = continue_model_dir.split('/')[-3]
+        model_desc = continue_model_dir.split('/')[-2]
         latest_model_path = os.path.join(continue_model_dir, 'model_latest.h5')
         student_base_model = keras.models.load_model(latest_model_path, custom_objects={'Melspectrogram': Melspectrogram})
         student_samp_rate, n_mels, n_hop, n_dft, fmax = get_model_params(model_desc, continue_train=True)
@@ -299,30 +278,70 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
         
     else:
         student_samp_rate = samp_rate
-        student_base_model, inputs, outputs = construct_cnn_L3_melspec2_audio_model(n_mels=n_mels, n_hop=n_hop, n_dft=n_dft,
-                                                                                    asr=samp_rate, fmax=fmax, halved_convs=halved_convs)
-        
-        
+        student_base_model, inputs, outputs = construct_cnn_L3_melspec2_audio_model(
+                                                    n_mels=n_mels, 
+                                                    n_hop=n_hop, 
+                                                    n_dft=n_dft,
+                                                    asr=samp_rate, 
+                                                    fmax=fmax, 
+                                                    halved_convs=halved_convs
+                                                )
+              
     if halved_convs or 'half' in model_desc:
         model_repr = str(student_samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_half'+'_fmax_'+str(fmax)
     else:
         model_repr = str(student_samp_rate)+'_'+str(n_mels)+'_'+str(n_hop)+'_'+str(n_dft)+'_fmax_'+str(fmax)
 
-    # Make sure the directories we need exist
+    emb_key = None
     if continue_model_dir:
         model_dir = continue_model_dir
+        emb_key = continue_model_dir.split('/')[-3]
     else:
-        model_dir = os.path.join(output_dir, 'embedding_approx', dataset, model_repr, model_attribute,\
-                                 datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+        if 'music' in train_data_dir:
+            dataset = 'music'
+        elif 'environmental' in train_data_dir:
+            dataset = 'env'
+        else:
+            dataset = 'sonyc'
+        
+        if approx_mode == 'umap' or approx_mode == 'pca': 
+            # Ex. of train_data_dir: $SCRATCH/reduced_embeddings/sonyc/pca/dpp/day/500000/pca_ndata=500000_emb=256_kernel=linear
+            mode_idx = emb_train_dir.find(approx_mode)
+            model_attribute = emb_train_dir[mode_idx:]
+            emb_key = model_attribute.split('/')[-1]    #Ex. pca_ndata=500000_emb=256_kernel=linear
+
+        elif approx_mode == 'mse':
+            model_attribute = 'mse_original'
+            emb_key = 'l3_embedding'
+
+        else:
+            raise ValueError('Invalid approximation mode: {}'.format(approx_mode))
+
+        model_dir = os.path.join(
+            output_dir,  
+            dataset,  
+            model_attribute,
+            model_repr,
+            datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        )
         
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir)
-        
+
     student_emb_len = get_embedding_length(student_base_model);  
     LOGGER.info('Student sampling rate: {}'.format(student_samp_rate))
     LOGGER.info('Model Representation: {}'.format(model_repr))
     LOGGER.info('Model Attribute: {}'.format(model_attribute))
     LOGGER.info('Student Embedding Length: {}'.format(student_emb_len))
+
+    # emb_key = get_embedding_key(
+    #     approx_mode, 
+    #     approx_train_size, 
+    #     student_emb_length, 
+    #     neighbors=neighbors, 
+    #     metric=metric, 
+    #     min_dist=min_dist, 
+    #     pca_kernel=pca_kernel)
 
     param_dict = {
         'username': getpass.getuser(),
@@ -332,9 +351,7 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
         'reduced_emb_train_dir': emb_train_dir,
         'reduced_emb_valid_dir': emb_valid_dir,
         'approx_mode': approx_mode,
-        'neighbors': neighbors,
-        'min_dist': min_dist,
-        'metric': metric,
+        'emb_key': emb_key,
         'student_model_repr': model_repr,
         'student_emb_len': student_emb_len, 
         'num_epochs': num_epochs,
@@ -450,17 +467,13 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
     else:
         train_start_batch_idx = None
 
-    if train_data_dir == val_data_dir:
+    if train_data_dir == validation_data_dir:
         LOGGER.info('The dataset is not split into train and valid. Splitting the train data!')
         emb_train_dir, emb_valid_dir = get_dir_splits(emb_train_dir)
     
     train_gen = data_generator(train_data_dir,
                                emb_train_dir,
-                               approx_mode=approx_mode,
-                               approx_train_size=approx_train_size,
-                               neighbors=neighbors,
-                               min_dist=min_dist,
-                               student_emb_length=student_emb_len,
+                               emb_key,
                                student_asr=student_samp_rate,
                                batch_size=train_batch_size,
                                n_fft=n_dft, n_mels=n_mels, n_hop=n_hop, fmax=fmax,
@@ -470,18 +483,13 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
 
     val_gen = single_epoch_data_generator(validation_data_dir,
                                           emb_valid_dir,
+                                          emb_key,
                                           validation_epoch_size,
-                                          approx_mode=approx_mode,
-                                          approx_train_size=approx_train_size,
-                                          neighbors=neighbors,
-                                          min_dist=min_dist,
-                                          student_emb_length=student_emb_len,
                                           student_asr=student_samp_rate,
                                           batch_size=validation_batch_size,
                                           n_fft=n_dft, n_mels=n_mels, n_hop=n_hop, fmax=fmax,
                                           melSpec=melSpec,
                                           random_state=random_state)
-
 
     train_gen = pescador.maps.keras_tuples(train_gen,
                                            'audio',
@@ -493,10 +501,7 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
 
     # Fit the model
     LOGGER.info('Fitting model...')
-    if verbose:
-        verbosity = 1
-    else:
-        verbosity = 2
+    verbosity = 1 if verbose else 2
 
     if continue_model_dir is not None:
         initial_epoch = last_epoch_idx + 1

@@ -90,51 +90,43 @@ def parse_arguments():
                         default='umap',
                         help='Type of reduction: `umap` or `tsne`')
 
-    parser.add_argument('-ats',
-                        '--approx-train-size',
-                        dest='approx_train_size',
-                        action='store',
-                        type=int,
-                        default=2000000,
-                        help='Number of examples used to train the approximated method')
+    # parser.add_argument('-ats',
+    #                     '--approx-train-size',
+    #                     dest='approx_train_size',
+    #                     action='store',
+    #                     type=int,
+    #                     default=2000000,
+    #                     help='Number of examples used to train the approximated method')
     
-    parser.add_argument('-neighbors',
-                        '--neighbors',
-                        dest='neighbors',
-                        type=int,
-                        default=20,
-                        help='Corresponds to n_neighbors if approx_mode = `umap` and perplexity if approx_mode = `tsne`. Possible values = {5, 10, 20, 30}')
+    # parser.add_argument('-neighbors',
+    #                     '--neighbors',
+    #                     dest='neighbors',
+    #                     type=int,
+    #                     default=20,
+    #                     help='Corresponds to n_neighbors if approx_mode = `umap` and perplexity if approx_mode = `tsne`. Possible values = {5, 10, 20, 30}')
 
-    parser.add_argument('-metric',
-                        '--metric',
-                        dest='metric',
-                        action='store',
-                        type=str,
-                        default='correlation',
-                        help='Type of metric to optimize with umap/tsne: {correlation}')
+    # parser.add_argument('-metric',
+    #                     '--metric',
+    #                     dest='metric',
+    #                     action='store',
+    #                     type=str,
+    #                     default='correlation',
+    #                     help='Type of metric to optimize with umap/tsne: {correlation}')
 
-    parser.add_argument('-mdist',
-                        '--min-dist',
-                        dest='min_dist',
-                        action='store',
-                        type=float,
-                        default=0.3,
-                        help='UMAP: Minimum distance between clusters. Sensible values are in the range 0.001 to 0.5, with 0.1 being a reasonable default.')
-
-    parser.add_argument('-iter',
-                        '--tsne-iter',
-                        dest='tsne_iter',
-                        action='store',
-                        type=int,
-                        default=500,
-                        help='Number of iterations for tsne')
+    # parser.add_argument('-mdist',
+    #                     '--min-dist',
+    #                     dest='min_dist',
+    #                     action='store',
+    #                     type=float,
+    #                     default=0.3,
+    #                     help='UMAP: Minimum distance between clusters. Sensible values are in the range 0.001 to 0.5, with 0.1 being a reasonable default.')
 
     parser.add_argument('-srate',
                         '--samp-rate',
                         dest='samp_rate',
                         action='store',
                         type=int,
-                        default=48000,
+                        default=8000,
                         help='Sampling rate')
 
     parser.add_argument('-nmels',
@@ -142,7 +134,7 @@ def parse_arguments():
                         dest='n_mels',
                         action='store',
                         type=int,
-                        default=256,
+                        default=64,
                         help='Number of mel filters')
 
     parser.add_argument('-lhop',
@@ -150,7 +142,7 @@ def parse_arguments():
                         dest='n_hop',
                         action='store',
                         type=int,
-                        default=242,
+                        default=160,
                         help='Hop length in samples')
 
     parser.add_argument('-ndft',
@@ -158,7 +150,7 @@ def parse_arguments():
                         dest='n_dft',
                         action='store',
                         type=int,
-                        default=2048,
+                        default=1024,
                         help='DFT size')
 
     parser.add_argument('-fmax',
@@ -173,7 +165,7 @@ def parse_arguments():
                         '--halved-filters',
                         dest='halved_convs',
                         action='store_true',
-                        default=False,
+                        default=True,
                         help='Use half the number of conv. filters as in the original audio model?')
 
     parser.add_argument('-ci',
