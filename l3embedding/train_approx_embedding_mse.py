@@ -157,14 +157,14 @@ def data_generator(data_dir, emb_dir, emb_key, batch_size=512, melSpec=False,
         
     for fname in cycle_shuffle(file_list):
         data_batch_path = os.path.join(data_dir, fname)
-        emb_batch_path = os.path.join(emb_dir, fname)
+        emb_batch_path = os.path.join(emb_dir, fname) 
 
         blob_start_idx = 0
 
         # If file is unreadable for any reason, move on to the next file
         try:
             data_blob = h5py.File(data_batch_path, 'r')
-            emb_blob = h5py.File(emb_batch_path, 'r')
+            emb_blob = h5py.File(emb_batch_path, 'r') if data_batch_path != emb_batch_path else data_blob
         except:
             print("Unexpected error:", sys.exc_info()[1])
             continue
@@ -190,7 +190,8 @@ def data_generator(data_dir, emb_dir, emb_key, batch_size=512, melSpec=False,
 
             if blob_end_idx == blob_size:
                 data_blob.close()
-                emb_blob.close()
+                if data_batch_path != emb_batch_path:
+                    emb_blob.close()
 
             if curr_batch_size == batch_size:
                 # If we are starting from a particular batch, skip yielding all
@@ -198,14 +199,18 @@ def data_generator(data_dir, emb_dir, emb_key, batch_size=512, melSpec=False,
                 if start_batch_idx is None or batch_idx >= start_batch_idx:
                     # Convert audio to float
                     if not isinstance(batch['audio'][0][0], float):
-                        if len(batch['audio'][0]) == student_asr:
-                            batch['audio'] = pcm2float(batch['audio'], dtype='float32')
-                        else:
-                            batch['audio'] = resample(pcm2float(batch['audio'], dtype='float32'), sr_orig=48000,
-                                                    sr_new=student_asr) 
+                        batch['audio'] = pcm2float(batch['audio'], dtype='float32')
                     else:
                         batch['audio'] = np.array(batch['audio'])[:, np.newaxis, :]
+                    
+                    if batch['audio'].shape[-1] != student_asr:
+                            batch['audio'] = resample(
+                                batch['audio'], 
+                                sr_orig=batch['audio'].shape[-1],
+                                sr_new=student_asr
+                            )
 
+                    # If Melspectrogram is not part of the L3 model, extract the melspectrograms
                     if melSpec:
                         X = [get_melspectrogram(
                                             batch['audio'][i].flatten(), 
@@ -216,6 +221,7 @@ def data_generator(data_dir, emb_dir, emb_key, batch_size=512, melSpec=False,
                             ]
 
                         batch['audio'] = np.array(X)[:, :, :, np.newaxis]
+
                     yield batch
 
                 batch_idx += 1
@@ -305,9 +311,10 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
             dataset = 'sonyc'
         
         if approx_mode == 'umap' or approx_mode == 'pca': 
-            # Ex. of train_data_dir: $SCRATCH/reduced_embeddings/sonyc/pca/dpp/day/500000/pca_ndata=500000_emb=256_kernel=linear
+            # Ex. of train_data_dir: 
+            # $SCRATCH/reduced_embeddings/sonyc/pca/dpp/day/500000/pca_ndata=500000_emb=256_kernel=linear/train
             mode_idx = emb_train_dir.find(approx_mode)
-            model_attribute = emb_train_dir[mode_idx:]
+            model_attribute = emb_train_dir[mode_idx:-6]
             emb_key = model_attribute.split('/')[-1]    #Ex. pca_ndata=500000_emb=256_kernel=linear
 
         elif approx_mode == 'mse':
@@ -352,8 +359,8 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
         'reduced_emb_valid_dir': emb_valid_dir,
         'approx_mode': approx_mode,
         'emb_key': emb_key,
-        'student_model_repr': model_repr,
-        'student_emb_len': student_emb_len, 
+        'model_repr': model_repr,
+        'student_emb_len': student_emb_len,
         'num_epochs': num_epochs,
         'train_epoch_size': train_epoch_size,
         'validation_epoch_size': validation_epoch_size,
@@ -361,11 +368,11 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
         'validation_batch_size': validation_batch_size,
         'random_state': random_state,
         'learning_rate': learning_rate,
+        'gpus': gpus,
         'verbose': verbose,
         'checkpoint_interval': checkpoint_interval,
         'log_path': log_path,
         'disable_logging': disable_logging,
-        'gpus': gpus,
         'continue_model_dir': continue_model_dir,
         'git_commit': git.Repo(os.path.dirname(os.path.abspath(__file__)),
                                search_parent_directories=True).head.object.hexsha,
@@ -452,10 +459,10 @@ def train(train_data_dir, validation_data_dir, emb_train_dir, emb_valid_dir, out
     history_csvlog = os.path.join(model_dir, 'history_csvlog.csv')
     cb.append(keras.callbacks.CSVLogger(history_csvlog, append=True, separator=','))
 
-    #earlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=10)
+    earlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=10)
     reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5)
 
-    #cb.append(earlyStopping)
+    cb.append(earlyStopping)
     cb.append(reduceLR)
 
     if gsheet_id:

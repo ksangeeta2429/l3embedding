@@ -150,7 +150,7 @@ def generate_us8k_file_data(fname, example_metadata, audio_fold_dir,
         LOGGER.info('File {} already exists'.format(output_path))
         return
 
-    X = cls_features.compute_file_features(audio_path, features, l3embedding_model=l3embedding_model,\
+    X, _ = cls_features.compute_file_features(audio_path, features, l3embedding_model=l3embedding_model,\
                                            model_type=model_type, **feature_args)
 
     # If we were not able to compute the features, skip this file

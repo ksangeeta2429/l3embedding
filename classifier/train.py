@@ -299,7 +299,9 @@ def train_mlp(train_data, valid_data, test_data, model_dir,
     #set_random_seed(random_state)
 
     # Set up data inputs
-    enc = OneHotEncoder(n_values=num_classes, sparse=False)
+    #enc = OneHotEncoder(n_values=num_classes, sparse=False)
+    #New version of scikit-learn
+    enc = OneHotEncoder(sparse=False)
 
     X_train = train_data['features']
     y_train = enc.fit_transform(train_data['labels'].reshape(-1, 1))

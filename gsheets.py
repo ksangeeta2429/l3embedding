@@ -15,7 +15,7 @@ EMBEDDING_APPROX_FIELD_NAMES =[
     'reduced_emb_valid_dir',
     'approx_mode',
     'emb_key',
-    'student_model_repr',
+    'model_repr',
     'student_emb_len',
     'num_epochs',
     'train_epoch_size',

@@ -21,7 +21,6 @@ def parse_arguments():
     """
     Parse arguments from the command line
 
-
     Returns:
         args:  Argument dictionary
                (Type: dict[str, *])
@@ -159,7 +158,6 @@ def parse_arguments():
                         default=0,
                         help='Number of gpus used for running the embedding model.')
 
-
     parser.add_argument('-filters',
                         '--num_filters',
                         dest='num_filters',
@@ -266,6 +264,15 @@ def get_l3model(model_path, saved_model_type='keras'):
     return l3embedding_model
 
 def get_output_dir(model_path, output_dir, dataset_name, saved_model_type='keras'):
+    if 'music' in model_path:
+        upstream_data = 'music'
+    elif 'environmental' in model_path:
+        upstream_data = 'env'
+    elif 'sonyc' in model_path:
+        upstream_data = 'sonyc'
+    else:
+        upstream_data = ''
+
     if saved_model_type == 'keras': 
         if 'reduced_input' in model_path:
             model_type = 'reduced_input'
@@ -273,11 +280,16 @@ def get_output_dir(model_path, output_dir, dataset_name, saved_model_type='keras
             model_type = ''
 
         if 'embedding_approx' in model_path:
-            model_desc = model_path[model_path.index('embedding_approx'):]
-            model_desc_parts = model_desc.split('/')
-            dataset_output_dir = os.path.join(output_dir, 'features', dataset_name, 'l3',
-                                              model_type, model_desc_parts[0], model_desc_parts[2],
-                                              model_desc_parts[3], model_desc_parts[4])
+            start_idx = model_path.index(upstream_data)+len(upstream_data)+1
+            model_desc = model_path[start_idx:model_path.rindex('/')]
+            #model_desc_parts = model_desc.split('/')
+
+            dataset_output_dir = os.path.join(
+                output_dir, 
+                'features', 
+                dataset_name, 
+                model_desc
+            )
         else:
             model_desc = os.path.splitext(os.path.basename(model_path))[0]
             model_desc_str = model_desc[model_desc.rindex('l3_audio_')+9:]
@@ -382,6 +394,9 @@ if __name__ == '__main__':
         # Get output dir
         dataset_output_dir = os.path.join(output_dir, 'features', dataset_name, features)
         l3embedding_model = None
+
+    #print(l3embedding_model.summary())
+    #print(dataset_output_dir)
 
     # Make sure output directory exists
     if not os.path.isdir(dataset_output_dir):

@@ -163,7 +163,7 @@ class GSheetLogger(keras.callbacks.Callback):
                   self.best_validation_loss, self.best_train_mae, self.best_validation_mae]
 
         update_experiment(self.service, self.spreadsheet_id, self.param_dict,
-                          'V', 'AD', values, 'embedding_approx_mse')
+                          'T', 'AB', values, 'embedding_approx_mse')
 
 
 class TimeHistory(keras.callbacks.Callback):

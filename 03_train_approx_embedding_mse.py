@@ -164,7 +164,7 @@ def parse_arguments():
     parser.add_argument('-half',
                         '--halved-filters',
                         dest='halved_convs',
-                        action='store_true',
+                        action='store_false',
                         default=True,
                         help='Use half the number of conv. filters as in the original audio model?')
 

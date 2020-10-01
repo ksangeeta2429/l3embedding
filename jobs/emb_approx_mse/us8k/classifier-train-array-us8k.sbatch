@@ -1,36 +1,30 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=classifier-train-array-us8k
+#SBATCH --job-name=us8k-mlp
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=16GB
 #SBATCH --time=1-0
 #SBATCH --mail-type=FAIL
-#SBATCH --output="classifier-train-array-us8k-%A-%a.out"
-#SBATCH --err="classifier-train-array-us8k-%A-%a.err"
+#SBATCH --output="us8k-mlp-%A-%a.out"
+#SBATCH --err="us8k-mlp-%A-%a.err"
 
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
-
-if [ $USER == "sk7898" ]; then
-    source activate l3embedding-tf-12
-else
-    source activate l3embedding-new-cpu
-fi
+module purge
+module load cudnn/9.0v7.3.0.29
+source activate l3embedding-tf-12-gpu
 
 SRCDIR=.
 FEATURES_DIR=$1
-OUTPUT_DIR=$SCRATCH/embeddings
+OUTPUT_DIR=$SCRATCH/embedding_approx_mse
 MODEL_TYPE='mlp'
 FEATURE_MODE='framewise'
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo'
 FOLD_NUM=$2
-
-module purge
-module load cudnn/9.0v7.3.0.29
 
 python $SRCDIR/06_train_classifier.py \
     --random-state 20171021 \
