@@ -1,28 +1,41 @@
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 import getpass
 import git
-import json
-import datetime
 import os
-import pickle
 import random
 import csv
-
+import datetime
+import json
+import pickle
 import numpy as np
 import keras
-from keras import backend as K
-import tensorflow as tf
 import pescador
-from skimage import img_as_float
-
-from gsheets import get_credentials, append_row, update_experiment, get_row
-from .model import MODELS, load_model
-from .audio import pcm2float
-from log import *
+import tensorflow as tf
+import h5py
+import tempfile
+import librosa
+import sys
 import h5py
 import copy
+from skimage import img_as_float
+from keras import backend as K
+from keras import activations
+from keras.optimizers import Adam
+from keras.regularizers import l2
+from keras.layers import *
+from keras.optimizers import Adam
+from keras.models import Model
+from tensorflow.python.ops import math_ops
+from tensorflow.python.framework import dtypes
+from .model import *
+from .audio import pcm2float
+from log import *
+from kapre.time_frequency import Spectrogram, Melspectrogram
 from resampy import resample
-
 from googleapiclient import discovery
+from gsheets import get_credentials, append_row, update_experiment, get_row
 
 LOGGER = logging.getLogger('l3embedding')
 LOGGER.setLevel(logging.DEBUG)
@@ -165,7 +178,12 @@ def data_generator(data_dir, batch_size=512, random_state=20180123, samp_rate=48
         batch_path = os.path.join(data_dir, fname)
         blob_start_idx = 0
 
-        blob = h5py.File(batch_path, 'r')
+        try:
+            blob = h5py.File(batch_path, 'r')
+        except:
+            print('Unexpected read error: ', sys.exc_info()[1])
+            continue
+
         blob_size = len(blob['label'])
 
         while blob_start_idx < blob_size:

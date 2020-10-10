@@ -37,7 +37,7 @@ echo "HOP_LENGTH=$HOP_LEN"
 echo "DFT=$NUM_DFT"
 
 SRCDIR=.
-L3_MODEL_PATH=$SCRATCH/embedding_approx_mse/models/sonyc/pca/dpp/day/500000/pca_batch_500000_len_256_kernel_linear/${WEIGHT_FILE}/model_best_valid_loss.h5
+L3_MODEL_PATH=$SCRATCH/embedding_approx_mse/models/sonyc/pca/dpp/day/500000/pca_batch_500000_len_64_kernel_linear/${WEIGHT_FILE}/model_best_valid_loss.h5
 SONYC_UST_PATH=/beegfs/dr2915/sonyc_ust
 DATA_DIR=$SONYC_UST_PATH/data
 METADATA_PATH=$DATA_DIR/annotations.csv

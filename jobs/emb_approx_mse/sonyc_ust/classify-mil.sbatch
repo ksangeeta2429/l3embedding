@@ -19,8 +19,8 @@ source activate l3embedding-tf-12-gpu
 SRCDIR=.
 ANNPATH=/beegfs/dr2915/sonyc_ust/data/annotations.csv
 TAXPATH=/beegfs/dr2915/sonyc_ust/data/dcase-ust-taxonomy.yaml
-EMBDIR=/scratch/dr2915/embeddings/features/sonyc_ust/l3/reduced_input/$1
-#EMBDIR=$SCRATCH/embedding_approx_mse/features/sonyc_ust/pca/dpp/day/500000/pca_batch_500000_len_256_kernel_linear/$1
+EMBDIR=/scratch/sk7898/embedding_approx_mse/features/sonyc_ust/pca/dpp/day/500000/pca_batch_500000_len_64_kernel_linear/$1
+#EMBDIR=/scratch/dr2915/embeddings/features/sonyc_ust/l3/reduced_input/$1
 OUTDIR=$SCRATCH/embedding_approx_mse/classifier/sonyc_ust/mil
 
 if [ $# -gt 1 ]; then
@@ -41,8 +41,8 @@ GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo'
 
 # Sample jobs: 
-# sbatch classify-mlp.sbatch 8000_64_160_1024_half_fmax_None/20200908180725 
-# sbatch classify-mlp.sbatch 8000_64_160_1024_half_fmax_None/20200908180725 1 128
+# sbatch classify-mil.sbatch 8000_64_160_1024_half_fmax_None/20200908180725 
+# sbatch classify-mil.sbatch 8000_64_160_1024_half_fmax_None/20200908180725 1 128
 
 python classifier/sonyc_ust/classify.py $ANNPATH $TAXPATH $EMBDIR $EXPDIR results \
     --hidden_layer_size $HIDDEN_SIZE \

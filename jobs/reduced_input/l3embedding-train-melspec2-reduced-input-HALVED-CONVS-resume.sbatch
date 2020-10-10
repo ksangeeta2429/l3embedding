@@ -13,19 +13,18 @@
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
 
-SRCDIR=. #/home/sk7898/l3embedding
-#WEIGHT_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
+SRCDIR=.
 TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples_environmental/environmental_train #/beegfs/work/AudioSetSamples/music_train
 VAL_DATA_DIR=/beegfs/work/AudioSetSamples_environmental/environmental_valid #/beegfs/work/AudioSetSamples/music_valid
 OUTPUT_DIR=$SCRATCH/models/reduced_input
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
-ASR=$1
-NUM_MELS=$2
-HOP_LEN=$3
-DFT=$4
-CONTINUE_MODEL_DIRECTORY=$5
+ASR=8000 #$1
+NUM_MELS=64 #$2
+HOP_LEN=160 #$3
+DFT=1024 #$4
+CONTINUE_MODEL_DIRECTORY=$1
 
 echo "SAMPLING RATE=$ASR"
 echo "NUM MELS=$NUM_MELS"
@@ -36,11 +35,7 @@ echo "CONTINUE_MODEL_DIRECTORY=$CONTINUE_MODEL_DIRECTORY"
 module purge
 module load cudnn/9.0v7.3.0.29
 
-if [ $USER == "sk7898" ]; then
-    source activate l3embedding-tf-12-gpu
-else
-    source activate l3embedding-new-cpu
-fi
+source activate l3embedding-tf-12-gpu
 
 if [ $# -gt 5 ]
 then

@@ -1,30 +1,29 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:4
-#SBATCH --job-name=halved-conv-melspec2-reduced-input-Sangeeta
+#SBATCH --job-name=emb-128
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64GB
 #SBATCH --time=7-0
 #SBATCH --mail-type=ALL
-#SBATCH --output="halved-conv-melspec2-reduced-input-%j.out"
-#SBATCH --err="halved-conv-melspec2-reduced-input-%j.err"
+#SBATCH --output="emb-128-reduced-input-%j.out"
+#SBATCH --err="emb-128-reduced-input-%j.err"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
 
 SRCDIR=. #/home/sk7898/l3embedding
-#WEIGHT_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
 TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples_environmental/environmental_train #/beegfs/work/AudioSetSamples/music_train
 VAL_DATA_DIR=/beegfs/work/AudioSetSamples_environmental/environmental_valid #/beegfs/work/AudioSetSamples/music_valid
 OUTPUT_DIR=$SCRATCH/models/reduced_input
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
-ASR=$1
-NUM_MELS=$2
-HOP_LEN=$3
-DFT=$4
+ASR=8000 #$1
+NUM_MELS=64 #$2
+HOP_LEN=160 #$3
+DFT=1024 #$4
 
 echo "SAMPLING RATE=$ASR"
 echo "NUM MELS=$NUM_MELS"

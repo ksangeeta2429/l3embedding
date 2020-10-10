@@ -1089,7 +1089,7 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
     n_filter_a_4 = 512
 
     if halved_convs:
-        n_filter_a_4 //= 2
+        n_filter_a_4 //= 8
 
     filt_size_a_4 = (3, 3)
     #pool_size_a_4 = (32, 24)
@@ -1115,7 +1115,7 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
     m = Model(inputs=x_a, outputs=y_a)
     m.name = 'audio_model'
 
-    #m.summary()
+    print(m.summary())
 
     return m, x_a, y_a
 

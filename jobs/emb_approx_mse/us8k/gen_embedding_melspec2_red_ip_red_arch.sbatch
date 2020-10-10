@@ -35,7 +35,7 @@ echo "HOP_LENGTH=$HOP_LEN"
 echo "DFT=$NUM_DFT"
 
 SRCDIR=.
-L3_MODEL_PATH=$SCRATCH/embedding_approx_mse/models/sonyc/pca/dpp/day/500000/pca_batch_500000_len_256_kernel_linear/${WEIGHT_FILE}/model_best_valid_loss.h5
+L3_MODEL_PATH=$SCRATCH/embedding_approx_mse/models/sonyc/pca/dpp/day/500000/pca_batch_500000_len_64_kernel_linear/${WEIGHT_FILE}/model_best_valid_loss.h5
 US8K_PATH=/beegfs/sk7898/UrbanSound8K
 METADATA_PATH=$US8K_PATH/metadata/UrbanSound8K.csv
 DATA_DIR=$US8K_PATH/audio
