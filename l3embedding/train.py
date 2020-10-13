@@ -178,12 +178,14 @@ def data_generator(data_dir, batch_size=512, random_state=20180123, samp_rate=48
         batch_path = os.path.join(data_dir, fname)
         blob_start_idx = 0
 
-        try:
-            blob = h5py.File(batch_path, 'r')
-            blob_size = len(blob['label'])
-        except:
-            print('Unexpected read error: ', sys.exc_info()[1])
-            continue
+        blob = h5py.File(batch_path, 'r')
+        blob_size = len(blob['label'])
+        #try:
+        #    blob = h5py.File(batch_path, 'r')
+        #    blob_size = len(blob['label'])
+        #except:
+        #    print('Unexpected read error: ', sys.exc_info()[1])
+        #    continue
 
         while blob_start_idx < blob_size:
             blob_end_idx = min(blob_start_idx + batch_size - curr_batch_size, blob_size)
