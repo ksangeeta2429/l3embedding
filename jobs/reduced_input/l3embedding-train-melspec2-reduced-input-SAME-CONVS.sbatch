@@ -14,17 +14,16 @@ source ~/.bashrc
 cd `git rev-parse --show-toplevel`
 
 SRCDIR=. 
-#WEIGHT_PATH=$SRCDIR/models/cnn_l3_melspec2_recent/model_best_valid_accuracy.h5
 TRAIN_DATA_DIR=/beegfs/work/AudioSetSamples_environmental/environmental_train #/beegfs/work/AudioSetSamples/music_train
 VAL_DATA_DIR=/beegfs/work/AudioSetSamples_environmental/environmental_valid #/beegfs/work/AudioSetSamples/music_valid
 OUTPUT_DIR=$SCRATCH/models/reduced_input
 GOOGLE_DEV_APP_NAME='l3compression'
 GSHEET_ID='1iNfqw0mvBDSSvuFkj5nfu_Wg6lj7i6uZ59a2YJ694fo' # REPLACE THIS
 NUM_GPUS=4
-ASR=$1
-NUM_MELS=$2
-HOP_LEN=$3
-DFT=$4
+ASR=8000 #$1
+NUM_MELS=64 #$2
+HOP_LEN=160 #$3
+DFT=1024 #$4
 
 echo "SAMPLING RATE=$ASR"
 echo "NUM MELS=$NUM_MELS"

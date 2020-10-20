@@ -436,13 +436,14 @@ if __name__ == '__main__':
     elif dataset_name == 'esc50':
         if fold_num is not None:
             generate_esc50_fold_data(data_dir, fold_num-1, dataset_output_dir,
-                                     l3embedding_model=l3embedding_model, features=features,\
-                                     random_state=random_state, hop_size=hop_size, num_random_samples=num_random_samples,\
+                                     l3embedding_model=l3embedding_model, features=features,
+                                     random_state=random_state, hop_size=hop_size, num_random_samples=num_random_samples,
                                      mel_hop_length=n_hop, n_mels=n_mels, n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
         else:
             generate_esc50_folds(data_dir, dataset_output_dir,
-                                 l3embedding_model=l3embedding_model, features=features, random_state=random_state, 
-                                 num_random_samples=num_random_samples, mel_hop_length=n_hop, n_mels=n_mels,
+                                 l3embedding_model=l3embedding_model, features=features,
+                                 random_state=random_state, hop_size=hop_size, num_random_samples=num_random_samples, 
+                                 mel_hop_length=n_hop, n_mels=n_mels,
                                  n_fft=n_dft, fmax=fmax, sr=samp_rate, with_melSpec=with_melSpec)
 
     elif dataset_name == 'sonyc_ust':

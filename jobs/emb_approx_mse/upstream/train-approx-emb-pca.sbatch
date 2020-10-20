@@ -19,12 +19,16 @@ source activate l3embedding-tf-12-gpu
 
 SRCDIR=. 
 APPROX_MODE='pca'
+MODE=$1
+BATCH_SIZE=$2
+TIMESCALE=$3
+EMBLEN=$4
 LEARNING_RATE=0.0001 #$1 #Default: 0.00001
 ASR=8000
 NUM_MELS=64
 HOP_LEN=160
 AUDIO_DIR=$SCRATCH/sonyc_30mil
-EMBEDDING_DIR=$SCRATCH/reduced_embeddings/sonyc/pca/dpp/day/500000/pca_batch_500000_len_64_kernel_linear
+EMBEDDING_DIR=$SCRATCH/reduced_embeddings/sonyc/pca/${MODE}/${TIMESCALE}/${BATCH_SIZE}/pca_batch_${BATCH_SIZE}_len_${EMBLEN}_kernel_linear
 TRAIN_DATA_DIR=${AUDIO_DIR}/train
 VAL_DATA_DIR=${AUDIO_DIR}/validate
 EMBEDDING_TRAIN_DIR=${EMBEDDING_DIR}/train

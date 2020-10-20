@@ -1,25 +1,26 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=gen-embedding-reduced-melspec2-esc50
+#SBATCH --job-name=gen-emb-reduced-esc50
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32GB
 #SBATCH --time=2-0
 #SBATCH --mail-type=ALL
-#SBATCH --output="gen-embedding-reduced-melspec2-esc50-%A-%a.out"
-#SBATCH --err="gen-embedding-reduced-melspec2-esc50-%A-%a.err"
+#SBATCH --output="esc50-gen-emb-%A-%a.out"
+#SBATCH --err="esc50-gen-embgen-emb-%A-%a.err"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
-source activate l3embedding-new-cpu
 
 module purge
+echo 'Using tensorflow 1.12'
+module load cudnn/9.0v7.3.0.29
+    
 if [ $USER == "sk7898" ]; then
-    module load cuda/8.0.44
-    module load cudnn/8.0v6.0
+  source activate l3embedding-tf-12
 else
-    module load cudnn/9.0v7.3.0.29
+  source activate l3embedding-new-cpu
 fi
 
 # Process args
@@ -35,11 +36,11 @@ echo "ASR=$ASR"
 echo "POOL SIZE=$L3_POOLING_TYPE"
 
 SRCDIR=.
+DATASET='esc50'
 L3_MODEL_PATH=$SCRATCH/l3pruning/embedding/fixed/reduced_input/${weight_file} 
 L3_MODEL_TYPE='cnn_L3_melspec2'
-DATA_DIR=$SCRATCH/data/esc50/audio
+DATA_DIR=/beegfs/sk7898/esc50/audio
 OUTPUT_DIR=$SCRATCH/embeddings
-DATASET='esc50'
 
 echo "WEIGHT FILE=$L3_MODEL_PATH"
 

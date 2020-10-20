@@ -61,7 +61,7 @@ def generate_esc50_file_data(fname, audio_fold_dir, output_fold_dir,
         LOGGER.info('File {} already exists'.format(output_path))
         return
 
-    X = compute_file_features(audio_path, features, l3embedding_model=l3embedding_model, **feature_args)
+    X, _ = compute_file_features(audio_path, features, l3embedding_model=l3embedding_model, **feature_args)
 
     # If we were not able to compute the features, skip this file
     if X is None:

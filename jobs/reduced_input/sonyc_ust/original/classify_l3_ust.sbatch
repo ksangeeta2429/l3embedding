@@ -11,15 +11,15 @@
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
-source activate l3embedding-new-cpu
 
 module purge
 module load cudnn/9.0v7.3.0.29
+source activate l3embedding-tf-12-gpu
 
 SRCDIR=.
-ANNPATH=/beegfs/dr2915/sonyc_ust/annotations.csv
-TAXPATH=/beegfs/dr2915/sonyc_ust/dcase-ust-taxonomy.yaml
-EMBDIR=/scratch/dr2915/embeddings/features/sonyc_ust/l3/$1
+ANNPATH=/beegfs/dr2915/sonyc_ust/data/annotations.csv
+TAXPATH=/beegfs/dr2915/sonyc_ust/data/dcase-ust-taxonomy.yaml
+EMBDIR=$SCRATCH/embeddings/features/sonyc_ust/l3/$1
 OUTDIR=$SCRATCH/embeddings/classifier/sonyc_ust/mil
 
 #module purge
