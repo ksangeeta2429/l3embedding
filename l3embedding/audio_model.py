@@ -1089,7 +1089,7 @@ def construct_cnn_L3_melspec2_audio_model(n_mels=256, n_hop = 242, n_dft = 2048,
     n_filter_a_4 = 512
 
     if halved_convs:
-        n_filter_a_4 //= 4
+        n_filter_a_4 //= 8
 
     filt_size_a_4 = (3, 3)
     y_a = Conv2D(n_filter_a_4, filt_size_a_4, padding='same',

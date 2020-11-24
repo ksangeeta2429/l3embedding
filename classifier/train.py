@@ -526,7 +526,7 @@ def train(features_dir, output_dir, fold_num,
     time.sleep(np.random.random() * 10)
 
     # Make sure the directories we need exist
-    model_dir = os.path.join(output_dir, 'classifier', model_id,
+    model_dir = os.path.join(output_dir, #'classifier', model_id,
                              'fold{}'.format(fold_num),
                              datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
 

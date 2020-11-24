@@ -25,6 +25,7 @@ fi
 
 # Process args
 WEIGHT_FILE=$1
+EMBLEN=$2
 WEIGHT_DIR="$(cut -d'.' -f1 <<<"$WEIGHT_FILE")"
 
 IFS='_'
@@ -40,7 +41,7 @@ echo "HOP_LEN=$HOP_LEN"
 
 SRCDIR=.
 DATASET='esc50'
-L3_MODEL_PATH=$SCRATCH/embedding_approx_mse/models/sonyc/pca/dpp/day/500000/pca_batch_500000_len_128_kernel_linear/${WEIGHT_FILE}/model_best_valid_loss.h5
+L3_MODEL_PATH=$SCRATCH/embedding_approx_mse/models/sonyc/pca/dpp/day/500000/pca_batch_500000_len_${EMBLEN}_kernel_linear/${WEIGHT_FILE}/model_best_valid_loss.h5
 L3_MODEL_TYPE='cnn_L3_melspec2'
 DATA_DIR=/beegfs/sk7898/esc50/audio
 OUTPUT_DIR=$SCRATCH/embedding_approx_mse

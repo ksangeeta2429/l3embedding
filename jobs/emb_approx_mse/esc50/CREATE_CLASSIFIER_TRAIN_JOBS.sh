@@ -1,6 +1,7 @@
 #features_dir='/scratch/sk7898/embedding_approx_mse/features/esc50/pca/dpp/day/500000/pca_batch_500000_len_128_kernel_linear/8000_64_160_1024_half_fmax_None'
-
-features_dir='/scratch/sk7898/embedding_approx_mse/features/esc50/mse_original/8000_64_160_1024_fmax_None'
+EMBLEN=$1
+features_dir='/scratch/sk7898/embedding_approx_mse/features/esc50/pca/dpp/day/500000/pca_batch_500000_len_'${EMBLEN}'_kernel_linear/8000_64_160_1024_half_fmax_None'
+echo "$features_dir"
 
 for f in $features_dir/*; do
     folder=${f}
