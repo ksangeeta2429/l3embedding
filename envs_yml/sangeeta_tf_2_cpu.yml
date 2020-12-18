@@ -1,4 +1,4 @@
-name: l3embedding-tf-2-gpu
+name: l3embedding-tf-2-cpu
 channels:
   - conda-forge
   - defaults
@@ -117,11 +117,9 @@ dependencies:
     - seaborn==0.10.0
     - send2trash==1.5.0
     - six==1.14.0
-    - tb-nightly==2.2.0a20200313
     - tensorboard==2.0.2
-    - tensorboard-plugin-wit==1.6.0.post2
+    - tensorflow==2.0.0
     - tensorflow-estimator==2.0.1
-    - tensorflow-gpu==2.0.0
     - termcolor==1.1.0
     - terminado==0.8.3
     - testpath==0.4.4
@@ -135,5 +133,5 @@ dependencies:
     - widgetsnbextension==3.5.1
     - wrapt==1.12.0
     - zipp==3.0.0
-prefix: /scratch/sk7898/miniconda3/envs/l3embedding-tf-2-gpu
+prefix: /scratch/sk7898/miniconda3/envs/l3embedding-tf-2-cpu
 
