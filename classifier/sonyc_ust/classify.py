@@ -125,7 +125,7 @@ def get_subset_split(annotation_data, split_path=None):
             else:
                 test_idxs.append(idx)
 
-    return np.array(train_idxs), np.array(valid_idxs)
+    return np.array(train_idxs), np.array(valid_idxs), np.array(test_idxs)
 
 
 def get_file_targets(annotation_data, labels):
@@ -830,7 +830,7 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir,
                     num_hidden_layers=0, l2_reg=1e-5, standardize=True,
                     pca=False, pca_components=None, oversample=None,
                     oversample_iters=1, thresh_type='mean', split_path=None,
-                    optimizer='adam'):
+                    optimizer='adam', out_mode=None):
     """
     Train and evaluate a framewise MLP model.
 
@@ -883,7 +883,7 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir,
     # For fine, we include incomplete labels in targets for computing the loss
     fine_target_list = get_file_targets(annotation_data, full_fine_target_labels)
     coarse_target_list = get_file_targets(annotation_data, coarse_target_labels)
-    train_file_idxs, test_file_idxs = get_subset_split(annotation_data, split_path=split_path)
+    train_file_idxs, valid_file_idxs, test_file_idxs = get_subset_split(annotation_data, split_path=split_path)
 
     if sensor_factor:
         sensor_target_list = get_file_sensor_targets(annotation_data)
@@ -909,7 +909,7 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir,
     embeddings = load_embeddings(file_list, emb_dir)
 
     X_train, y_train, X_valid, y_valid, scaler, pca_model \
-        = prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings,
+        = prepare_framewise_data(train_file_idxs, valid_file_idxs, embeddings,
                                  target_list, sensor_list=sensor_target_list,
                                  num_sensors=num_sensors,
                                  proximity_list=proximity_target_list,
@@ -1038,10 +1038,17 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir,
 
     print("* Saving model predictions.")
     results = {}
+    
+    if out_all and out_mode is None:
+        print('Only one output mode enabled for output of all splits. Defaulting to out_mode=mean!')
+        out_mode = 'mean'
+    
     results['train'] = predict_framewise(embeddings, train_file_idxs, model,
-                                         scaler=scaler, pca_model=pca_model)
+                                         out_mode=out_mode, scaler=scaler, pca_model=pca_model)
+    results['valid'] = predict_framewise(embeddings, valid_file_idxs, model,
+                                        out_mode=out_mode, scaler=scaler, pca_model=pca_model)
     results['test'] = predict_framewise(embeddings, test_file_idxs, model,
-                                        scaler=scaler, pca_model=pca_model)
+                                        out_mode=out_mode, scaler=scaler, pca_model=pca_model)
     if history is not None:
         results['train_history'] = history.history
     else:
@@ -1050,10 +1057,16 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir,
     results_path = os.path.join(output_dir, "results.json")
     with open(results_path, "w") as f:
         json.dump(results, f, indent=2)
-
-    for aggregation_type, y_pred in results['test'].items():
-        generate_output_file(y_pred, test_file_idxs, output_dir, file_list,
-                             aggregation_type, label_mode, taxonomy)
+        
+    if out_all:    
+        aggregation_type = out_mode
+        generate_output_file(results, [], output_dir, file_list,
+                             annotation_data, aggregation_type, label_mode, taxonomy)
+    else:
+        assert isinstance(results['valid'], dict)
+        for aggregation_type, y_pred in results['valid'].items():
+            generate_output_file(y_pred, valid_file_idxs, output_dir, file_list,
+                                 annotation_data, aggregation_type, label_mode, taxonomy)
 
     # Save Keras model in output directory
     print("* Saving Keras model.")
@@ -1066,7 +1079,7 @@ def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="f
               cooccurrence_loss=False, cooccurrence_loss_factor=1e-5,
               proximity_factor=False, l2_reg=1e-5, standardize=True,
               pca=False, pca_components=None, oversample=None, oversample_iters=1,
-              thresh_type="mean", split_path=None, optimizer='adam'):
+              thresh_type="mean", split_path=None, optimizer='adam', out_all=False):
     """
     Train and evaluate a MIL MLP model.
 
@@ -1118,7 +1131,7 @@ def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="f
     # For fine, we include incomplete labels in targets for computing the loss
     fine_target_list = get_file_targets(annotation_data, full_fine_target_labels)
     coarse_target_list = get_file_targets(annotation_data, coarse_target_labels)
-    train_file_idxs, test_file_idxs = get_subset_split(annotation_data, split_path=split_path)
+    train_file_idxs, valid_file_idxs, test_file_idxs = get_subset_split(annotation_data, split_path=split_path)
 
     if sensor_factor:
         sensor_target_list = get_file_sensor_targets(annotation_data)
@@ -1144,7 +1157,7 @@ def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="f
     embeddings = load_embeddings(file_list, emb_dir)
 
     X_train, y_train, X_valid, y_valid, scaler, pca_model \
-        = prepare_mil_data(train_file_idxs, test_file_idxs,
+        = prepare_mil_data(train_file_idxs, valid_file_idxs,
                            embeddings, target_list,
                            sensor_list=sensor_target_list,
                            num_sensors=num_sensors,
@@ -1277,6 +1290,8 @@ def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="f
     results = {}
     results['train'] = predict_mil(embeddings, train_file_idxs, model,
                                    scaler=scaler, pca_model=pca_model)
+    results['valid'] = predict_mil(embeddings, valid_file_idxs, model,
+                                  scaler=scaler, pca_model=pca_model)        
     results['test'] = predict_mil(embeddings, test_file_idxs, model,
                                   scaler=scaler, pca_model=pca_model)
     results['train_history'] = history.history
@@ -1285,13 +1300,17 @@ def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="f
     with open(results_path, "w") as f:
         json.dump(results, f, indent=2)
 
-    generate_output_file(results['test'], test_file_idxs, output_dir, file_list,
-                         "", label_mode, taxonomy)
+    if out_all:
+        generate_output_file(results, [], output_dir, file_list,
+                             annotation_data, "", label_mode, taxonomy)
+    else:
+        generate_output_file(results['valid'], valid_file_idxs, output_dir, file_list,
+                             annotation_data, "", label_mode, taxonomy)
 
 
 ## MODEL EVALUATION
 
-def predict_framewise(embeddings, test_file_idxs, model, scaler=None, pca_model=None):
+def predict_framewise(embeddings, test_file_idxs, model, out_mode=None, scaler=None, pca_model=None):
     """
     Evaluate the output of a framewise classification model.
 
@@ -1329,11 +1348,18 @@ def predict_framewise(embeddings, test_file_idxs, model, scaler=None, pca_model=
         y_pred_mean.append(pred_frame.mean(axis=0).tolist())
         y_pred_softmax.append(((softmax(pred_frame, axis=0) * pred_frame).sum(axis=0)).tolist())
 
-    results = {
-        'max': y_pred_max,
-        'mean': y_pred_mean,
-        'softmax': y_pred_softmax
-    }
+    if out_mode == 'max':
+        results = y_pred_max
+    elif out_mode == 'mean':
+        results = y_pred_mean
+    elif out_mode == 'softmax':
+        results = y_pred_softmax
+    else:
+        results = {
+            'max': y_pred_max,
+            'mean': y_pred_mean,
+            'softmax': y_pred_softmax
+        }
 
     return results
 
@@ -1372,7 +1398,7 @@ def predict_mil(embeddings, test_file_idxs, model, scaler=None, pca_model=None):
 
 
 def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
-                         aggregation_type, label_mode, taxonomy):
+                         annotation_data, aggregation_type, label_mode, taxonomy):
     """
     Write the output file containing model predictions
 
@@ -1394,8 +1420,18 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
         output_path = os.path.join(results_dir, "output_{}.csv".format(aggregation_type))
     else:
         output_path = os.path.join(results_dir, "output.csv")
-    test_file_list = [file_list[idx] for idx in test_file_idxs]
+        
+    if test_file_idxs:
+        test_file_list = [file_list[idx] for idx in test_file_idxs]
 
+    else:
+        test_file_list = file_list
+
+    annotation = annotation_data.sort_values('audio_filename')[['split', 'sensor_id', 'audio_filename']].drop_duplicates()
+    annotation = annotation[annotation['audio_filename'].isin(test_file_list)]
+    split_list = annotation['split'].tolist()
+    sensor_list = annotation['sensor_id'].tolist()
+    
     coarse_fine_labels = [["{}-{}_{}".format(coarse_id, fine_id, fine_label)
                            for fine_id, fine_label in fine_dict.items()]
                           for coarse_id, fine_dict in taxonomy['fine'].items()]
@@ -1409,12 +1445,12 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
         csvwriter = csv.writer(f)
 
         # Write fields
-        fields = ["audio_filename"] + full_fine_target_labels + coarse_target_labels
+        fields = ["split", "sensor_id", "audio_filename"] + full_fine_target_labels + coarse_target_labels
         csvwriter.writerow(fields)
 
         # Write results for each file to CSV
-        for filename, y, in zip(test_file_list, y_pred):
-            row = [filename]
+        for split, sid, filename, y in zip(split_list, sensor_list, test_file_list, y_pred):
+            row = [split, sid, filename]
 
             if label_mode == "fine":
                 fine_values = []
