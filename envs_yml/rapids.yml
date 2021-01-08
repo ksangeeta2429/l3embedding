@@ -114,7 +114,7 @@ dependencies:
   - libffi=3.3=he6710b0_2
   - libgcc-ng=9.2.0=h24d8f2e_2
   - libgdal=3.0.2=hc7cfd23_2
-  - libgfortran-ng=7.5.0=hdf63c60_6
+  - libgfortran-ng>=7.5.0
   - libgomp=9.2.0=h24d8f2e_2
   - libhwloc=2.1.0=h3c4fd83_0
   - libiconv=1.15=h516909a_1006

@@ -44,6 +44,8 @@ if __name__ == '__main__':
                         help='Google Spreadsheet ID for centralized logging of experiments')
     parser.add_argument('google_dev_app_name', type=str,
                         help='Google Developer Application Name for using API')
+    parser.add_argument('--valid_sensor_id', type=int,
+                        help='Optional validate sensor id to be evaluated.')
     parser.add_argument('--split_path', type=str,
                         help='Optional path to split CSV file.')
 
@@ -63,6 +65,7 @@ if __name__ == '__main__':
                            args.annotation_path,
                            args.yaml_path,
                            mode,
+                           valid_sensor_id=args.valid_sensor_id,
                            split_path=args.split_path)
 
         micro_auprc, eval_df = micro_averaged_auprc(df_dict, return_df=True)
