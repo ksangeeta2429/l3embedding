@@ -66,7 +66,8 @@ def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embeddin
             filename = filename.replace('.wav', '.npz')
 
         split_str = row['split']
-        audio_path = os.path.join(dataset_dir, split_str, filename)
+        audio_path = os.path.join(dataset_dir, filename) #No train, validate or test dir in the audio data dir
+        #audio_path = os.path.join(dataset_dir, split_str, filename)
         output_path = os.path.join(output_dir, os.path.splitext(filename)[0] + '.npz')
 
         if not os.path.exists(audio_path):
@@ -88,7 +89,7 @@ def generate_sonyc_ust_data(annotation_path, dataset_dir, output_dir, l3embeddin
         if save_raw:
             sr = feature_args['sr']
             assert audio.ndim == 2 and audio.shape[1] == sr
-            out_audio_path = '/beegfs/dr2915/sonyc_ust/frames/' + str(int(sr // 1000)) + 'KHz'
+            out_audio_path = '/beegfs/sk7898/sonyc_ust/frames/' + str(int(sr // 1000)) + 'KHz'
             os.makedirs(out_audio_path, exist_ok=True)
             out_audio = os.path.join(out_audio_path, os.path.splitext(filename)[0] + '.npz')
             np.savez(out_audio, audio=audio)
