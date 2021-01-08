@@ -28,6 +28,7 @@ dependencies:
     - astunparse==1.6.3
     - attrs==19.3.0
     - audioread==2.1.8
+    - autopool==0.1.0
     - backcall==0.1.0
     - bleach==3.1.1
     - cachetools==4.0.0
@@ -114,7 +115,7 @@ dependencies:
     - scikit-image==0.14.5
     - scikit-learn==0.21.3
     - scipy==1.4.1
-    - seaborn==0.10.0
+    - seaborn==0.11.0
     - send2trash==1.5.0
     - six==1.14.0
     - tensorboard==2.0.2
