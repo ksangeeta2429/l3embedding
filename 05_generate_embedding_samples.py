@@ -16,7 +16,6 @@ from log import init_console_logger
 LOGGER = logging.getLogger('cls-data-generation')
 LOGGER.setLevel(logging.DEBUG)
 
-
 def parse_arguments():
     """
     Parse arguments from the command line

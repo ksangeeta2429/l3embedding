@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=8GB
-#SBATCH --time=5:00:00
+#SBATCH --time=10:00:00
 #SBATCH --mail-type=ALL
 #SBATCH --output="generate-embs-%j.out"
 #SBATCH --err="generate-embs-%j.err"
