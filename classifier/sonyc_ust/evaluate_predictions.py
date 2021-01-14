@@ -52,7 +52,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     with open(args.yaml_path) as f:
-        taxonomy = yaml.load(f)
+        taxonomy = yaml.load(f, Loader=yaml.FullLoader)
 
     metrics = {
         'fine': {},
@@ -65,7 +65,7 @@ if __name__ == '__main__':
                            args.annotation_path,
                            args.yaml_path,
                            mode,
-                           valid_sensor_id=args.valid_sensor_id,
+                           valid_sensor_ids=args.valid_sensor_id,
                            split_path=args.split_path)
 
         micro_auprc, eval_df = micro_averaged_auprc(df_dict, return_df=True)
