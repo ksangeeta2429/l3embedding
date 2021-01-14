@@ -429,7 +429,7 @@ def construct_mlp_mil(num_frames, emb_size, num_classes, sensor_factor=False,
         outputs = y
 
     m = Model(inputs=inp, outputs=outputs)
-    m.name = 'urban_sound_classifier'
+    m._name = 'urban_sound_classifier'
     print(m.summary())
 
     return m
@@ -626,7 +626,6 @@ def prepare_mil_data(train_file_idxs, valid_file_idxs, embeddings, target_list,
     scaler
 
     """
-
     X_train_mil = np.array([embeddings[idx] for idx in train_file_idxs])
     X_valid_mil = np.array([embeddings[idx] for idx in valid_file_idxs])
     y_train_mil = np.array([target_list[idx] for idx in train_file_idxs])
@@ -1180,6 +1179,7 @@ def train_mil(annotation_path, taxonomy_path, emb_dir, output_dir, label_mode="f
 
     _, num_frames, emb_size = X_train.shape
 
+    print("* Constructing mlp_mil model.")
     model = construct_mlp_mil(num_frames,
                               emb_size,
                               num_classes,
@@ -1421,9 +1421,8 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
     else:
         output_path = os.path.join(results_dir, "output.csv")
         
-    if test_file_idxs:
+    if len(test_file_idxs) > 0:
         test_file_list = [file_list[idx] for idx in test_file_idxs]
-
     else:
         test_file_list = file_list
 
@@ -1495,7 +1494,6 @@ if __name__ == '__main__':
     parser.add_argument("emb_dir", type=str)
     parser.add_argument("output_dir", type=str)
     parser.add_argument("exp_id", type=str)
-
     parser.add_argument("--hidden_layer_size", type=int, default=128)
     parser.add_argument("--num_hidden_layers", type=int, default=0)
     parser.add_argument("--learning_rate", type=float, default=1e-3)

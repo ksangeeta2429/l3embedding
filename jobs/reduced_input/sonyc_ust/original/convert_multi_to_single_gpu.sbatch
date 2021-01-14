@@ -43,7 +43,7 @@ python $SRCDIR/04_convert_multiGPU_singleGPU.py \
 	--num-mels $NUM_MELS \
 	--hop-length $HOP_LEN \
 	--num-dft $DFT \
-        --halved-filters \
+    --halved-filters \
 	--only-audio \
 	--melSpec \
 	$OUTPUT_DIR

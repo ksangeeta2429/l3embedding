@@ -14,13 +14,14 @@ module purge
 
 cd `git rev-parse --show-toplevel`
 
-export VERSION='v2.2'
-export SAMPLING_RATE=48000
-export NUM_MELS=256
-export HOP_LEN=242
-export DFT=2048
-export EMBS_DIR=$SCRATCH/sonyc_output/models/openl3/environmental/audio_models
-export L3_MODEL_PATH=$EMBS_DIR/l3_audio_melSpec_20200304183233_48000_256_242_2048.h5
+export VERSION='v0.4'
+export SAMPLING_RATE=8000 #48000
+export NUM_MELS=64 #256
+export HOP_LEN=160 #242
+export DFT=1024 #2048
+#export EMBS_DIR=$SCRATCH/sonyc_output/models/openl3/environmental/audio_models
+export L3_MODEL_PATH=$SCRATCH/sonyc_output/models/reduced_input/embedding/environmental/audio_models/l3_audio_melSpec_20201015214759_8000_64_160_1024.h5
+#export L3_MODEL_PATH=$EMBS_DIR/l3_audio_melSpec_20200304183233_48000_256_242_2048.h5
 export SONYC_UST_PATH=/scratch/work/sonyc/sonyc/ust
 export DATA_DIR=$SONYC_UST_PATH/audio/48k
 export METADATA_PATH=$SONYC_UST_PATH/annotations/$VERSION/annotations.csv
