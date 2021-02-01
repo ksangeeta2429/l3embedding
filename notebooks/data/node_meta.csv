@@ -1,0 +1,21 @@
+node_id,near_construction,on_thoroughfare,near_park,near_dogpark,near_highway,near_commercial,nyu_location,nyu_surroundings,near_transporthub,near_touristspot,bus_route,roadway_width_ft,height_ft,lat,lng,address,borough
+sonycnode-b827eb0d8af7.sonyc,,1,,,,1,1,,1,,1,90,25,40.729432,-73.993588,721 Broadway,Manhattan
+sonycnode-b827eb815321.sonyc,,,1,,,,1,1,,1,,50,6,40.73189,-73.997708,20 Washington Square N,Manhattan
+sonycnode-b827eb4e7821.sonyc,,,,,,,1,1,,,,50,20,40.730094,-73.994509,12 Waverly Pl,Manhattan
+sonycnode-b827eb122f0f.sonyc,,1,,,,1,1,,1,,1,60,20,40.731403,-73.994565,30 E 8th St,Manhattan
+sonycnode-b827eb0fedda.sonyc,,,1,1,,,1,1,,1,,35,20,40.730419,-73.998614,53 Washington Square S,Manhattan
+sonycnode-b827eb132382.sonyc,,1,,,,1,1,,,,1,95,25,40.727653,-73.99318,383 Lafayette St,Manhattan
+sonycnode-b827ebefb215.sonyc,1,,,,,1,1,,,,,32,20,40.726368,-73.997083,194 Mercer St,Manhattan
+sonycnode-b827eb905497.sonyc,,,1,,,,1,1,,1,,35,25,40.729985,-73.997649,60 Washington Square S,Manhattan
+sonycnode-b827eb42bd4a.sonyc,,,1,,,1,1,,1,,,,100,40.694443,-73.985477,5 MetroTech Center,Brooklyn
+sonycnode-b827ebf31214.sonyc,,,,,,1,1,,,,,48,25,40.730672,-73.999813,134 MacDougal St,Manhattan
+sonycnode-b827eb8e2420.sonyc,,,1,,,,1,1,,1,,50,6,40.730887,-73.995625,4 Washington Square N,Manhattan
+sonycnode-b827ebc6dcc6.sonyc,,,,,,,1,1,,,,55,20,40.729051,-73.995349,25 W 4th St,Manhattan
+sonycnode-b827eb1685c7.sonyc,,,,,,,1,1,,1,,50,25,40.729442,-73.996501,30 W 4th St,Manhattan
+sonycnode-b827eb4cc22e.sonyc,,,,,,,1,1,,,,48,25,40.729384,-73.995715,220 Greene St,Manhattan
+sonycnode-b827eb5895e9.sonyc,,1,1,,,,1,,,1,1,50,20,40.776519,-73.963915,970 5th Ave,Manhattan
+sonycnode-b827eb73e772.sonyc,,,,,,,1,1,,,,48,20,40.730083,-73.994969,246 Greene St,Manhattan
+sonycnode-b827ebf9d204.sonyc,,1,,,1,,,,,,1,50,20,40.737907,-73.851741,108 Horace Harding Expy,Queens
+sonycnode-b827eb3e842e.sonyc,,1,,,,1,1,,1,,1,65,20,40.726069,-73.996434,625 Broadway,Manhattan
+sonycnode-b827eb5a9021.sonyc,1,1,,,,1,,,1,,1,50,100,40.688992,-73.984402,240 Livingston St,Brooklyn
+sonycnode-b827eb29eb77.sonyc,,,1,,,1,1,,1,1,,30,12,40.736283,-73.991084,25 Union Square W,Manhattan
