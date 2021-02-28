@@ -1,0 +1,14 @@
+1_engine_presence,2_machinery-impact_presence,3_non-machinery-impact_presence,4_powered-saw_presence,5_alert-signal_presence,6_music_presence,7_human-voice_presence,8_dog_presence,sensor_group
+129,52,28,48,60,10,100,2,nyu_surroundings
+45,7,17,9,14,5,57,0,nyu_surroundings| near_touristspot
+29,18,4,5,17,3,30,1,near_commercial
+101,40,22,30,42,21,77,25,near_park| nyu_surroundings| near_touristspot
+5,2,2,0,1,1,2,0,near_park| near_commercial| near_transporthub
+39,3,9,2,19,8,90,3,near_park| near_commercial| near_transporthub| near_touristspot
+75,14,21,9,23,19,101,113,near_park| near_dogpark| nyu_surroundings| near_touristspot
+61,3,14,4,32,1,15,1,on_thoroughfare| near_commercial| bus_route
+138,20,17,8,39,4,70,3,on_thoroughfare| near_commercial| near_transporthub| bus_route
+0,0,0,0,0,0,0,0,on_thoroughfare| near_highway| bus_route
+35,6,4,2,11,0,8,1,on_thoroughfare| near_park| near_touristspot| bus_route
+395,303,110,38,151,23,76,9,near_construction| near_commercial
+0,0,0,0,0,0,0,0,near_construction| on_thoroughfare| near_commercial| near_transporthub| bus_route
