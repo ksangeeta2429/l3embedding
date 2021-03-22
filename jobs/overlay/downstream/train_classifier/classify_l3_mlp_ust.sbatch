@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=classify-ust
+#SBATCH --job-name=classify-ust-mlp
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=20GB
-#SBATCH --time=5:00:00
+#SBATCH --time=4:00:00
 #SBATCH --mail-type=FAIL
-#SBATCH --output="classify-ust-mil-%j.out"
+#SBATCH --output="classify-ust-mlp-%j.out"
 
 source ~/.bashrc
 cd `git rev-parse --show-toplevel`
@@ -20,8 +20,7 @@ export SONYC_UST_PATH=/scratch/work/sonyc/sonyc/ust
 export ANNPATH=$SONYC_UST_PATH/annotations/$VERSION/annotations.csv
 export TAXPATH=$SONYC_UST_PATH/annotations/$VERSION/dcase-ust-taxonomy.yaml
 export EMBDIR=$SCRATCH/sonyc_output/embeddings/$VERSION/features/sonyc_ust/l3/$1
-#export EMBDIR=$SCRATCH/sonyc_output/embeddings/$VERSION/features/sonyc_ust/l3/reduced_input/$1
-export OUTDIR=$SCRATCH/sonyc_output/embeddings/$VERSION/classifier/sonyc_ust/mil
+export OUTDIR=$SCRATCH/sonyc_output/embeddings/$VERSION/classifier/sonyc_ust/mlp
 
 if [ $# -gt 1 ]; then
     export NUM_HIDDEN=$2
@@ -51,7 +50,7 @@ singularity exec --nv \
             --num_epochs 1500 \
             --patience 1500 \
             --label_mode coarse \
-            --target_mode mil \
+            --target_mode framewise \
             --no_timestamp \
             --optimizer adam;
-        PYTHONPATH='.' python classifier/sonyc_ust/evaluate_predictions.py $OUTPUTDIR/output.csv $ANNPATH $TAXPATH $OUTPUTDIR $GSHEET_ID $GOOGLE_DEV_APP_NAME"
+        PYTHONPATH='.' python classifier/sonyc_ust/evaluate_predictions.py $OUTPUTDIR/output_mean.csv $ANNPATH $TAXPATH $OUTPUTDIR $GSHEET_ID $GOOGLE_DEV_APP_NAME"

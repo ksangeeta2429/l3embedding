@@ -344,7 +344,7 @@ def construct_mlp_framewise(emb_size, num_classes, sensor_factor=True,
         outputs = y
 
     m = Model(inputs=inp, outputs=outputs)
-    m.name = 'urban_sound_classifier'
+    m._name = 'urban_sound_classifier'
     print(m.summary())
 
     return m
@@ -469,7 +469,7 @@ def prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings,
     """
     if oversample is not None and (sensor_list is not None or proximity_list is not None):
         raise ValueError('Oversampling with additional data sources is not supported')
-
+    
     if oversample == 'mlsmote':
         X_train = np.array([embeddings[idx] for idx in train_file_idxs])
         y_train = np.array([target_list[idx] for idx in train_file_idxs])

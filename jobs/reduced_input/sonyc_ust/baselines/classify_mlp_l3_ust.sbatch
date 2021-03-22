@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=20GB
-#SBATCH --time=1-0
+#SBATCH --time=4:00:00
 #SBATCH --mail-type=FAIL
 #SBATCH --output="classify-ust-mlp-%j.out"
 
