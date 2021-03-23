@@ -829,7 +829,7 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir,
                     num_hidden_layers=0, l2_reg=1e-5, standardize=True,
                     pca=False, pca_components=None, oversample=None,
                     oversample_iters=1, thresh_type='mean', split_path=None,
-                    optimizer='adam', out_mode=None):
+                    optimizer='adam', out_mode=None, out_all=False):
     """
     Train and evaluate a framewise MLP model.
 

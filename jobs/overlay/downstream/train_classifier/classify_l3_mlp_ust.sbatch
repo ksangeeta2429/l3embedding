@@ -15,12 +15,17 @@ cd `git rev-parse --show-toplevel`
 module purge
 
 export SRCDIR=.
-export VERSION='v0.4'
+export VERSION='v2.2'
 export SONYC_UST_PATH=/scratch/work/sonyc/sonyc/ust
-export ANNPATH=$SONYC_UST_PATH/annotations/$VERSION/annotations.csv
 export TAXPATH=$SONYC_UST_PATH/annotations/$VERSION/dcase-ust-taxonomy.yaml
 export EMBDIR=$SCRATCH/sonyc_output/embeddings/$VERSION/features/sonyc_ust/l3/$1
 export OUTDIR=$SCRATCH/sonyc_output/embeddings/$VERSION/classifier/sonyc_ust/mlp
+
+if [ "$VERSION" = "v2.2" ]; then
+    export ANNPATH=$SONYC_UST_PATH/annotations/latest/annotations_w_test_anns.csv
+else
+    export ANNPATH=$SONYC_UST_PATH/annotations/$VERSION/annotations.csv
+fi
 
 if [ $# -gt 1 ]; then
     export NUM_HIDDEN=$2
@@ -33,6 +38,7 @@ fi
 export EXPDIR=$OUTDIR/$1/${NUM_HIDDEN}_${HIDDEN_SIZE}
 export OUTPUTDIR=$EXPDIR/results
 
+echo "SONYC_VERSION=$VERSION"
 echo "NUM_HIDDEN=$NUM_HIDDEN"
 echo "HIDDEN_SIZE=$HIDDEN_SIZE"
 
