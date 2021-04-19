@@ -15,7 +15,7 @@ cd `git rev-parse --show-toplevel`
 module purge
 
 export SRCDIR=.
-export VERSION='v0.4'
+export VERSION='latest' #'v0.4'
 export SONYC_UST_PATH=/scratch/work/sonyc/sonyc/ust
 export ANNPATH=$SONYC_UST_PATH/annotations/$VERSION/annotations.csv
 export TAXPATH=$SONYC_UST_PATH/annotations/$VERSION/dcase-ust-taxonomy.yaml
