@@ -459,13 +459,27 @@ def evaluate_df(gt_df, pred_df, mode, yaml_dict):
     # Make sure the files evaluated in both tables match.
     pred_audio_set = set(pred_df['audio_filename'].tolist())
     true_audio_set = set(gt_df['audio_filename'].tolist())
-    if not (pred_audio_set == true_audio_set):
-        extra_files = pred_audio_set - true_audio_set
+    
+    if len(pred_audio_set) < len(true_audio_set):
         missing_files = true_audio_set - pred_audio_set
         err_msg =\
             "File mismatch between ground truth and prediction table.\n\n" \
-            "Missing files: {}\n\n Extra files: {}"
-        raise ValueError(err_msg.format(list(missing_files), list(extra_files)))
+            "Missing files: {}"
+        raise ValueError(err_msg.format(list(missing_files)))
+    
+    if len(pred_audio_set) > len(true_audio_set):
+        print("Extra files in prediction table. Using only a subset present in ground truth.")
+        file_list = pred_audio_set.intersection(true_audio_set)
+        gt_df = gt_df[gt_df['audio_filename'].isin(file_list)]
+        pred_df = pred_df[pred_df['audio_filename'].isin(file_list)]
+
+#     if not (pred_audio_set == true_audio_set):
+#         extra_files = pred_audio_set - true_audio_set
+#         missing_files = true_audio_set - pred_audio_set
+#         err_msg =\
+#             "File mismatch between ground truth and prediction table.\n\n" \
+#             "Missing files: {}\n\n Extra files: {}"
+#         raise ValueError(err_msg.format(list(missing_files), list(extra_files)))
 
     # Make sure the size of the tables match
     if not (len(gt_df) == len(pred_df)):
